@@ -1,0 +1,209 @@
+------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/shushengzhong/Library/CloudStorage/GoogleDrive-zhongshusheng98@gmail.com/.shortcut-targets-by-id/1boJDCaky
+> AAS94F5KjSRVfXd4ICmDvdRP/Measuring and Pricing Neighborhood Characteristics/pricing_amenities/proxy_stata_package/logs/demo_
+> 20231226.txt
+  log type:  text
+ opened on:  26 Dec 2023, 12:31:32
+
+. 
+. 
+. use ${temp_dir}/county_amenities_price, clear
+
+. 
+. ***************
+. * 1. One Amenity Only
+. ***************
+. 
+. * Univraite proxy method with Stata program, with ARCI standard errors 
+. * PROXY if year==2019, h(rank) w(log_hpvi) zlist(medianaqi) fe(i.rooms)
+. PROXY log_hpvi medianaqi if year==2019, h(rank) fe(i.rooms)
+log_hpvi medianaqi
+Number of amenities: 1
+Partial_F: 1483.3698
+medianaqi:  -.56660126 <-- -.52504959 --> -.48640844
+
+. 
+. * Show Return List
+. return list
+
+scalars:
+     r(ub_ARmedianaqi) =  -.4864084375499538
+     r(lb_ARmedianaqi) =  -.56660125735061
+      r(betamedianaqi) =  -.5250495936377277
+          r(partial_F) =  1483.369783267095
+
+. 
+. * run with ivreg2 package
+. bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi) medianaqi i.rooms ///
+>                                 if year==2019, cluster(fips) ffirst
+(running ivreg2 on estimation sample)
+
+Bootstrap replications (100)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+Warning - duplicate variables detected
+Duplicates:    medianaqi
+
+IV (2SLS) estimation
+--------------------
+
+Estimates efficient for homoskedasticity only
+Statistics robust to heteroskedasticity and clustering on fips
+
+Number of clusters (fips) =       2875                Number of obs =    14095
+                                                      F(  6,  2874) =        .
+                                                      Prob > F      =   0.0000
+Total (centered) SS     =  6079.334466                Centered R2   =  -5.2721
+Total (uncentered) SS   =  2004467.656                Uncentered R2 =   0.9810
+Residual SS             =  38130.32979                Root MSE      =    1.645
+
+------------------------------------------------------------------------------
+             |   Observed   Bootstrap                         Normal-based
+    log_hpvi | coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        rank |   1.812094   .1388056    13.05   0.000      1.54004    2.084148
+   medianaqi |  -.5250496   .0597288    -8.79   0.000    -.6421159   -.4079833
+             |
+       rooms |
+          2  |   .1846059   .0055159    33.47   0.000     .1737949    .1954169
+          3  |   .5711849   .0061856    92.34   0.000     .5590612    .5833085
+          4  |   .8534766   .0071927   118.66   0.000     .8393792    .8675739
+          5  |   1.049358   .0080458   130.42   0.000     1.033589    1.065128
+             |
+       _cons |   11.36662   .0316887   358.70   0.000     11.30452    11.42873
+------------------------------------------------------------------------------
+Underidentification test (Kleibergen-Paap rk LM statistic):            135.546
+                                                   Chi-sq(1) P-val =    0.0000
+------------------------------------------------------------------------------
+Weak identification test (Cragg-Donald Wald F statistic):             1483.370
+                         (Kleibergen-Paap rk Wald F statistic):        169.482
+Stock-Yogo weak ID test critical values: 10% maximal IV size             16.38
+                                         15% maximal IV size              8.96
+                                         20% maximal IV size              6.66
+                                         25% maximal IV size              5.53
+Source: Stock-Yogo (2005).  Reproduced by permission.
+NB: Critical values are for Cragg-Donald F statistic and i.i.d. errors.
+------------------------------------------------------------------------------
+Sargan statistic (overidentification test of all instruments):           0.000
+                                                 (equation exactly identified)
+------------------------------------------------------------------------------
+Instrumented:         rank
+Included instruments: medianaqi 2.rooms 3.rooms 4.rooms 5.rooms
+Excluded instruments: log_hpvi
+Duplicates:           medianaqi
+------------------------------------------------------------------------------
+
+. 
+. ***************
+. * 2. Multiple Amenities 
+. ***************
+. * Multivariate proxy method with Stata program, with ARCI standard errors 
+. PROXY log_hpvi medianaqi crime_rate if year==2019, h(rank) fe(i.rooms)
+log_hpvi medianaqi crime_rate
+Number of amenities: 2
+Partial_F: 1267.617
+medianaqi:  -.58833904 <-- -.53545097 --> -.48627206
+crime_rate:  -.66951268 <-- -.62423507 --> -.58033756
+
+. 
+. 
+. 
+. * Show Return List
+. return list
+
+scalars:
+    r(ub_ARcrime_rate) =  -.5803375634508029
+    r(lb_ARcrime_rate) =  -.6695126825387163
+     r(betacrime_rate) =  -.6242350729705314
+     r(ub_ARmedianaqi) =  -.4862720581404553
+     r(lb_ARmedianaqi) =  -.5883390361888383
+      r(betamedianaqi) =  -.5354509729419835
+          r(partial_F) =  1267.616970330273
+
+. 
+. 
+. 
+. * run with ivreg2 package (multivariate)
+. bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi crime_rate) medianaqi crime_rate  i.rooms ///
+>                                 if year==2019, cluster(fips) ffirst
+(running ivreg2 on estimation sample)
+
+Bootstrap replications (100)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+Warning - duplicate variables detected
+Duplicates:    medianaqi crime_rate
+
+IV (2SLS) estimation
+--------------------
+
+Estimates efficient for homoskedasticity only
+Statistics robust to heteroskedasticity and clustering on fips
+
+Number of clusters (fips) =       2869                Number of obs =    14067
+                                                      F(  7,  2868) =        .
+                                                      Prob > F      =   0.0000
+Total (centered) SS     =  6036.760309                Centered R2   =  -6.2156
+Total (uncentered) SS   =  1999781.697                Uncentered R2 =   0.9782
+Residual SS             =  43559.09799                Root MSE      =     1.76
+
+------------------------------------------------------------------------------
+             |   Observed   Bootstrap                         Normal-based
+    log_hpvi | coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        rank |   2.010828   .1808437    11.12   0.000     1.656381    2.365275
+   medianaqi |   -.535451   .0639899    -8.37   0.000    -.6608689    -.410033
+  crime_rate |  -.6242351   .0640038    -9.75   0.000    -.7496802   -.4987899
+             |
+       rooms |
+          2  |   .1778451   .0059209    30.04   0.000     .1662403    .1894499
+          3  |   .5641535   .0066994    84.21   0.000     .5510229    .5772841
+          4  |   .8464635   .0073976   114.42   0.000     .8319645    .8609625
+          5  |   1.044857   .0083899   124.54   0.000     1.028413    1.061301
+             |
+       _cons |   11.36737   .0343781   330.66   0.000     11.29999    11.43475
+------------------------------------------------------------------------------
+Underidentification test (Kleibergen-Paap rk LM statistic):            125.328
+                                                   Chi-sq(1) P-val =    0.0000
+------------------------------------------------------------------------------
+Weak identification test (Cragg-Donald Wald F statistic):             1267.617
+                         (Kleibergen-Paap rk Wald F statistic):        153.741
+Stock-Yogo weak ID test critical values: 10% maximal IV size             16.38
+                                         15% maximal IV size              8.96
+                                         20% maximal IV size              6.66
+                                         25% maximal IV size              5.53
+Source: Stock-Yogo (2005).  Reproduced by permission.
+NB: Critical values are for Cragg-Donald F statistic and i.i.d. errors.
+------------------------------------------------------------------------------
+Sargan statistic (overidentification test of all instruments):           0.000
+                                                 (equation exactly identified)
+------------------------------------------------------------------------------
+Instrumented:         rank
+Included instruments: medianaqi crime_rate 2.rooms 3.rooms 4.rooms 5.rooms
+Excluded instruments: log_hpvi
+Duplicates:           medianaqi crime_rate
+------------------------------------------------------------------------------
+
+. 
+. 
+. ***************
+. * 3. Test Error Code
+. ***************
+. * Multiple Proxy
+. PROXY log_hpvi medianaqi if year==2019, h(rank HH_MED_INC) fe(i.rooms)
+log_hpvi medianaqi
+Working on cases with multiple proxies
+
+. 
+. 
+. log close
+      name:  <unnamed>
+       log:  /Users/shushengzhong/Library/CloudStorage/GoogleDrive-zhongshusheng98@gmail.com/.shortcut-targets-by-id/1boJDCaky
+> AAS94F5KjSRVfXd4ICmDvdRP/Measuring and Pricing Neighborhood Characteristics/pricing_amenities/proxy_stata_package/logs/demo_
+> 20231226.txt
+  log type:  text
+ closed on:  26 Dec 2023, 12:32:06
+------------------------------------------------------------------------------------------------------------------------------
