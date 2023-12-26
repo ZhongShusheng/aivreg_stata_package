@@ -2,7 +2,7 @@
 # ReadMe File for PROXY Stata Pacakge
 
 ## Syntax
- **PROXY** depvar [varlist] [if] [in], h(varlist) [fe(string)] [weight(string)]
+ **PROXY** depvar varlist [if] [in], h(varlist) [fe(string)] [weight(string)]
 
 ## Input List
  - **depvar** the outcome variable 
