@@ -1,12 +1,12 @@
 _**Syntax**_ \
- **PROXY** depvar [varlist] [if] [in], h(varlist) [fe(string)] [weight(string)] \
+ **PROXY** depvar [varlist] [if] [in], h(varlist) [fe(string)] [weight(string)]
 
  _**Input**_ \
  **depvar** the outcome variable \
  **varlist** the list of amenities \
  **h** a list of proxy variables (!currently PROXY only supports one proxy variable) \
  **fe** the fixed effects to be added \
- **weight** specifies weighting options \
+ **weight** specifies weighting options
 
  _**Return List**_ \
  **Partial F** Partial F-Stat \
