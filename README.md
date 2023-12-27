@@ -1,6 +1,11 @@
 
 # ReadMe File for PROXY Stata Pacakge
 
+## Installation
+- Download PROXY.ado from this repository
+- In Stata, type in _sysdir_, find the directory listed as _PERSONAL_
+- Put PROXY.ado in the _PERSONAL_ directory
+
 ## Syntax
  **PROXY** depvar varlist [if] [in], h(varlist) [fe(string)] [weight(string)]
 
