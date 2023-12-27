@@ -5,8 +5,7 @@ qui{
 
 }
 
-qui do proxy.do
-
+* qui do proxy.do
 
 local today : display %tdCYND date(c(current_date), "DMY")
 log using ${log_dir}/demo_`today'.txt, replace t
