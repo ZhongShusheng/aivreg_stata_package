@@ -1,19 +1,20 @@
 
-# ReadMe File for PROXY Stata Pacakge
+# ReadMe File for proxy Stata Pacakge
+The Stata **proxy** command implements the proxy method used 
 
 ## Installation
-- Download PROXY.ado from this repository
+- Download proxy.ado and proxy.sthlp from this repository
 - In Stata, type in _sysdir_, find the directory listed as _PERSONAL_
-- Put PROXY.ado in the _PERSONAL_ directory
+- Put proxy.ado and proxy.sthlp in the _PERSONAL_ directory
 
 ## Syntax
- **PROXY** depvar varlist [if] [in], h(varlist) [fe(string)] [weight(string)]
+ **proxy** depvar varlist [if] [in], h(varlist) [control(string)] [weight(string)]
 
 ## Input List
  - **depvar** the outcome variable 
  - **varlist** the list of amenities 
  - **h** a list of proxy variables (!currently PROXY only supports one proxy variable) 
- - **fe** the fixed effects to be added 
+ - **control** specify the list of control variables; can be fixed effects
  - **weight** specifies weighting options
 
 ## Return List
