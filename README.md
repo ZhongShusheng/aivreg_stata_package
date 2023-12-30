@@ -5,7 +5,7 @@ The Stata **proxy** command implements the proxy method used in [Bell (2022)](ht
 ## Installation
 - Download **proxy.ado** and **proxy.sthlp** from this repository
 - In Stata, type in _sysdir_, find the directory listed as _PERSONAL_
-- Put proxy.ado and proxy.sthlp in the _PERSONAL_ directory
+- Put **proxy.ado** and **proxy.sthlp** in the _PERSONAL_ directory
 
 ## Syntax
  **proxy** depvar varlist [if] [in], h(varlist) [control(string)] [weight(string)]
@@ -23,5 +23,11 @@ The Stata **proxy** command implements the proxy method used in [Bell (2022)](ht
  - **lb_AR"var"** Anderson-Rubin Confidence Interval (Lower Bound) for the amenity "var" 
  - **ub_AR"var"** Anderson-Rubin Confidence Interval (Upper Bound) for the amenity "var" 
  - ereturn stores all the post-estimation results from the baseline regression: reg h varlist depvar
- 
+
+## Examples
+### Example 1: Job Safety
+- Exercepted from [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522)
+- Import accompanying labor market data. Wage is the outcome variable, safety is the amenity to be priced, and AFQT score is the proxy variable of choice.
+- . use safety_proxy_example, clear
+
 
