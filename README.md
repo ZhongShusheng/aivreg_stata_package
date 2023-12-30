@@ -49,9 +49,9 @@ The Stata **proxy** command implements the proxy method used in [Bell (2022)](ht
 - Pricing a single housing amenity, air quality, using the proxy command, with geographic PageRank as proxy, controlling for room fixed effects
   -  **proxy log_hpvi medianaqi if year==2019, h(rank) control(i.rooms)**
   -  <img width="286" alt="Screen Shot 2023-12-30 at 6 04 25 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/95bf6d3b-79e0-4d66-85f6-7faaecffb1a7">
--  Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the proxy command, with geographic PageRank as proxy, controlling for room fixed effects
+- Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the proxy command, with geographic PageRank as proxy, controlling for room fixed effects
   -  **proxy log_hpvi medianaqi crime_rate if year==2019, h(rank) control(i.rooms)**
-  -  <img width="291" alt="Screen Shot 2023-12-30 at 6 05 50 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/89c7ccd8-3025-40fa-8039-d979883facf9">
+  -   <img width="291" alt="Screen Shot 2023-12-30 at 6 05 50 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/89c7ccd8-3025-40fa-8039-d979883facf9">
 
 ## Reference
 -  Bell, Alex, [Job Amenities and Earnings Inequality](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522). Mimeo, 2022.
