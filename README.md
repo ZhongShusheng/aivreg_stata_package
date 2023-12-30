@@ -31,18 +31,7 @@ The Stata **proxy** command implements the proxy method used in [Bell (2022)](ht
   - . use safety_proxy_example, clear
 - Naive hedonic regression
   - . reg wage safety
-  -       Source |       SS           df       MS      Number of obs   =     3,971
--------------+----------------------------------   F(1, 3969)      =     38.01
-       Model |   58.098609         1   58.098609   Prob > F        =    0.0000
-    Residual |  6066.92616     3,969  1.52857802   R-squared       =    0.0095
--------------+----------------------------------   Adj R-squared   =    0.0092
-       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.2364
+  - <img width="527" alt="Screen Shot 2023-12-30 at 5 40 16 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/d7d33f14-54e5-4edd-abd2-4ec1efb2c258">
 
-------------------------------------------------------------------------------
-        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-      safety |   .1257863    .020403     6.17   0.000     .0857849    .1657877
-       _cons |   .1858175   .0196564     9.45   0.000     .1472798    .2243552
-------------------------------------------------------------------------------
 
 
