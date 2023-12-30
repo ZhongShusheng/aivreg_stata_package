@@ -1,9 +1,9 @@
 
 # ReadMe File for proxy Stata Pacakge
-The Stata **proxy** command implements the proxy method used 
+The Stata **proxy** command implements the proxy method used in [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522) and [Bell, Calder-Wang, and Zhong (2023)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093).
 
 ## Installation
-- Download proxy.ado and proxy.sthlp from this repository
+- Download **proxy.ado** and **proxy.sthlp** from this repository
 - In Stata, type in _sysdir_, find the directory listed as _PERSONAL_
 - Put proxy.ado and proxy.sthlp in the _PERSONAL_ directory
 
