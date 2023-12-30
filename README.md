@@ -31,13 +31,13 @@ The Stata **proxy** command implements the proxy method used in [Bell (2022)](ht
   - **use safety_proxy_example, clear**
 - Naive hedonic regression
   - **reg wage safety**
-    <img width="527" alt="Screen Shot 2023-12-30 at 5 40 16 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/d7d33f14-54e5-4edd-abd2-4ec1efb2c258">
+  -  <img width="527" alt="Screen Shot 2023-12-30 at 5 40 16 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/d7d33f14-54e5-4edd-abd2-4ec1efb2c258">
 - Hedonic regression with AFQT as control
   - **reg wage safety afqt_1_1981**
-    <img width="525" alt="Screen Shot 2023-12-30 at 5 41 26 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/009d5f55-a9e1-4b6a-b1b8-8190225400ec">
+  -  <img width="525" alt="Screen Shot 2023-12-30 at 5 41 26 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/009d5f55-a9e1-4b6a-b1b8-8190225400ec">
 - Proxy method using AFQT as proxy
   -  **proxy wage safety, h(afqt_1_1981)**
-    <img width="266" alt="Screen Shot 2023-12-30 at 5 42 30 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/6e5d9edc-18c3-4ed5-be40-2a60834334a6">
+  -  <img width="266" alt="Screen Shot 2023-12-30 at 5 42 30 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/6e5d9edc-18c3-4ed5-be40-2a60834334a6">
 
 
 
