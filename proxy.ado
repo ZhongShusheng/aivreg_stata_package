@@ -1,9 +1,8 @@
-cap prog drop PROXY
-prog def PROXY, rclass
-	* syntax [if] [in], h(varlist) w(varlist) zlist(varlist) fe(string) [weight(string)]
-	syntax varlist [if] [in], h(varlist) [fe(string)] [weight(string)]
 
-	display "`varlist'"
+cap prog drop proxy
+prog def proxy, rclass
+	* syntax [if] [in], h(varlist) w(varlist) zlist(varlist) fe(string) [weight(string)]
+	syntax varlist [if] [in], h(varlist) [control(string)] [weight(string)]
 
 	local j=0
 
@@ -40,8 +39,6 @@ prog def PROXY, rclass
 		local amenity_count=`amenity_count'+1
 	}
 
-	display "Number of amenities: `amenity_count'"
-
 	* calculate partial F_stat
 
 	tempname RSS_red
@@ -55,9 +52,10 @@ prog def PROXY, rclass
 	sca `k'=e(rank)
 
 	sca `partial_F'=(`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k'))
-	di "Partial_F: "  `partial_F'
 
 	return scalar partial_F=`partial_F'
+
+	collect clear 
 
 	local i=1
 
@@ -84,16 +82,26 @@ prog def PROXY, rclass
 			
 			sca `beta' = -`delta' / `pi'
 			if `a' < 0 {
+				display "Error: Quadratic Term Smaller than Zero"
 				sca `lb' = .
 				sca `ub' = .
 			}
+
+			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`lb', tags(Col[ARCI_lb])
+			collect get `z'=`ub', tags(Col[ARCI_ub])
+
 			return scalar beta`z' = `beta'
 			return scalar lb_AR`z' = `lb'
 			return scalar ub_AR`z' = `ub'
 			}
 
-		di "`z':  " `lb' " <-- " `beta' " --> " `ub'
+		* di "`z':  " `lb' " <-- " `beta' " --> " `ub'
 		local i=`i'+1
 	}
+
+	qui collect layout (result) (Col)
+	collect preview
+	di "Partial_F: "  `partial_F'
 	
 end

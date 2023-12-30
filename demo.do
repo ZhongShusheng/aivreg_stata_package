@@ -1,57 +1,67 @@
 qui{
-	cd "/Users/shushengzhong/Library/CloudStorage/GoogleDrive-zhongshusheng98@gmail.com/.shortcut-targets-by-id/1boJDCakyAAS94F5KjSRVfXd4ICmDvdRP/Measuring and Pricing Neighborhood Characteristics/pricing_amenities/stata_package"
-	global temp_dir = "../data/temp"
+	* change into project directory
+	* ""
 	global log_dir ="./logs"
-
+	local today : display %tdCYND date(c(current_date), "DMY")
+	log using ${log_dir}/demo_`today'.txt, replace t
 }
 
 * qui do proxy.do
 
-local today : display %tdCYND date(c(current_date), "DMY")
-log using ${log_dir}/demo_`today'.txt, replace t
 
 
-use ${temp_dir}/county_amenities_price, clear
 
-***************
-* 1. One Amenity Only
-***************
+********************************************************************************
+* 1. Labor Market Demo
+********************************************************************************
+* Load Example
+* Outcome: wage
+* Amenity: safety
+* proxy: afqt_1_1981 (AFQT score)
 
-* Univraite proxy method with Stata program, with ARCI standard errors 
-* PROXY if year==2019, h(rank) w(log_hpvi) zlist(medianaqi) fe(i.rooms)
-PROXY log_hpvi medianaqi if year==2019, h(rank) fe(i.rooms)
+use safety_proxy_example, clear
 
-* Show Return List
-return list
+* naive hedonic regression
+reg wage safety
 
-* run with ivreg2 package
-bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi) medianaqi i.rooms ///
-				if year==2019, cluster(fips) ffirst
+* hedonic regression with AFQT as control variables
+reg wage safety afqt_1_1981
 
-***************
-* 2. Multiple Amenities 
-***************
+* proxy method using AFQT as proxy
+proxy wage safety, h(afqt_1_1981)
+
+
+********************************************************************************
+* 2. Housing Market Demo
+********************************************************************************
+* Load Example Housing Market Data
+* Outcome: log_hpvi (house price index for given # of rooms in a given county)
+* Amenities: medianaqi (Air Quality Index, higher means worse air), crime_rate
+* Proxy: rank (Geographic PageRank based on migration flows)
+
+use housing_proxy_example, clear
+
+* Hedonic Regression with Controls to Price a Single Amenity (i.e., medianaqi)
+reg log_hpvi medianaqi rank i.rooms if year==2019
+
+* Single-Amenity proxy method using the Stata program, with ARCI standard errors 
+proxy log_hpvi medianaqi if year==2019, h(rank) control(i.rooms)
+return list 
+
+* the Equivalent way to calculate the proxy coefficient with ivreg2 command
+bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi) ///
+				medianaqi i.rooms if year==2019, cluster(fips) ffirst
+
+
+* Hedonic Regression with Controls to Price Multiple Amenities (i.e., medianaqi)
+reg log_hpvi medianaqi crime_rate rank i.rooms if year==2019
+
 * Multivariate proxy method with Stata program, with ARCI standard errors 
-PROXY log_hpvi medianaqi crime_rate if year==2019, h(rank) fe(i.rooms)
-
-
-
-* Show Return List
+proxy log_hpvi medianaqi crime_rate if year==2019, h(rank) control(i.rooms)
 return list
 
-
-
-* run with ivreg2 package (multivariate)
-bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi crime_rate) medianaqi crime_rate  i.rooms ///
-				if year==2019, cluster(fips) ffirst
-
-
-***************
-* 3. Test Error Code
-***************
-* Multiple Proxy
-PROXY log_hpvi medianaqi if year==2019, h(rank HH_MED_INC) fe(i.rooms)
-
+* Currently not allowing multiple proxy option
+proxy log_hpvi medianaqi if year==2019, h(rank crime_rate) control(i.rooms)
 
 log close
 

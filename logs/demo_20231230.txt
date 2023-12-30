@@ -1,0 +1,249 @@
+
+. 
+. * qui do proxy.do
+. 
+. 
+. 
+. 
+. ********************************************************************************
+. * 1. Labor Market Demo
+. ********************************************************************************
+. * Load Example
+. * Outcome: wage
+. * Amenity: safety
+. * proxy: afqt_1_1981 (AFQT score)
+. 
+. use safety_proxy_example, clear
+
+. 
+. * naive hedonic regression
+. reg wage safety
+
+      Source |       SS           df       MS      Number of obs   =     3,971
+-------------+----------------------------------   F(1, 3969)      =     38.01
+       Model |   58.098609         1   58.098609   Prob > F        =    0.0000
+    Residual |  6066.92616     3,969  1.52857802   R-squared       =    0.0095
+-------------+----------------------------------   Adj R-squared   =    0.0092
+       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.2364
+
+------------------------------------------------------------------------------
+        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      safety |   .1257863    .020403     6.17   0.000     .0857849    .1657877
+       _cons |   .1858175   .0196564     9.45   0.000     .1472798    .2243552
+------------------------------------------------------------------------------
+
+. 
+. * hedonic regression with AFQT as control variables
+. reg wage safety afqt_1_1981
+
+      Source |       SS           df       MS      Number of obs   =     3,971
+-------------+----------------------------------   F(2, 3968)      =    157.55
+       Model |  450.608187         2  225.304094   Prob > F        =    0.0000
+    Residual |  5674.41659     3,968   1.4300445   R-squared       =    0.0736
+-------------+----------------------------------   Adj R-squared   =    0.0731
+       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.1958
+
+------------------------------------------------------------------------------
+        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      safety |   .0435653   .0203489     2.14   0.032       .00367    .0834607
+ afqt_1_1981 |   .0114346   .0006902    16.57   0.000     .0100814    .0127877
+       _cons |  -.3182425    .035877    -8.87   0.000    -.3885815   -.2479035
+------------------------------------------------------------------------------
+
+. 
+. * proxy method using AFQT as proxy
+. proxy wage safety, h(afqt_1_1981)
+
+--------------------------------------
+       |      Coef   ARCI_lb   ARCI_ub
+-------+------------------------------
+safety | -1.145084 -1.379237 -.9470102
+--------------------------------------
+Partial_F: 340.55434
+
+. 
+. 
+. ********************************************************************************
+. * 2. Housing Market Demo
+. ********************************************************************************
+. * Load Example Housing Market Data
+. * Outcome: log_hpvi (house price index for given # of rooms in a given county)
+. * Amenities: medianaqi (Air Quality Index, higher means worse air), crime_rate
+. * Proxy: rank (Geographic PageRank based on migration flows)
+. 
+. use housing_proxy_example, clear
+
+. 
+. * Hedonic Regression with Controls to Price a Single Amenity (i.e., medianaqi)
+. reg log_hpvi medianaqi rank i.rooms if year==2019
+
+      Source |       SS           df       MS      Number of obs   =    14,095
+-------------+----------------------------------   F(6, 14088)     =   1581.71
+       Model |  2446.93861         6  407.823102   Prob > F        =    0.0000
+    Residual |  3632.39585    14,088  .257836162   R-squared       =    0.4025
+-------------+----------------------------------   Adj R-squared   =    0.4022
+       Total |  6079.33447    14,094  .431342023   Root MSE        =    .50778
+
+------------------------------------------------------------------------------
+    log_hpvi | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+   medianaqi |  -.0179744   .0046326    -3.88   0.000    -.0270548   -.0088939
+        rank |   .1726248   .0044821    38.51   0.000     .1638394    .1814103
+             |
+       rooms |
+          2  |   .1426972   .0136676    10.44   0.000      .115907    .1694874
+          3  |   .5262077   .0136504    38.55   0.000     .4994511    .5529642
+          4  |   .8092507   .0136549    59.26   0.000     .7824852    .8360162
+          5  |   1.015283   .0137094    74.06   0.000     .9884108    1.042155
+             |
+       _cons |   11.40268   .0098292  1160.08   0.000     11.38341    11.42194
+------------------------------------------------------------------------------
+
+. 
+. * Single-Amenity proxy method using the Stata program, with ARCI standard errors 
+. proxy log_hpvi medianaqi if year==2019, h(rank) control(i.rooms)
+
+-----------------------------------------
+          |      Coef   ARCI_lb   ARCI_ub
+----------+------------------------------
+medianaqi | -.8222405 -.8965907 -.7550601
+-----------------------------------------
+Partial_F: 922.75547
+
+. return list 
+
+scalars:
+     r(ub_ARmedianaqi) =  -.7550600907989018
+     r(lb_ARmedianaqi) =  -.8965906904036868
+      r(betamedianaqi) =  -.8222404794751392
+          r(partial_F) =  922.7554668335091
+
+. 
+. * the Equivalent way to calculate the proxy coefficient with ivreg2 command
+. bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi) ///
+>                                 medianaqi i.rooms if year==2019, cluster(fips) ffirst
+(running ivreg2 on estimation sample)
+
+Bootstrap replications (100)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+Warning - duplicate variables detected
+Duplicates:    medianaqi
+
+IV (2SLS) estimation
+--------------------
+
+Estimates efficient for homoskedasticity only
+Statistics robust to heteroskedasticity and clustering on fips
+
+Number of clusters (fips) =       2875                Number of obs =    14095
+                                                      F(  6,  2874) =        .
+                                                      Prob > F      =   0.0000
+Total (centered) SS     =  6079.334466                Centered R2   =  -5.2721
+Total (uncentered) SS   =  2004467.656                Uncentered R2 =   0.9810
+Residual SS             =  38130.32979                Root MSE      =    1.645
+
+------------------------------------------------------------------------------
+             |   Observed   Bootstrap                         Normal-based
+    log_hpvi | coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        rank |   1.812094   .1388056    13.05   0.000      1.54004    2.084148
+   medianaqi |  -.5250496   .0597288    -8.79   0.000    -.6421159   -.4079833
+             |
+       rooms |
+          2  |   .1846059   .0055159    33.47   0.000     .1737949    .1954169
+          3  |   .5711849   .0061856    92.34   0.000     .5590612    .5833085
+          4  |   .8534766   .0071927   118.66   0.000     .8393792    .8675739
+          5  |   1.049358   .0080458   130.42   0.000     1.033589    1.065128
+             |
+       _cons |   11.36662   .0316887   358.70   0.000     11.30452    11.42873
+------------------------------------------------------------------------------
+Underidentification test (Kleibergen-Paap rk LM statistic):            135.546
+                                                   Chi-sq(1) P-val =    0.0000
+------------------------------------------------------------------------------
+Weak identification test (Cragg-Donald Wald F statistic):             1483.370
+                         (Kleibergen-Paap rk Wald F statistic):        169.482
+Stock-Yogo weak ID test critical values: 10% maximal IV size             16.38
+                                         15% maximal IV size              8.96
+                                         20% maximal IV size              6.66
+                                         25% maximal IV size              5.53
+Source: Stock-Yogo (2005).  Reproduced by permission.
+NB: Critical values are for Cragg-Donald F statistic and i.i.d. errors.
+------------------------------------------------------------------------------
+Sargan statistic (overidentification test of all instruments):           0.000
+                                                 (equation exactly identified)
+------------------------------------------------------------------------------
+Instrumented:         rank
+Included instruments: medianaqi 2.rooms 3.rooms 4.rooms 5.rooms
+Excluded instruments: log_hpvi
+Duplicates:           medianaqi
+------------------------------------------------------------------------------
+
+. 
+. 
+. * Hedonic Regression with Controls to Price Multiple Amenities (i.e., medianaqi)
+. reg log_hpvi medianaqi crime_rate rank i.rooms if year==2019
+
+      Source |       SS           df       MS      Number of obs   =    14,067
+-------------+----------------------------------   F(7, 14059)     =   1356.99
+       Model |  2434.12237         7  347.731767   Prob > F        =    0.0000
+    Residual |  3602.63794    14,059  .256251365   R-squared       =    0.4032
+-------------+----------------------------------   Adj R-squared   =    0.4029
+       Total |  6036.76031    14,066  .429173916   Root MSE        =    .50621
+
+------------------------------------------------------------------------------
+    log_hpvi | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+   medianaqi |   -.017584   .0046242    -3.80   0.000    -.0266481   -.0085199
+  crime_rate |   .0168477   .0058461     2.88   0.004     .0053885    .0283069
+        rank |   .1663094   .0046711    35.60   0.000     .1571533    .1754654
+             |
+       rooms |
+          2  |   .1430336   .0136392    10.49   0.000     .1162989    .1697683
+          3  |   .5268819   .0136221    38.68   0.000     .5001808     .553583
+          4  |   .8101727   .0136267    59.45   0.000     .7834627    .8368828
+          5  |   1.016263   .0136798    74.29   0.000     .9894485    1.043077
+             |
+       _cons |   11.40063   .0098081  1162.37   0.000      11.3814    11.41985
+------------------------------------------------------------------------------
+
+. 
+. * Multivariate proxy method with Stata program, with ARCI standard errors 
+. proxy log_hpvi medianaqi crime_rate if year==2019, h(rank) control(i.rooms)
+
+------------------------------------------
+           |      Coef   ARCI_lb   ARCI_ub
+-----------+------------------------------
+medianaqi  | -.8396187 -.9317147 -.7564371
+crime_rate |  -1.00378  -1.08675 -.9258978
+------------------------------------------
+Partial_F: 789.55462
+
+. return list
+
+scalars:
+    r(ub_ARcrime_rate) =  -.9258977533367464
+    r(lb_ARcrime_rate) =  -1.086749770671606
+     r(betacrime_rate) =  -1.00377999141037
+     r(ub_ARmedianaqi) =  -.7564371299319341
+     r(lb_ARmedianaqi) =  -.931714687499079
+      r(betamedianaqi) =  -.8396187136259394
+          r(partial_F) =  789.5546188930828
+
+. 
+. * Currently not allowing multiple proxy option
+. proxy log_hpvi medianaqi if year==2019, h(rank crime_rate) control(i.rooms)
+Working on cases with multiple proxies
+
+. 
+. log close
+      name:  <unnamed>
+       log:  /Users/shushengzhong/Library/CloudStorage/GoogleDrive-zhongshusheng98@gmail.com/.shortcut-targets-by-id/
+> 1boJDCakyAAS94F5KjSRVfXd4ICmDvdRP/Measuring and Pricing Neighborhood Characteristics/pricing_amenities/proxy_stata_
+> package/logs/demo_20231230.txt
+  log type:  text
+ closed on:  30 Dec 2023, 17:24:54
+---------------------------------------------------------------------------------------------------------------------
