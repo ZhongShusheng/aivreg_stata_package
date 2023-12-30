@@ -28,7 +28,8 @@ The Stata **proxy** command implements the proxy method used in [Bell (2022)](ht
 ### Example 1: Job Safety
 - Exercepted from [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522)
 - Import accompanying labor market data. Wage is the outcome variable, safety is the amenity to be priced, and AFQT score is the proxy variable of choice.
-  .use safety_proxy_example, clear
-- 
+  - . use safety_proxy_example, clear
+- Naive hedonic regression
+  - . reg wage safety
 
 
