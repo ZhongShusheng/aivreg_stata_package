@@ -1,7 +1,6 @@
 
 cap prog drop proxy
 prog def proxy, rclass
-	* syntax [if] [in], h(varlist) w(varlist) zlist(varlist) fe(string) [weight(string)]
 	syntax varlist [if] [in], h(varlist) [control(string)] [weight(string)]
 
 	local j=0
@@ -42,11 +41,11 @@ prog def proxy, rclass
 	* calculate partial F_stat
 
 	tempname RSS_red
-	qui reg `h' `zlist' `fe' `weight' `if' `in'
+	qui reg `h' `zlist' `control' `weight' `if' `in'
 	sca `RSS_red'=e(rss)
 
 	tempname RSS_full n k partial_F
-	qui reg `h' `w' `zlist' `fe' `weight' `if' `in'
+	qui reg `h' `w' `zlist' `control' `weight' `if' `in'
 	sca `RSS_full'=e(rss)
 	sca `n'=e(N)
 	sca `k'=e(rank)
@@ -61,15 +60,15 @@ prog def proxy, rclass
 
 	foreach z of varlist `zlist' {
 		qui {
-			* reg `h' `w' `zlist' `fe' `weight' `if' `in'
+			* qui reg `h' `w' `zlist' `control' `weight' `if' `in'
 			tempname pi delta c_pipi c_deldel c_delpi crit a b c lb ub beta
 
 			sca `pi' = _b[`w']
 			sca `delta' = _b[`z']
 			mat _v = e(V)
-			sca `c_pipi' = _v[`i', `i']
-			sca `c_deldel' = _v[`amenity_count'+1,`amenity_count'+1]
-			sca `c_delpi' = _v[`amenity_count'+1,`i']
+			sca `c_pipi' = _v[1, 1]
+			sca `c_deldel' = _v[`i'+1,`i'+1]
+			sca `c_delpi' = _v[`i'+1, 1]
 
 			sca `crit' = 1.96
 			sca `a' = ((`pi')^2) - (`crit'^2) * `c_pipi'

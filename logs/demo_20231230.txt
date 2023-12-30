@@ -108,17 +108,17 @@ Partial_F: 340.55434
 -----------------------------------------
           |      Coef   ARCI_lb   ARCI_ub
 ----------+------------------------------
-medianaqi | -.8222405 -.8965907 -.7550601
+medianaqi | -.5250496 -.5666013 -.4864084
 -----------------------------------------
-Partial_F: 922.75547
+Partial_F: 1483.3698
 
 . return list 
 
 scalars:
-     r(ub_ARmedianaqi) =  -.7550600907989018
-     r(lb_ARmedianaqi) =  -.8965906904036868
-      r(betamedianaqi) =  -.8222404794751392
-          r(partial_F) =  922.7554668335091
+     r(ub_ARmedianaqi) =  -.4864084375499538
+     r(lb_ARmedianaqi) =  -.56660125735061
+      r(betamedianaqi) =  -.5250495936377277
+          r(partial_F) =  1483.369783267095
 
 . 
 . * the Equivalent way to calculate the proxy coefficient with ivreg2 command
@@ -217,21 +217,21 @@ Duplicates:           medianaqi
 ------------------------------------------
            |      Coef   ARCI_lb   ARCI_ub
 -----------+------------------------------
-medianaqi  | -.8396187 -.9317147 -.7564371
-crime_rate |  -1.00378  -1.08675 -.9258978
+medianaqi  |  -.535451 -.5806173 -.4937169
+crime_rate | -.6242351 -.6807541  -.571965
 ------------------------------------------
-Partial_F: 789.55462
+Partial_F: 1267.617
 
 . return list
 
 scalars:
-    r(ub_ARcrime_rate) =  -.9258977533367464
-    r(lb_ARcrime_rate) =  -1.086749770671606
-     r(betacrime_rate) =  -1.00377999141037
-     r(ub_ARmedianaqi) =  -.7564371299319341
-     r(lb_ARmedianaqi) =  -.931714687499079
-      r(betamedianaqi) =  -.8396187136259394
-          r(partial_F) =  789.5546188930828
+    r(ub_ARcrime_rate) =  -.5719649938687293
+    r(lb_ARcrime_rate) =  -.6807540689079563
+     r(betacrime_rate) =  -.6242350729705314
+     r(ub_ARmedianaqi) =  -.4937169471440934
+     r(lb_ARmedianaqi) =  -.5806172758624153
+      r(betamedianaqi) =  -.5354509729419835
+          r(partial_F) =  1267.616970330273
 
 . 
 . * Currently not allowing multiple proxy option
@@ -245,5 +245,5 @@ Working on cases with multiple proxies
 > 1boJDCakyAAS94F5KjSRVfXd4ICmDvdRP/Measuring and Pricing Neighborhood Characteristics/pricing_amenities/proxy_stata_
 > package/logs/demo_20231230.txt
   log type:  text
- closed on:  30 Dec 2023, 17:24:54
+ closed on:  30 Dec 2023, 18:03:42
 ---------------------------------------------------------------------------------------------------------------------
