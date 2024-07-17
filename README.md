@@ -50,7 +50,7 @@ The Stata **aivreg** command implements the proxy method used in [Bell (2022)](h
 - Pricing a single housing amenity, air quality, using the aivreg command, with geographic PageRank as aivreg, controlling for room fixed effects
   -  **aivreg log_hpvi medianaqi if year==2019, h(rank) control(i.rooms)**
   -  <img width="286" alt="Screen Shot 2023-12-30 at 6 04 25 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/95bf6d3b-79e0-4d66-85f6-7faaecffb1a7">
-- Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the aivreg command, with geographic PageRank as anti-IV, controlling for room fixed effects
+- Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the aivreg command, with geographic PageRank as anti-IV, controlling for room fixed effects; storing the estimates as model1
   -  **aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) fe(i.rooms) eststo(model1)**
   -   <img width="291" alt="Screen Shot 2023-12-30 at 6 05 50 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/89c7ccd8-3025-40fa-8039-d979883facf9">
 
