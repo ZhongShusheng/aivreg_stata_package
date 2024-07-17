@@ -1,6 +1,6 @@
 
-# ReadMe File for proxy Stata Pacakge
-The Stata **aivreg** command implements the proxy method used in [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522) and [Bell, Calder-Wang, and Zhong (2023)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093).
+# ReadMe File for aivreg Stata Pacakge
+The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522) and [Bell, Calder-Wang, and Zhong (2023)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093).
 
 ## Installation
 - Download **aivreg.ado** and **aivreg.sthlp** from this repository
