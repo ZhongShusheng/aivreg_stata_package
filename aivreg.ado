@@ -1,7 +1,7 @@
 
-cap prog drop proxy
-prog def proxy, rclass
-	syntax varlist [if] [in], h(varlist) [control(string)] [weight(string)]
+cap prog drop aivreg
+prog def aivreg, rclass
+	syntax varlist [if] [in], h(varlist) [control(string)] [fe(string)] [weight(string)] [eststo(string)]
 
 	local j=0
 
@@ -38,17 +38,34 @@ prog def proxy, rclass
 		local amenity_count=`amenity_count'+1
 	}
 
-	* calculate partial F_stat
+	local k=0
+	foreach fe_var in `fe' {
+		local k=`k'+1
+	}
 
-	tempname RSS_red
-	qui reg `h' `zlist' `control' `weight' `if' `in'
-	sca `RSS_red'=e(rss)
+	if `k'==0 {
+		tempname RSS_red
+		qui reghdfe `h' `zlist' `control' `weight' `if' `in', noabsorb
+		sca `RSS_red'=e(rss)
 
-	tempname RSS_full n k partial_F
-	qui reg `h' `w' `zlist' `control' `weight' `if' `in'
-	sca `RSS_full'=e(rss)
-	sca `n'=e(N)
-	sca `k'=e(rank)
+		tempname RSS_full n k partial_F
+		qui reghdfe `h' `w' `zlist' `control' `weight' `if' `in', noabsorb
+		sca `RSS_full'=e(rss)
+		sca `n'=e(N)
+		sca `k'=e(rank)
+	}
+
+	else {
+		tempname RSS_red
+		qui reghdfe `h' `zlist' `control' `weight' `if' `in', absorb(`fe')
+		sca `RSS_red'=e(rss)
+
+		tempname RSS_full n k partial_F
+		qui reghdfe `h' `w' `zlist' `control' `weight' `if' `in', absorb(`fe')
+		sca `RSS_full'=e(rss)
+		sca `n'=e(N)
+		sca `k'=e(rank)
+	}
 
 	sca `partial_F'=(`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k'))
 
@@ -102,5 +119,18 @@ prog def proxy, rclass
 	qui collect layout (result) (Col)
 	collect preview
 	di "Partial_F: "  `partial_F'
+
+	local s=0
+	foreach foo in `eststo' {
+		local s=`s'+1
+	}
+
+	display `s'
+
+	* use aivreg to eststo result
+	if `s'==1 {
+		ivreghdfe `w' `zlist' (`h'=`zlist' `w') `control' `weight' `if' `in', absorb(`fe')
+		eststo `eststo'
+	}
 	
 end
