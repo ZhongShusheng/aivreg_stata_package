@@ -13,7 +13,7 @@ The Stata **aivreg** command implements the proxy method used in [Bell (2022)](h
 ## Input List
  - **depvar** the outcome variable 
  - **varlist** the list of amenities 
- - **h** a list of proxy variables (!currently PROXY only supports one proxy variable) 
+ - **h** a list of anti-IV variables (!currently aivreg only supports one anti-IV variable) 
  - **control** specify the list of control variables;
  - **fe** list of fixed effects to be absorbed
  - **weight** specifies weighting options
@@ -36,21 +36,21 @@ The Stata **aivreg** command implements the proxy method used in [Bell (2022)](h
 - Hedonic regression with AFQT as control
   - **reg wage safety afqt_1_1981**
   -  <img width="525" alt="Screen Shot 2023-12-30 at 5 41 26 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/009d5f55-a9e1-4b6a-b1b8-8190225400ec">
-- Proxy method using AFQT as proxy
+- Anti-IV method using AFQT as anti-IV
   -  **aivreg wage safety, h(afqt_1_1981)**
   -  <img width="266" alt="Screen Shot 2023-12-30 at 5 42 30 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/6e5d9edc-18c3-4ed5-be40-2a60834334a6">
 
 ### Example 2: Housing Amenities
 - Excerpted from [Bell, Calder-Wang, and Zhong (2023)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093)
-- Import accompanying housing market data. Log House Price Index(log_hpvi) is the outcome variables, crime_rate and medianaqi (Air Quality Index, higher means worse air) are the amenities to be priced, and rank (Geographic PageRank from migra w) is the proxy variable of choice.
+- Import accompanying housing market data. Log House Price Index(log_hpvi) is the outcome variables, crime_rate and medianaqi (Air Quality Index, higher means worse air) are the amenities to be priced, and rank (Geographic PageRank from migra w) is the anti-IV variable of choice.
   -  **use housing_aivreg_example, clear**
 - Single-amenity hedonic regression with geographic PageRank as controls to price air quality
   -  **reg log_hpvi medianaqi rank i.rooms if year==2019**
   -  <img width="529" alt="Screen Shot 2023-12-30 at 5 46 01 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/99dd4dd1-89a3-48a8-9dc3-748295c88061">
-- Pricing a single housing amenity, air quality, using the proxy command, with geographic PageRank as proxy, controlling for room fixed effects
+- Pricing a single housing amenity, air quality, using the aivreg command, with geographic PageRank as aivreg, controlling for room fixed effects
   -  **aivreg log_hpvi medianaqi if year==2019, h(rank) control(i.rooms)**
   -  <img width="286" alt="Screen Shot 2023-12-30 at 6 04 25 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/95bf6d3b-79e0-4d66-85f6-7faaecffb1a7">
-- Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the proxy command, with geographic PageRank as proxy, controlling for room fixed effects
+- Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the aivreg command, with geographic PageRank as anti-IV, controlling for room fixed effects
   -  **aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) fe(i.rooms) eststo(model1)**
   -   <img width="291" alt="Screen Shot 2023-12-30 at 6 05 50 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/89c7ccd8-3025-40fa-8039-d979883facf9">
 
