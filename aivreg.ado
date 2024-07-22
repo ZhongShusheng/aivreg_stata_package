@@ -129,7 +129,7 @@ prog def aivreg, rclass
 
 	* use aivreg to eststo result
 	if `s'==1 {
-		ivreghdfe `w' `zlist' (`h'=`zlist' `w') `control' `weight' `if' `in', absorb(`fe')
+		qui ivreghdfe `w' `zlist' (`h'=`zlist' `w') `control' `weight' `if' `in', absorb(`fe')
 		eststo `eststo'
 	}
 	
