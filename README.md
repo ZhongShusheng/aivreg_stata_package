@@ -16,7 +16,7 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
  - **h** a list of anti-IV variables (currently aivreg only supports one anti-IV variable) 
  - **control** specify the list of control variables
  - **fe** list of fixed effects to be absorbed
- - **weight** specifies weighting options
+ - **weight** specifies weighting options; if specified, you should include the full weighting statement, e.g.: weight([w=wt]) 
  - **eststo** specifies the model name to store the estimates as, uses standard error from ivreghdfe as the default standard error.
 
 ## Return List
