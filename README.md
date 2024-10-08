@@ -1,5 +1,5 @@
 
-# ReadMe File for aivreg Stata Pacakge
+# ReadMe File for aivreg Stata Package
 The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522), [Bell, Calder-Wang, and Zhong (2023)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093), and [Bell et.al (2024)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974).
 
 ## Installation
@@ -13,8 +13,8 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
 ## Input List
  - **depvar** the outcome variable 
  - **varlist** the list of amenities 
- - **h** a list of anti-IV variables (!currently aivreg only supports one anti-IV variable) 
- - **control** specify the list of control variables;
+ - **h** a list of anti-IV variables (currently aivreg only supports one anti-IV variable) 
+ - **control** specify the list of control variables
  - **fe** list of fixed effects to be absorbed
  - **weight** specifies weighting options
  - **eststo** specifies the model name to store the estimates as, uses standard error from ivreghdfe as the default standard error.
