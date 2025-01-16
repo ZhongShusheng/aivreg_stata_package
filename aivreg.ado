@@ -3,6 +3,9 @@ cap prog drop aivreg
 prog def aivreg, rclass
 	syntax varlist [if] [in], h(varlist) [control(string)] [fe(string)] [weight(string)] [eststo(string)]
 
+
+	
+	
 	local j=0
 
 	foreach v of varlist `varlist'{
@@ -69,16 +72,29 @@ prog def aivreg, rclass
 
 	sca `partial_F'=(`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k'))
 
-	return scalar partial_F=`partial_F'
-
+	* This adds the preamble like reghdfe
+	dis " "
+	local align_col 60  // Desired column for the "=" alignment
+	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
+	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
+	local padding = `align_col' - length("Partial F-stat.")
+	display _dup(`padding') " " "Partial F-stat." " = " `partial_F'
+	
+	* This makes the column names for the stats
 	collect clear 
-
+	collect get Variable = "Coef.", tags(Col[Coef])
+	collect get Variable = "Std. Err.", tags(Col[SE_AR])
+	collect get Variable = "t", tags(Col[t_val])
+	collect get Variable = "P>|t|", tags(Col[p_more_t])
+	collect get Variable = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get Variable = "Interval]", tags(Col[ARCI_ub])
+	
 	local i=1
 
 	foreach z of varlist `zlist' {
 		qui {
 			* qui reg `h' `w' `zlist' `control' `weight' `if' `in'
-			tempname pi delta c_pipi c_deldel c_delpi crit a b c lb ub beta
+			tempname pi delta c_pipi c_deldel c_delpi crit a b c lb ub beta SE val_t test_stat
 
 			sca `pi' = _b[`w']
 			sca `delta' = _b[`z']
@@ -94,7 +110,8 @@ prog def aivreg, rclass
 
 			sca `lb' = - (-`b' + sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')
 			sca `ub' = - (-`b' - sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')
-
+			
+			sca `SE' = (`ub' - `lb') / (2*1.96) // take radius of CI (even if uncentered)
 			
 			sca `beta' = -`delta' / `pi'
 			if `a' < 0 {
@@ -102,12 +119,23 @@ prog def aivreg, rclass
 				sca `lb' = .
 				sca `ub' = .
 			}
-
+			
+			* T-Test approximation
+			sca `val_t' = `beta' / `SE'
+			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			
+			* table
 			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`SE', tags(Col[SE_AR])
+			collect get `z' = `val_t', tags(Col[t_val])
+			collect get `z' = `test_stat', tags(Col[p_more_t])
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
-
+			
 			return scalar beta`z' = `beta'
+			return scalar SE_AR`z' = `SE'
+			return scalar t_val`z' = `val_t'
+			return scalar p_more_t`z' = `test_stat' 
 			return scalar lb_AR`z' = `lb'
 			return scalar ub_AR`z' = `ub'
 			}
@@ -116,10 +144,13 @@ prog def aivreg, rclass
 		local i=`i'+1
 	}
 
+	*Output
+	collect style header Col, level(hide) // removes Col names
+    collect style cell result[Variable], border(bottom) border(top, pattern(nil)) // new column names
+	collect style cell, sformat(" %s") // increase spacing
 	qui collect layout (result) (Col)
 	collect preview
-	di "Partial_F: "  `partial_F'
-
+	
 	local s=0
 	foreach foo in `eststo' {
 		local s=`s'+1
@@ -129,7 +160,7 @@ prog def aivreg, rclass
 
 	* use aivreg to eststo result
 	if `s'==1 {
-		qui ivreghdfe `w' `zlist' (`h'=`zlist' `w') `control' `weight' `if' `in', absorb(`fe')
+		ivreghdfe `w' `zlist' (`h'=`zlist' `w') `control' `weight' `if' `in', absorb(`fe')
 		eststo `eststo'
 	}
 	
