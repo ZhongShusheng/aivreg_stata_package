@@ -72,7 +72,8 @@ aivreg log_hpvi medianaqi if year==2019, h(rank crime_rate) control(i.rooms)
 
 log close
 
-
+ivreghdfe log_hpvi (rank=log_hpvi medianaqi) ///
+				medianaqi i.rooms if year==2019, ffirst
 
 
 

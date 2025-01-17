@@ -1,9 +1,10 @@
 
 cap prog drop aivreg
 prog def aivreg, rclass
-	syntax varlist [if] [in], h(varlist) [control(string)] [fe(string)] [weight(string)] [eststo(string)]
+	syntax varlist [if] [in], h(varlist) [control(string)] [fe(string)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)]
 
 
+		
 	
 	
 	local j=0
@@ -45,6 +46,143 @@ prog def aivreg, rclass
 	foreach fe_var in `fe' {
 		local k=`k'+1
 	}
+	
+	* start CI cases
+	if "`vce'" == "asymp"{ // asymptotic case
+		
+	qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', [`fe'] [`weight'] [`first'] // for some reason this only works with verbose
+	eststo `eststo'
+	
+	tempname n 
+	sca `n'=e(N)
+
+			* This adds the preamble like reghdfe
+	dis " "
+	local align_col 60  // Desired column for the "=" alignment
+	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
+	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
+
+	
+	* This makes the column names for the stats
+	collect clear 
+	collect get Variable = "Coef.", tags(Col[Coef])
+	collect get Variable = "Std. Err.", tags(Col[SE_AR])
+	collect get Variable = "t", tags(Col[t_val])
+	collect get Variable = "P>|t|", tags(Col[p_more_t])
+	collect get Variable = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get Variable = "Interval]", tags(Col[ARCI_ub])
+	
+	
+	foreach z of varlist `zlist' {
+		* Make variables
+			tempname beta SE n k lb ub val_t test_stat 
+			sca `n'=e(N)
+			sca `k'=e(df_m)
+			sca `beta' = _b[`z']
+			sca `SE' = _se[`z']
+			sca `val_t' = `beta' / `SE'
+			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			sca `lb' = `beta' - 1.96*`SE'
+			sca `ub' = `beta' + 1.96*`SE'
+
+		* table
+			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`SE', tags(Col[SE_AR])
+			collect get `z' = `val_t', tags(Col[t_val])
+			collect get `z' = `test_stat', tags(Col[p_more_t])
+			collect get `z'=`lb', tags(Col[ARCI_lb])
+			collect get `z'=`ub', tags(Col[ARCI_ub])
+			
+			return scalar beta`z' = `beta'
+			return scalar SE_AR`z' = `SE'
+			return scalar t_val`z' = `val_t'
+			return scalar p_more_t`z' = `test_stat' 
+			return scalar lb_AR`z' = `lb'
+			return scalar ub_AR`z' = `ub'
+		
+	}
+	
+	
+	*Output
+	collect style header Col, level(hide) // removes Col names
+    collect style cell result[Variable], border(bottom) border(top, pattern(nil)) // new column names
+	collect style cell, sformat(" %s") // increase spacing
+	qui collect layout (result) (Col)
+	collect preview
+} 
+else if "`vce'" == "boot"{ // bootstrap case
+		
+		
+	qui bootstrap, reps(`reps') verbose : ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', [`fe'] [`weight'] [`first']
+	eststo `eststo'
+	
+	tempname n 
+	sca `n'=e(N)
+
+	
+		* This adds the preamble like reghdfe
+	dis " "
+	local align_col 60  // Desired column for the "=" alignment
+	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
+	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
+	local padding = `align_col' - length("Uses bootstrapped") - length("number of reps")	
+	display "Uses bootstrapped SE" _dup(`padding') " " "number of reps" " = " "`reps'"
+	if length("`seed'") != 0 {
+			local padding = `align_col' - length("seed")	
+			display  _dup(`padding') " " "seed" " = " "`seed'"
+	} 
+
+
+	
+	* This makes the column names for the stats
+	collect clear 
+	collect get Variable = "Coef.", tags(Col[Coef])
+	collect get Variable = "Std. Err.", tags(Col[SE_AR])
+	collect get Variable = "t", tags(Col[t_val])
+	collect get Variable = "P>|t|", tags(Col[p_more_t])
+	collect get Variable = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get Variable = "Interval]", tags(Col[ARCI_ub])
+	
+	
+	foreach z of varlist `zlist' {
+		* Make variables
+			tempname beta SE n k lb ub val_t test_stat 
+			sca `n'=e(N)
+			sca `k'=e(df_m)
+			sca `beta' = _b[`z']
+			sca `SE' = _se[`z']
+			sca `val_t' = `beta' / `SE'
+			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			sca `lb' = `beta' - 1.96*`SE'
+			sca `ub' = `beta' + 1.96*`SE'
+
+		* table
+			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`SE', tags(Col[SE_AR])
+			collect get `z' = `val_t', tags(Col[t_val])
+			collect get `z' = `test_stat', tags(Col[p_more_t])
+			collect get `z'=`lb', tags(Col[ARCI_lb])
+			collect get `z'=`ub', tags(Col[ARCI_ub])
+			
+			return scalar beta`z' = `beta'
+			return scalar SE_AR`z' = `SE'
+			return scalar t_val`z' = `val_t'
+			return scalar p_more_t`z' = `test_stat' 
+			return scalar lb_AR`z' = `lb'
+			return scalar ub_AR`z' = `ub'
+		
+	}
+	
+	
+	*Output
+	collect style header Col, level(hide) // removes Col names
+    collect style cell result[Variable], border(bottom) border(top, pattern(nil)) // new column names
+	collect style cell, sformat(" %s") // increase spacing
+	qui collect layout (result) (Col)
+	collect preview
+}
+	else { // AR CI case
+	
 
 	if `k'==0 {
 		tempname RSS_red
@@ -77,8 +215,8 @@ prog def aivreg, rclass
 	local align_col 60  // Desired column for the "=" alignment
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
-	local padding = `align_col' - length("Partial F-stat.")
-	display _dup(`padding') " " "Partial F-stat." " = " `partial_F'
+	local padding = `align_col' - length("Partial F-stat.") - length("Uses AR CI; SE inferred from radius")
+	display "Uses AR CI; SE inferred from radius" _dup(`padding') " " "Partial F-stat." " = " `partial_F'
 	
 	* This makes the column names for the stats
 	collect clear 
@@ -151,6 +289,9 @@ prog def aivreg, rclass
 	qui collect layout (result) (Col)
 	collect preview
 	
+	
+
+	
 	local s=0
 	foreach foo in `eststo' {
 		local s=`s'+1
@@ -160,8 +301,8 @@ prog def aivreg, rclass
 
 	* use aivreg to eststo result
 	if `s'==1 {
-		ivreghdfe `w' `zlist' (`h'=`zlist' `w') `control' `weight' `if' `in', absorb(`fe')
+		qui ivreghdfe `w' `zlist' (`h'=`zlist' `w') `control' `weight' `if' `in', absorb(`fe')
 		eststo `eststo'
 	}
-	
+	}
 end

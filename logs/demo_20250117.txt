@@ -239,8 +239,62 @@ Absorbed degrees of freedom:
 . 
 . 
 . * the Equivalent way to calculate the antiIV coefficient with ivreg2 command
-. qui bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi) ///
+. bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi) ///
 >                                 medianaqi i.rooms if year==2019, ffirst
+(running ivreg2 on estimation sample)
+
+Bootstrap replications (100): .........10.........20.........30.........40.........50.........60.........70.........80.........90.........100 done
+Warning - duplicate variables detected
+Duplicates:    medianaqi
+
+IV (2SLS) estimation
+--------------------
+
+Estimates efficient for homoskedasticity only
+Statistics consistent for homoskedasticity only
+
+                                                      Number of obs =    14095
+                                                      F(  6, 14088) =        .
+                                                      Prob > F      =   0.0000
+Total (centered) SS     =  6079.334466                Centered R2   =  -5.2721
+Total (uncentered) SS   =  2004467.656                Uncentered R2 =   0.9810
+Residual SS             =  38130.32979                Root MSE      =    1.645
+
+------------------------------------------------------------------------------
+             |   Observed   Bootstrap                         Normal-based
+    log_hpvi | coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        rank |   1.812094   .0617636    29.34   0.000     1.691039    1.933148
+   medianaqi |  -.5250496   .0327292   -16.04   0.000    -.5891976   -.4609016
+             |
+       rooms |
+          2  |   .1846059   .0430665     4.29   0.000     .1001972    .2690147
+          3  |   .5711849   .0449596    12.70   0.000     .4830658     .659304
+          4  |   .8534766   .0472148    18.08   0.000     .7609372     .946016
+          5  |   1.049358   .0397469    26.40   0.000     .9714561    1.127261
+             |
+       _cons |   11.36662   .0298027   381.40   0.000     11.30821    11.42504
+------------------------------------------------------------------------------
+Underidentification test (Kleibergen-Paap rk LM statistic):           1342.727
+                                                   Chi-sq(1) P-val =    0.0000
+------------------------------------------------------------------------------
+Weak identification test (Cragg-Donald Wald F statistic):             1483.370
+                         (Kleibergen-Paap rk Wald F statistic):       1483.370
+Stock-Yogo weak ID test critical values: 10% maximal IV size             16.38
+                                         15% maximal IV size              8.96
+                                         20% maximal IV size              6.66
+                                         25% maximal IV size              5.53
+Source: Stock-Yogo (2005).  Reproduced by permission.
+NB: Critical values are for Cragg-Donald F statistic and i.i.d. errors.
+------------------------------------------------------------------------------
+Sargan statistic (overidentification test of all instruments):           0.000
+                                                 (equation exactly identified)
+------------------------------------------------------------------------------
+Instrumented:         rank
+Included instruments: medianaqi 2.rooms 3.rooms 4.rooms 5.rooms
+Excluded instruments: log_hpvi
+Duplicates:           medianaqi
+------------------------------------------------------------------------------
 
 . 
 . esttab model1 model2, mgroup("aivreg results" "aivreg results", pattern(1 1)) modelwidth(25) varwidth(20) label
@@ -302,7 +356,7 @@ t statistics in parentheses
 . aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) control(i.rooms)
  
 Anti-IV Regression                             Number of obs = 14067
-                                             Partial F-stat. = 1267.7071
+Uses AR CI; SE inferred from radius          Partial F-stat. = 1267.7071
 
 Variable   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -----------+------------------------------------------------------------------
@@ -336,7 +390,7 @@ Working on cases with multiple proxies
 . 
 . log close
       name:  <unnamed>
-       log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250116.txt
+       log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250117.txt
   log type:  text
- closed on:  16 Jan 2025, 16:50:59
+ closed on:  17 Jan 2025, 17:36:40
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
