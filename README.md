@@ -38,7 +38,7 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
   -  <img width="525" alt="Screen Shot 2023-12-30 at 5 41 26 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/009d5f55-a9e1-4b6a-b1b8-8190225400ec">
 - Apply the Anti-IV method using AFQT as anti-IV with the command, storing the estimated results as model1.
   -  **aivreg wage safety, h(afqt_1_1981) eststo(model1)**
-  -  <img width="266" alt="Screen Shot 2023-12-30 at 5 42 30 PM" src="https://github.com/ZhongShusheng/aivreg_stata_package/assets/safety.png">
+  -  <img width="291" alt="Screen Shot 2025-01-20 at 4:28 PM" src="assets/safety.png">
 
 ### Example 2: Housing Amenities
 - Excerpted from [Bell, Calder-Wang, and Zhong (2023)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093)
@@ -49,10 +49,10 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
   -  <img width="529" alt="Screen Shot 2023-12-30 at 5 46 01 PM" src="https://github.com/ZhongShusheng/proxy_stata_package/assets/25121431/99dd4dd1-89a3-48a8-9dc3-748295c88061">
 - Pricing a single housing amenity, air quality, using the aivreg command, with geographic PageRank as aivreg, controlling for room fixed effects; storing the estimates as model2
   -  **aivreg log_hpvi medianaqi if year==2019, h(rank) control(i.rooms) eststo(model2)**
-  -  <img width="286" alt="Screen Shot 2023-12-30 at 6 04 25 PM" src="https://github.com/ZhongShusheng/aivreg_stata_package/assets/medianaqi_crime.png">
+  -  <img width="291" alt="Screen Shot 2025-01-20 at 4:29 PM" src="assets/medianaqi.png">
 - Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the aivreg command, with geographic PageRank as anti-IV, controlling for room fixed effects; 
   -  **aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) fe(i.rooms)**
-  -   <img width="291" alt="Screen Shot 2023-12-30 at 6 05 50 PM" src="https://github.com/ZhongShusheng/aivreg_stata_package/assets/medianaqi_crime.png">
+  -   <img width="291" alt="Screen Shot 2025-01-20 at 4:30 PM" src="assets/medianaqi_crime.png">
 - Export the aivreg results using esttab
   -  **esttab model1 model2, mgroup("aivreg results" "aivreg results", pattern(1 1)) modelwidth(25) varwidth(20) label**
   -  <img width="644" alt="Screen Shot 2024-07-22 at 5 19 09 PM" src="https://github.com/user-attachments/assets/9447a818-f6e1-4f41-9ba9-31bfa7bf161e">
