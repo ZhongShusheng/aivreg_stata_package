@@ -213,23 +213,12 @@ log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 medianaqi  |   -.535451   .0221685  -24.15374  2.5e-126   -.5806173  -.4937169
 crime_rate |  -.6242351   .0277523  -22.49308  4.2e-110   -.6807541   -.571965
 ------------------------------------------------------------------------------
+(est5 stored)
 
 . return list
 
-scalars:
-    r(ub_ARcrime_rate) =  -.5719649938687124
-    r(lb_ARcrime_rate) =  -.6807540689079368
-  r(p_more_tcrime_rat
-    e)                 =  4.2100000000e-110
-    r(t_valcrime_rate) =  -22.49308108522968
-    r(SE_ARcrime_rate) =  .0277523150610266
-     r(betacrime_rate) =  -.6242350729705131
-     r(ub_ARmedianaqi) =  -.4937169471440806
-     r(lb_ARmedianaqi) =  -.5806172758623984
-  r(p_more_tmedianaqi) =  2.5100000000e-126
-     r(t_valmedianaqi) =  -24.15373848281052
-     r(SE_ARmedianaqi) =  .0221684512036525
-      r(betamedianaqi) =  -.5354509729419688
+matrices:
+              r(table) :  9 x 9
 
 . 
 . * Currently not allowing multiple anti-IV option
@@ -241,5 +230,5 @@ Working on cases with multiple proxies
       name:  <unnamed>
        log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250124.txt
   log type:  text
- closed on:  24 Jan 2025, 10:48:04
+ closed on:  24 Jan 2025, 17:26:56
 -----------------------------------------------------------------------------------------------------------------------------------

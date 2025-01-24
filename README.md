@@ -17,18 +17,19 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
  - **control** specify the list of control variables
  - **fe** list of fixed effects to be absorbed; if used, ivreghdfe or reghdfe is called instead of ivreg2 or reg
  - **weight** specifies weighting options; if specified, you should include the full weighting statement, e.g.: weight([w=wt]) 
- - **eststo** specifies the model name to store the estimates as, uses standard error from ivreghdfe as the default standard error because it is not available for Anderson-Rubin standard errors
+ - **eststo** specifies the model name to store the estimates under
  - **vce** specify standard error estimation: Anderson-Rubin is the default; boot computes bootstrapped SE; asymp uses the SE of ivreg2 or ivreghdfe
  - **reps** number of repetitions (for bootstrap only)
  - **seed** seed for bootstrap (for bootstrap only)
  - **cluster** cluster variables for standard errors; not available for Anderson-Ruben standard errors
+ - **savefirst** when set to savefirst, the first stage regression is reported; this is also saved in eststo as _ivreg2_`h'
 ## Return List
  - **Partial F** Partial F-Stat; this does not appear in all cases yet
  - **Coef.** Coefficient for the amenity "var" 
  - **Std. Err.** Standard error of the coefficient (in Anderson-Rubin case, this is approximated from the confidence interval)
  - **t** t-statistic estimate of the coefficient
  - **P>|t|** p value based on the t-statistic
- - **[95% Conf. Interval]** Anderson-Rubin Confidence Interval for the Coefficient
+ - **[95% Conf. Interval]** 95% confidence interval for the coefficient
 
 ## Examples
 ### Example 1: Job Safety

@@ -1,8 +1,12 @@
 
 cap prog drop aivreg
 
-prog def aivreg, rclass
-	syntax varlist [if] [in], h(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)]
+prog def aivreg, eclass
+	syntax varlist [if] [in], h(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst(string)]
+	
+	
+	capture ereturn drop est1 _ivreg2_`h'
+	
 	
 	* because AR clustering not set up
 	if "`cluster'" != "" & "`vce'" == "" {
@@ -56,14 +60,83 @@ prog def aivreg, rclass
 	if "`vce'" == "asymp"{ // asymptotic case
 	
 	if  "`fe'" != "" {
-			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' `first'
+			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' `savefirst'
 			eststo `eststo'
 	}
 	else {
-			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster')  `weight' `first'
+			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster')  `weight' `savefirst'
 			eststo `eststo'
 	}
 
+	
+	* First Stage output option
+	if "`savefirst'" != "" {
+		dis " "
+		dis "{bf:First Stage:}"
+
+	
+	* get first stage estimates
+
+	estimates restore _ivreg2_`h'
+
+	
+	
+			* This makes the column names for the stats
+	collect clear 
+	collect get `h' = "Coef.", tags(Col[Coef])
+	collect get `h' = "Std. Err.", tags(Col[SE_AR])
+	collect get `h' = "t", tags(Col[t_val])
+	collect get `h' = "P>|t|", tags(Col[p_more_t])
+	collect get `h' = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get `h' = "Interval]", tags(Col[ARCI_ub])
+	
+	
+		foreach z of varlist `w' `zlist' {
+		* Make variables
+			tempname beta SE n k lb ub val_t test_stat 
+			sca `n'=e(N)
+			sca `k'=e(df_m)
+			sca `beta' = _b[`z']
+			sca `SE' = _se[`z']
+			sca `val_t' = `beta' / `SE'
+			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			sca `lb' = `beta' - 1.96*`SE'
+			sca `ub' = `beta' + 1.96*`SE'
+
+		* table
+			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`SE', tags(Col[SE_AR])
+			collect get `z' = `val_t', tags(Col[t_val])
+			collect get `z' = `test_stat', tags(Col[p_more_t])
+			collect get `z'=`lb', tags(Col[ARCI_lb])
+			collect get `z'=`ub', tags(Col[ARCI_ub])
+			
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
+		
+	}
+		
+		collect style header Col, level(hide) // removes Col names
+		collect style cell result[`h'], border(bottom) border(top, pattern(nil)) // new column names
+		collect style cell, sformat(" %s") // increase spacing
+		qui collect layout (result) (Col)
+		collect preview
+		
+		if "`eststo'" != "" {
+			estimates restore `eststo'
+		}
+		else {
+			estimates restore est1			
+		}
+		
+		dis " "
+		dis "{bf:Second Stage:}"
+		
+	}
 	
 	tempname n 
 	sca `n'=e(N)
@@ -107,12 +180,12 @@ prog def aivreg, rclass
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			return scalar beta`z' = `beta'
-			return scalar SE_asymp`z' = `SE'
-			return scalar t_val`z' = `val_t'
-			return scalar p_more_t`z' = `test_stat' 
-			return scalar lb_asymp`z' = `lb'
-			return scalar ub_asymp`z' = `ub'
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
 		
 	}
 	
@@ -128,7 +201,15 @@ prog def aivreg, rclass
 		display "WARNING: Clustering not available for Anderson Ruben SE"
 		display _dup(9) " " "Defaults to asymptotic SE with custering"
 	}
-
+	
+	mat b = e(b)
+	mat b = b[1, "`zlist'"]
+	mat V = e(V)
+	mat V = V["`zlist'", "`zlist'"] 
+    local N = `n'
+	dis "`amenity_count'"
+	ereturn post b V, depname(`w') obs(`N')
+	eststo `eststo'
 
 } 
 else if "`vce'" == "boot"{ // bootstrap case
@@ -141,6 +222,85 @@ else if "`vce'" == "boot"{ // bootstrap case
 		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster') `weight' `first' // this only works with verbose
 		eststo `eststo'
 	}
+	
+	
+	* First Stage output option
+	if "`savefirst'" != "" {
+		
+		dis " "
+		dis "{bf:First Stage:}"
+	
+	* get first stage estimates
+
+	if "`fe'" != "" {
+			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reghdfe `h' `varlist' `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' `first' // this only works with verbose
+			eststo _ivreg2_`h'
+	}
+	else {
+		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reg `h' `varlist' `if' `in', cluster(`cluster') `weight' `first' // this only works with verbose
+		eststo _ivreg2_`h'
+	}
+
+	
+	
+			* This makes the column names for the stats
+	collect clear 
+	collect get `h' = "Coef.", tags(Col[Coef])
+	collect get `h' = "Std. Err.", tags(Col[SE_AR])
+	collect get `h' = "t", tags(Col[t_val])
+	collect get `h' = "P>|t|", tags(Col[p_more_t])
+	collect get `h' = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get `h' = "Interval]", tags(Col[ARCI_ub])
+	
+	
+		foreach z of varlist `w' `zlist' {
+		* Make variables
+			tempname beta SE n k lb ub val_t test_stat 
+			sca `n'=e(N)
+			sca `k'=e(df_m)
+			sca `beta' = _b[`z']
+			sca `SE' = _se[`z']
+			sca `val_t' = `beta' / `SE'
+			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			sca `lb' = `beta' - 1.96*`SE'
+			sca `ub' = `beta' + 1.96*`SE'
+
+		* table
+			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`SE', tags(Col[SE_AR])
+			collect get `z' = `val_t', tags(Col[t_val])
+			collect get `z' = `test_stat', tags(Col[p_more_t])
+			collect get `z'=`lb', tags(Col[ARCI_lb])
+			collect get `z'=`ub', tags(Col[ARCI_ub])
+			
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
+		
+	}
+		
+		collect style header Col, level(hide) // removes Col names
+		collect style cell result[`h'], border(bottom) border(top, pattern(nil)) // new column names
+		collect style cell, sformat(" %s") // increase spacing
+		qui collect layout (result) (Col)
+		collect preview
+		
+		if "`eststo'" != "" {
+			estimates restore `eststo'
+		}
+		else {
+			estimates restore est1			
+		}
+
+		
+		dis " "
+		dis "{bf:Second Stage:}"
+		
+	}
+	
 	
 	tempname n 
 	sca `n'=e(N)
@@ -198,12 +358,12 @@ else if "`vce'" == "boot"{ // bootstrap case
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			return scalar beta`z' = `beta'
-			return scalar SE_boot`z' = `SE'
-			return scalar t_val`z' = `val_t'
-			return scalar p_more_t`z' = `test_stat' 
-			return scalar lb_boot`z' = `lb'
-			return scalar ub_boot`z' = `ub'
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_boot`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_boot`z' = `lb'
+			ereturn scalar ub_boot`z' = `ub'
 		
 	}
 	
@@ -215,6 +375,14 @@ else if "`vce'" == "boot"{ // bootstrap case
 	qui collect layout (result) (Col)
 	collect preview
 
+	mat b = e(b)
+	mat b = b[1, "`zlist'"]
+	mat V = e(V)
+	mat V = V["`zlist'", "`zlist'"] 
+    local N = `n'
+	dis "`amenity_count'"
+	ereturn post b V, depname(`w') obs(`N')
+	eststo `eststo'
 	
 }
 	else { // AR CI case
@@ -244,8 +412,72 @@ else if "`vce'" == "boot"{ // bootstrap case
 		sca `k'=e(rank)
 	}
 
+	* eststo first stage
+	eststo _ivreg2_`h'
+
 	sca `partial_F'=(`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k'))
 
+		* First Stage output option
+	if "`savefirst'" != "" {
+		
+		dis " "
+		dis "{bf:First Stage:}"
+	
+	* get first stage estimates
+	
+			* This makes the column names for the stats
+	collect clear 
+	collect get `h' = "Coef.", tags(Col[Coef])
+	collect get `h' = "Std. Err.", tags(Col[SE_AR])
+	collect get `h' = "t", tags(Col[t_val])
+	collect get `h' = "P>|t|", tags(Col[p_more_t])
+	collect get `h' = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get `h' = "Interval]", tags(Col[ARCI_ub])
+	
+	
+		foreach z of varlist `w' `zlist' {
+		* Make variables
+			tempname beta SE n k lb ub val_t test_stat 
+			sca `n'=e(N)
+			sca `k'=e(df_m)
+			sca `beta' = _b[`z']
+			sca `SE' = _se[`z']
+			sca `val_t' = `beta' / `SE'
+			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			sca `lb' = `beta' - 1.96*`SE'
+			sca `ub' = `beta' + 1.96*`SE'
+			local N = `n'
+
+		* table
+			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`SE', tags(Col[SE_AR])
+			collect get `z' = `val_t', tags(Col[t_val])
+			collect get `z' = `test_stat', tags(Col[p_more_t])
+			collect get `z'=`lb', tags(Col[ARCI_lb])
+			collect get `z'=`ub', tags(Col[ARCI_ub])
+			
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
+		
+	}
+		
+		collect style header Col, level(hide) // removes Col names
+		collect style cell result[`h'], border(bottom) border(top, pattern(nil)) // new column names
+		collect style cell, sformat(" %s") // increase spacing
+		qui collect layout (result) (Col)
+		collect preview
+		
+		dis " "
+		dis "{bf:Second Stage:}"
+		
+	}
+	
+	
+	
 	* This adds the preamble like reghdfe
 	
 	dis " "
@@ -266,13 +498,17 @@ else if "`vce'" == "boot"{ // bootstrap case
 	
 	local i=1
 	
-	matrix b = J(1, `amenity_count' + 1, 0)
-	matrix V = J(`amenity_count' + 1, `amenity_count' + 1, 0)
+	tempname b V
 	
+	matrix b = J(1, `amenity_count', 0)
+	matrix colnames b = `zlist'
+	matrix V = J(`amenity_count', `amenity_count', 0)
+	matrix colnames V = `zlist' 
+	matrix rownames V = `zlist' 
 	foreach z of varlist `zlist' {
 		qui {
 			* qui reg `h' `w' `zlist' `control' `weight' `if' `in'
-			tempname pi delta c_pipi c_deldel c_delpi crit a b c lb ub beta SE val_t test_stat
+			tempname pi delta c_pipi c_deldel c_delpi crit a b c lb ub beta SE val_t test_stat b V
 
 			sca `pi' = _b[`w']
 			sca `delta' = _b[`z']
@@ -298,6 +534,9 @@ else if "`vce'" == "boot"{ // bootstrap case
 				sca `ub' = .
 			}
 			
+			matrix b[1,`i'] = `beta'
+			matrix V[`i',`i'] = `SE'^2
+
 			* T-Test approximation
 			sca `val_t' = `beta' / `SE'
 			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
@@ -312,12 +551,12 @@ else if "`vce'" == "boot"{ // bootstrap case
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			return scalar beta`z' = `beta'
-			return scalar SE_AR`z' = `SE'
-			return scalar t_val`z' = `val_t'
-			return scalar p_more_t`z' = `test_stat' 
-			return scalar lb_AR`z' = `lb'
-			return scalar ub_AR`z' = `ub'
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_AR`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_AR`z' = `lb'
+			ereturn scalar ub_AR`z' = `ub'
 			
 			}
 
@@ -331,19 +570,12 @@ else if "`vce'" == "boot"{ // bootstrap case
 	collect style cell, sformat(" %s") // increase spacing
 	qui collect layout (result) (Col)
 	collect preview
-
 	
-	local s=0
-	foreach foo in `eststo' {
-		local s=`s'+1
-	}
+	local N = `n'
+	
+	ereturn clear
+	ereturn post b V, depname(`w') obs(`N')
+	eststo `eststo'
 
-	*display `s'
-
-	* use aivreg to eststo result
-	if `s'==1 {
-		qui ivreghdfe `w' `zlist' (`h'=`zlist' `w') `control' `weight' `if' `in', absorb(`fe')
-		eststo `eststo'
-	}
 	}
 end
