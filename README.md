@@ -8,22 +8,27 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
 - Put **aivreg.ado** and **aivreg.sthlp** in the _PERSONAL_ directory
 
 ## Syntax
- **aivreg** depvar varlist [if] [in], h(varlist) [control(string)] [fe(string)] [weight(string)] [eststo(string)]
+ **aivreg** depvar varlist [if] [in], h(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)]
 
 ## Input List
  - **depvar** the outcome variable 
  - **varlist** the list of amenities 
  - **h** a list of anti-IV variables (currently aivreg only supports one anti-IV variable) 
  - **control** specify the list of control variables
- - **fe** list of fixed effects to be absorbed
+ - **fe** list of fixed effects to be absorbed; if used, ivreghdfe or reghdfe is called instead of ivreg2 or reg
  - **weight** specifies weighting options; if specified, you should include the full weighting statement, e.g.: weight([w=wt]) 
- - **eststo** specifies the model name to store the estimates as, uses standard error from ivreghdfe as the default standard error.
-
+ - **eststo** specifies the model name to store the estimates as, uses standard error from ivreghdfe as the default standard error because it is not available for Anderson-Rubin standard errors
+ - **vce** specify standard error estimation: Anderson-Rubin is the default; boot computes bootstrapped SE; asymp uses the SE of ivreg2 or ivreghdfe
+ - **reps** number of repetitions (for bootstrap only)
+ - **seed** seed for bootstrap (for bootstrap only)
+ - **cluster** cluster variables for standard errors; not available for Anderson-Ruben standard errors
 ## Return List
- - **Partial F** Partial F-Stat 
- - **beta"var"** Coefficient for the amenity "var" 
- - **lb_AR"var"** Anderson-Rubin Confidence Interval (Lower Bound) for the amenity "var" 
- - **ub_AR"var"** Anderson-Rubin Confidence Interval (Upper Bound) for the amenity "var" 
+ - **Partial F** Partial F-Stat; this does not appear in all cases yet
+ - **Coef.** Coefficient for the amenity "var" 
+ - **Std. Err.** Standard error of the coefficient (in Anderson-Rubin case, this is approximated from the confidence interval)
+ - **t** t-statistic estimate of the coefficient
+ - **P>|t|** p value based on the t-statistic
+ - **[95% Conf. Interval]** Anderson-Rubin Confidence Interval for the Coefficient
 
 ## Examples
 ### Example 1: Job Safety

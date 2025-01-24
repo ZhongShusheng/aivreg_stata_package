@@ -1,10 +1,14 @@
 
 cap prog drop aivreg
+
 prog def aivreg, rclass
-	syntax varlist [if] [in], h(varlist) [control(string)] [fe(string)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)]
-
-
-		
+	syntax varlist [if] [in], h(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)]
+	
+	* because AR clustering not set up
+	if "`cluster'" != "" & "`vce'" == "" {
+		local vce = "asymp"
+		local AR_clust = 1
+	}
 	
 	
 	local j=0
@@ -47,11 +51,19 @@ prog def aivreg, rclass
 		local k=`k'+1
 	}
 	
-	* start CI cases
+	*********** start CI cases
+	
 	if "`vce'" == "asymp"{ // asymptotic case
-		
-	qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', [`fe'] [`weight'] [`first'] // for some reason this only works with verbose
-	eststo `eststo'
+	
+	if  "`fe'" != "" {
+			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' `first'
+			eststo `eststo'
+	}
+	else {
+			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster')  `weight' `first'
+			eststo `eststo'
+	}
+
 	
 	tempname n 
 	sca `n'=e(N)
@@ -61,16 +73,18 @@ prog def aivreg, rclass
 	local align_col 60  // Desired column for the "=" alignment
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
-
+	if "`cluster'" != ""{
+		display "SE clustered by " "`cluster'"
+	}
 	
 	* This makes the column names for the stats
 	collect clear 
-	collect get Variable = "Coef.", tags(Col[Coef])
-	collect get Variable = "Std. Err.", tags(Col[SE_AR])
-	collect get Variable = "t", tags(Col[t_val])
-	collect get Variable = "P>|t|", tags(Col[p_more_t])
-	collect get Variable = "[95% Conf.", tags(Col[ARCI_lb])
-	collect get Variable = "Interval]", tags(Col[ARCI_ub])
+	collect get `w' = "Coef.", tags(Col[Coef])
+	collect get `w' = "Std. Err.", tags(Col[SE_AR])
+	collect get `w' = "t", tags(Col[t_val])
+	collect get `w' = "P>|t|", tags(Col[p_more_t])
+	collect get `w' = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get `w' = "Interval]", tags(Col[ARCI_ub])
 	
 	
 	foreach z of varlist `zlist' {
@@ -94,27 +108,39 @@ prog def aivreg, rclass
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
 			return scalar beta`z' = `beta'
-			return scalar SE_AR`z' = `SE'
+			return scalar SE_asymp`z' = `SE'
 			return scalar t_val`z' = `val_t'
 			return scalar p_more_t`z' = `test_stat' 
-			return scalar lb_AR`z' = `lb'
-			return scalar ub_AR`z' = `ub'
+			return scalar lb_asymp`z' = `lb'
+			return scalar ub_asymp`z' = `ub'
 		
 	}
 	
 	
 	*Output
 	collect style header Col, level(hide) // removes Col names
-    collect style cell result[Variable], border(bottom) border(top, pattern(nil)) // new column names
+    collect style cell result[`w'], border(bottom) border(top, pattern(nil)) // new column names
 	collect style cell, sformat(" %s") // increase spacing
 	qui collect layout (result) (Col)
 	collect preview
+	
+	if "`AR_clust'" == "1" {
+		display "WARNING: Clustering not available for Anderson Ruben SE"
+		display _dup(9) " " "Defaults to asymptotic SE with custering"
+	}
+
+
 } 
 else if "`vce'" == "boot"{ // bootstrap case
 		
-		
-	qui bootstrap, reps(`reps') verbose : ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', [`fe'] [`weight'] [`first']
-	eststo `eststo'
+	if "`fe'" != "" {
+			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' `first' // this only works with verbose
+			eststo `eststo'
+	}
+	else {
+		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster') `weight' `first' // this only works with verbose
+		eststo `eststo'
+	}
 	
 	tempname n 
 	sca `n'=e(N)
@@ -125,23 +151,31 @@ else if "`vce'" == "boot"{ // bootstrap case
 	local align_col 60  // Desired column for the "=" alignment
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
-	local padding = `align_col' - length("Uses bootstrapped") - length("number of reps")	
+	local padding = `align_col' - length("Uses bootstrapped SE") - length("number of reps")	
 	display "Uses bootstrapped SE" _dup(`padding') " " "number of reps" " = " "`reps'"
-	if length("`seed'") != 0 {
+	
+	if length("`seed'") > 0 & "`cluster'" == "" {
 			local padding = `align_col' - length("seed")	
 			display  _dup(`padding') " " "seed" " = " "`seed'"
 	} 
-
-
+	
+	if "`cluster'" != "" & length("`seed'") == 0 {
+		dis "SE clustered by " "`cluster'"
+	}
+	
+	if "`cluster'" != "" & length("`seed'") > 0 {
+			local padding = `align_col' - length("SE clustered by ") - length("`cluster'") - length("seed")	
+			display "SE clustered by " "`cluster'" _dup(`padding') " " "seed" " = " "`seed'"
+	}
 	
 	* This makes the column names for the stats
 	collect clear 
-	collect get Variable = "Coef.", tags(Col[Coef])
-	collect get Variable = "Std. Err.", tags(Col[SE_AR])
-	collect get Variable = "t", tags(Col[t_val])
-	collect get Variable = "P>|t|", tags(Col[p_more_t])
-	collect get Variable = "[95% Conf.", tags(Col[ARCI_lb])
-	collect get Variable = "Interval]", tags(Col[ARCI_ub])
+	collect get `w' = "Coef.", tags(Col[Coef])
+	collect get `w' = "Std. Err.", tags(Col[SE_AR])
+	collect get `w' = "t", tags(Col[t_val])
+	collect get `w' = "P>|t|", tags(Col[p_more_t])
+	collect get `w' = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get `w' = "Interval]", tags(Col[ARCI_ub])
 	
 	
 	foreach z of varlist `zlist' {
@@ -165,21 +199,23 @@ else if "`vce'" == "boot"{ // bootstrap case
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
 			return scalar beta`z' = `beta'
-			return scalar SE_AR`z' = `SE'
+			return scalar SE_boot`z' = `SE'
 			return scalar t_val`z' = `val_t'
 			return scalar p_more_t`z' = `test_stat' 
-			return scalar lb_AR`z' = `lb'
-			return scalar ub_AR`z' = `ub'
+			return scalar lb_boot`z' = `lb'
+			return scalar ub_boot`z' = `ub'
 		
 	}
 	
 	
 	*Output
 	collect style header Col, level(hide) // removes Col names
-    collect style cell result[Variable], border(bottom) border(top, pattern(nil)) // new column names
+    collect style cell result[`w'], border(bottom) border(top, pattern(nil)) // new column names
 	collect style cell, sformat(" %s") // increase spacing
 	qui collect layout (result) (Col)
 	collect preview
+
+	
 }
 	else { // AR CI case
 	
@@ -211,6 +247,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 	sca `partial_F'=(`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k'))
 
 	* This adds the preamble like reghdfe
+	
 	dis " "
 	local align_col 60  // Desired column for the "=" alignment
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
@@ -220,15 +257,18 @@ else if "`vce'" == "boot"{ // bootstrap case
 	
 	* This makes the column names for the stats
 	collect clear 
-	collect get Variable = "Coef.", tags(Col[Coef])
-	collect get Variable = "Std. Err.", tags(Col[SE_AR])
-	collect get Variable = "t", tags(Col[t_val])
-	collect get Variable = "P>|t|", tags(Col[p_more_t])
-	collect get Variable = "[95% Conf.", tags(Col[ARCI_lb])
-	collect get Variable = "Interval]", tags(Col[ARCI_ub])
+	collect get `w' = "Coef.", tags(Col[Coef])
+	collect get `w' = "Std. Err.", tags(Col[SE_AR])
+	collect get `w' = "t", tags(Col[t_val])
+	collect get `w' = "P>|t|", tags(Col[p_more_t])
+	collect get `w' = "[95% Conf.", tags(Col[ARCI_lb])
+	collect get `w' = "Interval]", tags(Col[ARCI_ub])
 	
 	local i=1
-
+	
+	matrix b = J(1, `amenity_count' + 1, 0)
+	matrix V = J(`amenity_count' + 1, `amenity_count' + 1, 0)
+	
 	foreach z of varlist `zlist' {
 		qui {
 			* qui reg `h' `w' `zlist' `control' `weight' `if' `in'
@@ -262,6 +302,8 @@ else if "`vce'" == "boot"{ // bootstrap case
 			sca `val_t' = `beta' / `SE'
 			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
 			
+			
+			
 			* table
 			collect get `z'=`beta', tags(Col[Coef])
 			collect get `z'=`SE', tags(Col[SE_AR])
@@ -276,6 +318,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 			return scalar p_more_t`z' = `test_stat' 
 			return scalar lb_AR`z' = `lb'
 			return scalar ub_AR`z' = `ub'
+			
 			}
 
 		* di "`z':  " `lb' " <-- " `beta' " --> " `ub'
@@ -284,12 +327,10 @@ else if "`vce'" == "boot"{ // bootstrap case
 
 	*Output
 	collect style header Col, level(hide) // removes Col names
-    collect style cell result[Variable], border(bottom) border(top, pattern(nil)) // new column names
+    collect style cell result[`w'], border(bottom) border(top, pattern(nil)) // new column names
 	collect style cell, sformat(" %s") // increase spacing
 	qui collect layout (result) (Col)
 	collect preview
-	
-	
 
 	
 	local s=0
@@ -297,7 +338,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 		local s=`s'+1
 	}
 
-	display `s'
+	*display `s'
 
 	* use aivreg to eststo result
 	if `s'==1 {
