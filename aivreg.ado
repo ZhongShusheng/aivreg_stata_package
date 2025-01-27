@@ -56,6 +56,7 @@ prog def aivreg, eclass
 	}
 	
 	*********** start CI cases
+
 	
 	if "`vce'" == "asymp"{ // asymptotic case
 	
@@ -203,9 +204,9 @@ prog def aivreg, eclass
 	}
 	
 	mat b = e(b)
-	mat b = b[1, "`zlist'"]
+	*mat b = b[1, "`zlist'"]
 	mat V = e(V)
-	mat V = V["`zlist'", "`zlist'"] 
+	*mat V = V["`zlist'", "`zlist'"] 
     local N = `n'
 	dis "`amenity_count'"
 	ereturn post b V, depname(`w') obs(`N')
@@ -376,9 +377,9 @@ else if "`vce'" == "boot"{ // bootstrap case
 	collect preview
 
 	mat b = e(b)
-	mat b = b[1, "`zlist'"]
+	*mat b = b[1, "`zlist'"]
 	mat V = e(V)
-	mat V = V["`zlist'", "`zlist'"] 
+	*mat V = V["`zlist'", "`zlist'"] 
     local N = `n'
 	dis "`amenity_count'"
 	ereturn post b V, depname(`w') obs(`N')

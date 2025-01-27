@@ -76,7 +76,7 @@ ivreghdfe log_hpvi (rank=log_hpvi medianaqi) ///
 				medianaqi i.rooms if year==2019, ffirst
 
 
-
+aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) control(i.rooms) vce(asymp)
 
 
 
