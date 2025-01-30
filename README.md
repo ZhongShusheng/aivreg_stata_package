@@ -1,5 +1,5 @@
 
-# ReadMe File for aivreg Stata Package
+# ReadMe File for aivreg Stata Package (README updates in progress)
 The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522), [Bell, Calder-Wang, and Zhong (2023)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093), and [Bell et.al (2024)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974).
 
 ## Installation
@@ -8,12 +8,12 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
 - Put **aivreg.ado** and **aivreg.sthlp** in the _PERSONAL_ directory
 
 ## Syntax
- **aivreg** depvar varlist [if] [in], h(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)]
+ **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst]
 
 ## Input List
  - **depvar** the outcome variable 
  - **varlist** the list of amenities 
- - **h** a list of anti-IV variables (currently aivreg only supports one anti-IV variable) 
+ - **aiv** a list of anti-IV variables, previously h (currently aivreg only supports one anti-IV variable) 
  - **control** specify the list of control variables
  - **fe** list of fixed effects to be absorbed; if used, ivreghdfe or reghdfe is called instead of ivreg2 or reg
  - **weight** specifies weighting options; if specified, you should include the full weighting statement, e.g.: weight([w=wt]) 
@@ -24,7 +24,7 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
  - **cluster** cluster variables for standard errors; not available for Anderson-Ruben standard errors
  - **savefirst** when set to savefirst, the first stage regression is reported; this is also saved in eststo as _ivreg2_`h'
 ## Return List
- - **Partial F** Partial F-Stat; this does not appear in all cases yet
+ - **Partial F** Partial F-Stat.
  - **Coef.** Coefficient for the amenity "var" 
  - **Std. Err.** Standard error of the coefficient (in Anderson-Rubin case, this is approximated from the confidence interval)
  - **t** t-statistic estimate of the coefficient

@@ -221,5 +221,5 @@ Working on cases with multiple proxies
       name:  <unnamed>
        log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250130.txt
   log type:  text
- closed on:  30 Jan 2025, 16:34:47
+ closed on:  30 Jan 2025, 16:52:15
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
