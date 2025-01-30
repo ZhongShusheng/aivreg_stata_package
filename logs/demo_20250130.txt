@@ -53,15 +53,17 @@
 . eststo clear
 
 . * AntiIV method using AFQT as Anti-IV
-. aivreg wage safety, h(afqt_1_1981) eststo(model1)
+. aivreg wage safety, aiv(afqt_1_1981) eststo(model1)
  
 Anti-IV Regression                             Number of obs = 3971
-Uses AR CI; SE inferred from radius          Partial F-stat. = 340.64016
+Uses Anderson-Rubin CI                       Partial F-stat. = 341
+SE inferred from radius
 
 wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -------+------------------------------------------------------------------
 safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
 --------------------------------------------------------------------------
+(result model1 is active now)
 
 . 
 . 
@@ -107,34 +109,36 @@ safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
 . 
 . * Single-Amenity Anti-IV method using the Stata program, with ARCI standard errors 
 . * Adding i.room as controls
-. aivreg log_hpvi medianaqi if year==2019, h(rank) control(i.rooms)
+. aivreg log_hpvi medianaqi if year==2019, aiv(rank) control(i.rooms)
  
 Anti-IV Regression                             Number of obs = 14095
-Uses AR CI; SE inferred from radius          Partial F-stat. = 1483.4751
+Uses Anderson-Rubin CI                       Partial F-stat. = 1483
+SE inferred from radius
 
 log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ----------+------------------------------------------------------------------
 medianaqi |  -.5250496   .0204574  -25.66557  5.1e-142   -.5666013  -.4864084
 -----------------------------------------------------------------------------
-(est5 stored)
 
 . return list
 
-matrices:
-              r(table) :  9 x 8
+macros:
+              r(names) : "est1"
 
 . 
 . * Single-Amenity Anti-IV method using the Stata program, with ARCI standard errors 
 . * Adding # of Rooms as a fixed effect variable
-. aivreg log_hpvi medianaqi if year==2019, h(rank) fe(rooms) eststo(model2) 
+. aivreg log_hpvi medianaqi if year==2019, aiv(rank) fe(rooms) eststo(model2) 
  
 Anti-IV Regression                             Number of obs = 14095
-Uses AR CI; SE inferred from radius          Partial F-stat. = 1483.8962
+Uses Anderson-Rubin CI                       Partial F-stat. = 1486
+SE inferred from radius
 
 log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ----------+------------------------------------------------------------------
 medianaqi |  -.5250496   .0204574  -25.66557  5.1e-142   -.5666013  -.4864084
 -----------------------------------------------------------------------------
+(result model2 is active now)
 
 . 
 . 
@@ -190,32 +194,32 @@ t statistics in parentheses
 
 . 
 . * Multivariate anti-IV method with Stata program, with ARCI standard errors 
-. aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) control(i.rooms)
+. aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) control(i.rooms)
  
 Anti-IV Regression                             Number of obs = 14067
-Uses AR CI; SE inferred from radius          Partial F-stat. = 1267.7071
+Uses Anderson-Rubin CI                       Partial F-stat. = 1268
+SE inferred from radius
 
 log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -----------+------------------------------------------------------------------
 medianaqi  |   -.535451   .0221685  -24.15374  2.5e-126   -.5806173  -.4937169
 crime_rate |  -.6242351   .0277523  -22.49308  4.2e-110   -.6807541   -.571965
 ------------------------------------------------------------------------------
-(est7 stored)
 
 . return list
 
-matrices:
-              r(table) :  9 x 9
+macros:
+              r(names) : "est1"
 
 . 
 . * Currently not allowing multiple anti-IV option
-. aivreg log_hpvi medianaqi if year==2019, h(rank crime_rate) control(i.rooms)
+. aivreg log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(i.rooms)
 Working on cases with multiple proxies
 
 . 
 . log close
       name:  <unnamed>
-       log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250127.txt
+       log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250130.txt
   log type:  text
- closed on:  27 Jan 2025, 15:39:14
------------------------------------------------------------------------------------------------------------------------------------
+ closed on:  30 Jan 2025, 16:34:47
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

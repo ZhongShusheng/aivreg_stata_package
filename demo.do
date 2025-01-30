@@ -26,7 +26,7 @@ reg wage safety afqt_1_1981
 
 eststo clear
 * AntiIV method using AFQT as Anti-IV
-aivreg wage safety, h(afqt_1_1981) eststo(model1)
+aivreg wage safety, aiv(afqt_1_1981) eststo(model1)
 
 
 ********************************************************************************
@@ -46,12 +46,12 @@ eststo model4
 
 * Single-Amenity Anti-IV method using the Stata program, with ARCI standard errors 
 * Adding i.room as controls
-aivreg log_hpvi medianaqi if year==2019, h(rank) control(i.rooms)
+aivreg log_hpvi medianaqi if year==2019, aiv(rank) control(i.rooms)
 return list
 
 * Single-Amenity Anti-IV method using the Stata program, with ARCI standard errors 
 * Adding # of Rooms as a fixed effect variable
-aivreg log_hpvi medianaqi if year==2019, h(rank) fe(rooms) eststo(model2) 
+aivreg log_hpvi medianaqi if year==2019, aiv(rank) fe(rooms) eststo(model2) 
 
 
 * the Equivalent way to calculate the antiIV coefficient with ivreg2 command
@@ -64,11 +64,11 @@ esttab model1 model2, mgroup("aivreg results" "aivreg results", pattern(1 1)) mo
 reg log_hpvi medianaqi crime_rate rank i.rooms if year==2019
 
 * Multivariate anti-IV method with Stata program, with ARCI standard errors 
-aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) control(i.rooms)
+aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) control(i.rooms)
 return list
 
 * Currently not allowing multiple anti-IV option
-aivreg log_hpvi medianaqi if year==2019, h(rank crime_rate) control(i.rooms)
+aivreg log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(i.rooms)
 
 log close
 
@@ -76,7 +76,7 @@ ivreghdfe log_hpvi (rank=log_hpvi medianaqi) ///
 				medianaqi i.rooms if year==2019, ffirst
 
 
-aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) control(i.rooms) vce(asymp)
+aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) control(i.rooms) vce(asymp)
 
 
 

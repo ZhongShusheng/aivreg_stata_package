@@ -1,19 +1,99 @@
 
+
 cap prog drop aivreg
 
 prog def aivreg, eclass
-	syntax varlist [if] [in], h(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst(string)]
+	syntax varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst]
 	
+	* aiv is the new h
+	local h "`aiv'"
 	
-	capture ereturn drop est1 _ivreg2_`h'
-	
-	
-	* because AR clustering not set up
-	if "`cluster'" != "" & "`vce'" == "" {
-		local vce = "asymp"
-		local AR_clust = 1
+	* eststo option
+	if "`eststo'" != "" {
+		local est_opt = 1
 	}
 	
+	* to make sure ivreg2 works
+	capture ereturn drop est1 _ivreg2_`h'
+	
+	* allow savefirst, not just savefirst(savefirst)
+
+	if "`savefirst'" != "savefirst" {
+		local savefirst ""
+	}
+	else {
+		local savefirst "savefirst"
+	}
+	
+	*Get the full list of stored models to drop others later
+	local saved_models "" 
+	quietly est dir
+	foreach model_for_loop1 in `r(names)' { 
+		local saved_models "`saved_models' `model_for_loop1'"
+	}
+	
+	* make eststo if empty
+	if "`eststo'" == "" {
+		local eststo "est1"
+	}
+
+	
+	* make sure entries are valid
+	* first catch bootstrap case
+	if inlist("`vce'", "b", "bo", "boo", "boot", "boots", "boots") | inlist("`vce'", "bootst", "bootstr", "bootstra", "bootstrap"){
+		local vce "boot"
+		
+		capture confirm number `reps'
+		if _rc != 0 { 
+			local reps 50
+		}
+		else if mod(`reps', 1) != 0 {
+			local reps 50
+		}
+		
+		if "`seed'" != "" {
+		capture confirm number `seed'
+		if _rc != 0 { 
+			dis " "
+			display "WARNING: seed must be a number. Seed left unspecified."
+		}
+		}
+		
+	}
+	* next catch asymptotic case
+	else if inlist("`vce'", "as", "asy", "asym", "asymp", "asympt") | inlist("`vce'", "asympto", "asymptot", "asymptoti", "asymptotic"){
+		local vce = "asymp"
+		
+		if "`seed'" != "" | "`reps'" != "" {
+			dis " "
+			dis "WARNING: options seed or reps are invalid in asymptotic SE"
+		}
+	}
+	* catch Anderson-Rubin case
+	else if inlist("`vce'", "", "ar", "AR", "andersonrubin", "anderson-rubin") | inlist("`vce'", "AndersonRuben", "Anderson-Rubin", "Anderson Ruben", "anderson ruben") {
+		local vce = ""
+		
+		if "`seed'" != "" | "`reps'" != "" {
+			dis " "
+			dis "WARNING: options seed or reps are invalid in asymptotic SE"
+		}
+		
+		if "`cluster'" != "" { // because AR clustering not set up
+			local vce = "asymp"
+			display "WARNING: Clustering not available for Anderson Ruben SE"
+			display _dup(9) " " "Defaults to asymptotic SE with custering"
+		}
+		
+	}
+	* No case detected
+	else{
+		dis " "
+		dis "Error in vce specification: " "`vce'" " unrecognized. Proceeding with default."
+		
+		local vce = ""
+	}
+	
+	* count variables
 	
 	local j=0
 
@@ -55,30 +135,57 @@ prog def aivreg, eclass
 		local k=`k'+1
 	}
 	
+	* get half of Partial F-stat
+	if `k'==0 {
+		if "`vce'" == "boot" {
+			quietly bootstrap, reps(`reps') seed(`seed') : reghdfe `h' `zlist' `control' `weight' `if' `in', absorb(`fe') cluster(`cluster')
+			local RSS_red =e(rss)
+		}
+		else {
+			quietly reghdfe `h' `zlist' `control' `weight' `if' `in', absorb(`fe') cluster(`cluster')
+			local RSS_red =e(rss)
+		}
+	}
+	else {
+		if "`vce'" == "boot" {
+			quietly bootstrap, reps(`reps') seed(`seed') : reg `h' `zlist' `control' `weight' `if' `in', cluster(`cluster')
+			local RSS_red =e(rss)	
+		}
+		else {
+			quietly reg `h' `zlist' `control' `weight' `if' `in', cluster(`cluster')
+			local RSS_red =e(rss)	
+		}
+	}
+	
 	*********** start CI cases
-
 	
 	if "`vce'" == "asymp"{ // asymptotic case
-	
+	quietly {
 	if  "`fe'" != "" {
-			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' `savefirst'
+			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' savefirst noid
 			eststo `eststo'
 	}
 	else {
-			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster')  `weight' `savefirst'
+			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster')  `weight' savefirst noid
 			eststo `eststo'
 	}
-
+	}
 	
-	* First Stage output option
-	if "`savefirst'" != "" {
-		dis " "
-		dis "{bf:First Stage:}"
-
 	
 	* get first stage estimates
+	qui estimates restore _ivreg2_`h'
+	local n =e(N)
+	local k =e(df_m)
+	local RMSE_full = e(rmse)
+	local RSS_full = (`RMSE_full')^2 * (`n' - `k')
+	local partial_F = round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
+	
+	
 
-	estimates restore _ivreg2_`h'
+	* First Stage output option
+	if "`savefirst'" == "savefirst" {
+		dis " "
+		dis "{bf:First Stage:}"
 
 	
 	
@@ -91,12 +198,12 @@ prog def aivreg, eclass
 	collect get `h' = "[95% Conf.", tags(Col[ARCI_lb])
 	collect get `h' = "Interval]", tags(Col[ARCI_ub])
 	
-	
+
 		foreach z of varlist `w' `zlist' {
 		* Make variables
 			tempname beta SE n k lb ub val_t test_stat 
-			sca `n'=e(N)
-			sca `k'=e(df_m)
+			sca `n' = e(N)
+			sca `k' = e(df_m)
 			sca `beta' = _b[`z']
 			sca `SE' = _se[`z']
 			sca `val_t' = `beta' / `SE'
@@ -119,7 +226,7 @@ prog def aivreg, eclass
 			ereturn scalar lb_asymp`z' = `lb'
 			ereturn scalar ub_asymp`z' = `ub'
 		
-	}
+		}
 		
 		collect style header Col, level(hide) // removes Col names
 		collect style cell result[`h'], border(bottom) border(top, pattern(nil)) // new column names
@@ -127,19 +234,17 @@ prog def aivreg, eclass
 		qui collect layout (result) (Col)
 		collect preview
 		
-		if "`eststo'" != "" {
-			estimates restore `eststo'
-		}
-		else {
-			estimates restore est1			
-		}
 		
 		dis " "
 		dis "{bf:Second Stage:}"
 		
 	}
 	
-	tempname n 
+
+	qui estimates restore `eststo'
+
+	
+	tempname n
 	sca `n'=e(N)
 
 			* This adds the preamble like reghdfe
@@ -148,7 +253,12 @@ prog def aivreg, eclass
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
 	if "`cluster'" != ""{
-		display "SE clustered by " "`cluster'"
+		local padding = `align_col' - length("SE clustered by ") - length("`cluster'") - length("Partial F-stat.")
+		display "SE clustered by " "`cluster'" _dup(`padding') " " "Partial F-stat." " = " "`partial_F'"
+	}
+	else {
+		local padding = `align_col'  - length("Partial F-stat.")
+		display _dup(`padding') " " "Partial F-stat." " = " `partial_F'		
 	}
 	
 	* This makes the column names for the stats
@@ -198,53 +308,58 @@ prog def aivreg, eclass
 	qui collect layout (result) (Col)
 	collect preview
 	
-	if "`AR_clust'" == "1" {
-		display "WARNING: Clustering not available for Anderson Ruben SE"
-		display _dup(9) " " "Defaults to asymptotic SE with custering"
-	}
-	
+	quietly{
 	mat b = e(b)
-	*mat b = b[1, "`zlist'"]
+	mat b = b[1, 2..(`amenity_count' + 1)]
 	mat V = e(V)
-	*mat V = V["`zlist'", "`zlist'"] 
+	mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
     local N = `n'
-	dis "`amenity_count'"
-	ereturn post b V, depname(`w') obs(`N')
+	local DOF = `n' - `k'
+	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
 	eststo `eststo'
-
+	}
 } 
 else if "`vce'" == "boot"{ // bootstrap case
-		
+	
+	quietly {
 	if "`fe'" != "" {
-			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' `first' // this only works with verbose
-			eststo `eststo'
-	}
-	else {
-		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster') `weight' `first' // this only works with verbose
+		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' // this only works with verbose
 		eststo `eststo'
 	}
+	else {
+		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster') `weight' // this only works with verbose
+		eststo `eststo'
+	}
+	}
 	
-	
-	* First Stage output option
-	if "`savefirst'" != "" {
-		
-		dis " "
-		dis "{bf:First Stage:}"
 	
 	* get first stage estimates
 
 	if "`fe'" != "" {
-			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reghdfe `h' `varlist' `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' `first' // this only works with verbose
+			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reghdfe `h' `varlist' `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' // this only works with verbose
 			eststo _ivreg2_`h'
 	}
 	else {
-		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reg `h' `varlist' `if' `in', cluster(`cluster') `weight' `first' // this only works with verbose
-		eststo _ivreg2_`h'
+			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reg `h' `varlist' `if' `in', cluster(`cluster') `weight' // this only works with verbose
+			
+			eststo _ivreg2_`h'
 	}
+	
+	* get first stage estimates
+	qui estimates restore _ivreg2_`h'
+	local n =e(N)
+	local k =e(df_m)
+	local RSS_full = e(rss)
+	local partial_F = round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
+
+	* First Stage output option
+	if "`savefirst'" == "savefirst" {
+		
+		dis " "
+		dis "{bf:First Stage:}"
 
 	
-	
-			* This makes the column names for the stats
+	* This makes the column names for the stats
 	collect clear 
 	collect get `h' = "Coef.", tags(Col[Coef])
 	collect get `h' = "Std. Err.", tags(Col[SE_AR])
@@ -289,23 +404,12 @@ else if "`vce'" == "boot"{ // bootstrap case
 		qui collect layout (result) (Col)
 		collect preview
 		
-		if "`eststo'" != "" {
-			estimates restore `eststo'
-		}
-		else {
-			estimates restore est1			
-		}
-
-		
 		dis " "
 		dis "{bf:Second Stage:}"
 		
 	}
 	
-	
-	tempname n 
-	sca `n'=e(N)
-
+	qui estimates restore `eststo'
 	
 		* This adds the preamble like reghdfe
 	dis " "
@@ -314,7 +418,8 @@ else if "`vce'" == "boot"{ // bootstrap case
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
 	local padding = `align_col' - length("Uses bootstrapped SE") - length("number of reps")	
 	display "Uses bootstrapped SE" _dup(`padding') " " "number of reps" " = " "`reps'"
-	
+	local padding = `align_col' - length("Partial F-stat.")
+	display _dup(`padding') " " "Partial F-stat" " = " `partial_F'
 	if length("`seed'") > 0 & "`cluster'" == "" {
 			local padding = `align_col' - length("seed")	
 			display  _dup(`padding') " " "seed" " = " "`seed'"
@@ -376,50 +481,44 @@ else if "`vce'" == "boot"{ // bootstrap case
 	qui collect layout (result) (Col)
 	collect preview
 
-	mat b = e(b)
-	*mat b = b[1, "`zlist'"]
-	mat V = e(V)
-	*mat V = V["`zlist'", "`zlist'"] 
-    local N = `n'
-	dis "`amenity_count'"
-	ereturn post b V, depname(`w') obs(`N')
-	eststo `eststo'
 	
+	quietly{
+	mat b = e(b)
+	mat b = b[1, 2..(`amenity_count' + 1)]
+	mat V = e(V)
+	mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
+    local N = `n'
+	local DOF = `n' -`k'
+	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
+	eststo `eststo'
+	}
 }
 	else { // AR CI case
 	
 
 	if `k'==0 {
-		tempname RSS_red
-		qui reghdfe `h' `zlist' `control' `weight' `if' `in', noabsorb
-		sca `RSS_red'=e(rss)
-
 		tempname RSS_full n k partial_F
-		qui reghdfe `h' `w' `zlist' `control' `weight' `if' `in', noabsorb
+		qui reg `h' `w' `zlist' `control' `weight' `if' `in'
 		sca `RSS_full'=e(rss)
 		sca `n'=e(N)
 		sca `k'=e(rank)
 	}
 
 	else {
-		tempname RSS_red
-		qui reghdfe `h' `zlist' `control' `weight' `if' `in', absorb(`fe')
-		sca `RSS_red'=e(rss)
-
 		tempname RSS_full n k partial_F
 		qui reghdfe `h' `w' `zlist' `control' `weight' `if' `in', absorb(`fe')
 		sca `RSS_full'=e(rss)
 		sca `n'=e(N)
 		sca `k'=e(rank)
 	}
-
+			
 	* eststo first stage
 	eststo _ivreg2_`h'
 
-	sca `partial_F'=(`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k'))
+	sca `partial_F'= round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
 
 		* First Stage output option
-	if "`savefirst'" != "" {
+	if "`savefirst'" == "savefirst" {
 		
 		dis " "
 		dis "{bf:First Stage:}"
@@ -485,8 +584,9 @@ else if "`vce'" == "boot"{ // bootstrap case
 	local align_col 60  // Desired column for the "=" alignment
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
-	local padding = `align_col' - length("Partial F-stat.") - length("Uses AR CI; SE inferred from radius")
-	display "Uses AR CI; SE inferred from radius" _dup(`padding') " " "Partial F-stat." " = " `partial_F'
+	local padding = `align_col' - length("Partial F-stat.") - length("Uses Anderson-Rubin CI")
+	display "Uses Anderson-Rubin CI" _dup(`padding') " " "Partial F-stat." " = " `partial_F'
+	display "SE inferred from radius"
 	
 	* This makes the column names for the stats
 	collect clear 
@@ -572,11 +672,52 @@ else if "`vce'" == "boot"{ // bootstrap case
 	qui collect layout (result) (Col)
 	collect preview
 	
-	local N = `n'
+
 	
+	quietly{
+	local N = `n'
+	local DOF = `n' - `k'
 	ereturn clear
-	ereturn post b V, depname(`w') obs(`N')
+	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
 	eststo `eststo'
+	}
+	}
+	
+	* restore saved models to what the user specified
+	quietly {
+	local new_models "" 
+	quietly est dir
+	foreach model_for_loop2 in `r(names)' { 
+		local new_models "`new_models' `model_for_loop2'"
+	}
+	
+	
+	if "`est_opt'" != "1" & "`savefirst'" != "savefirst" {
+		foreach model_for_loop3 in `new_models' {
+			if !strpos("`saved_models'", "`model_for_loop3'") { 
+				eststo drop `model_for_loop3'
+			}
+		}
 
 	}
+	else {
+		foreach model_for_loop3 in `new_models' {
+			if !strpos("`saved_models' _ivreg2_`h' `eststo'", "`model_for_loop3'") { 
+				eststo drop `model_for_loop3'
+			}
+		}
+	}
+	}
+	
+	* fix outputs for results
+	
+	if "`savefirst'" == "savefirst" {
+		display as text "(results" as result "{stata _ivreg2_`h': _ivreg2_`h' }" as result "{stata `eststo': `eststo' }" as text "are active now)"	
+	}
+	else if "`est_opt'" == "1" {
+		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"	
+	}
+	
+
+	
 end
