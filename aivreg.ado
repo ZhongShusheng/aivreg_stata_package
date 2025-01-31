@@ -1,5 +1,3 @@
-
-
 cap prog drop aivreg
 
 prog def aivreg, eclass
@@ -31,7 +29,6 @@ prog def aivreg, eclass
 	foreach model_for_loop1 in `r(names)' { 
 		local saved_models "`saved_models' `model_for_loop1'"
 	}
-	
 	* make eststo if empty
 	if "`eststo'" == "" {
 		local eststo "est1"
@@ -162,11 +159,11 @@ prog def aivreg, eclass
 	if "`vce'" == "asymp"{ // asymptotic case
 	quietly {
 	if  "`fe'" != "" {
-			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' savefirst noid
+			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' savefirst
 			eststo `eststo'
 	}
 	else {
-			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster')  `weight' savefirst noid
+			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster')  `weight' savefirst
 			eststo `eststo'
 	}
 	}
@@ -340,7 +337,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 			eststo _ivreg2_`h'
 	}
 	else {
-			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reg `h' `varlist' `if' `in', cluster(`cluster') `weight' // this only works with verbose
+			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reg `h' `varlist' `control' `if' `in', cluster(`cluster') `weight' // this only works with verbose
 			
 			eststo _ivreg2_`h'
 	}
@@ -419,7 +416,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 	local padding = `align_col' - length("Uses bootstrapped SE") - length("number of reps")	
 	display "Uses bootstrapped SE" _dup(`padding') " " "number of reps" " = " "`reps'"
 	local padding = `align_col' - length("Partial F-stat.")
-	display _dup(`padding') " " "Partial F-stat" " = " `partial_F'
+	display _dup(`padding') " " "Partial F-stat." " = " `partial_F'
 	if length("`seed'") > 0 & "`cluster'" == "" {
 			local padding = `align_col' - length("seed")	
 			display  _dup(`padding') " " "seed" " = " "`seed'"
@@ -683,19 +680,29 @@ else if "`vce'" == "boot"{ // bootstrap case
 	}
 	}
 	
+	
+
 	* restore saved models to what the user specified
-	quietly {
+	*quietly {
 	local new_models "" 
-	quietly est dir
+	quiet est dir
 	foreach model_for_loop2 in `r(names)' { 
 		local new_models "`new_models' `model_for_loop2'"
 	}
-	
-	
+
+	* drop models produced unintentionally 
 	if "`est_opt'" != "1" & "`savefirst'" != "savefirst" {
 		foreach model_for_loop3 in `new_models' {
 			if !strpos("`saved_models'", "`model_for_loop3'") { 
-				eststo drop `model_for_loop3'
+				est drop `model_for_loop3'
+			}
+		}
+
+	}
+	else if "`est_opt'" == "1" & "`savefirst'" != "savefirst" {
+		foreach model_for_loop3 in `new_models' {
+			if !strpos("`saved_models' `eststo'", "`model_for_loop3'") { 
+				est drop `model_for_loop3'
 			}
 		}
 
@@ -703,11 +710,11 @@ else if "`vce'" == "boot"{ // bootstrap case
 	else {
 		foreach model_for_loop3 in `new_models' {
 			if !strpos("`saved_models' _ivreg2_`h' `eststo'", "`model_for_loop3'") { 
-				eststo drop `model_for_loop3'
+				est drop `model_for_loop3'
 			}
 		}
 	}
-	}
+	*}
 	
 	* fix outputs for results
 	
