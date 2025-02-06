@@ -1,5 +1,3 @@
-
-
 cap prog drop aivreg
 
 prog def aivreg, eclass
@@ -132,28 +130,57 @@ prog def aivreg, eclass
 		local k=`k'+1
 	}
 	
+	
 	* get half of Partial F-stat
-	if `k'==0 {
+	
+	if "`if'" == ""{
+			if "`fe'" != "" {
 		if "`vce'" == "boot" {
-			quietly bootstrap, reps(`reps') seed(`seed') : reghdfe `h' `zlist' `control' `weight' `if' `in', absorb(`fe') cluster(`cluster')
-			local RSS_red =e(rss)
+			quietly bootstrap, reps(`reps') seed(`seed') : reghdfe `h' `zlist' `control' `weight' if !mi(`w') `in', absorb(`fe') cluster(`cluster')
+			local RSS_red = `=e(rss)'
 		}
 		else {
-			quietly reghdfe `h' `zlist' `control' `weight' `if' `in', absorb(`fe') cluster(`cluster')
-			local RSS_red =e(rss)
+			quietly reghdfe `h' `zlist' `control' `weight' if !mi(`w') `in', absorb(`fe') cluster(`cluster')
+			local RSS_red = `=e(rss)'
 		}
 	}
 	else {
 		if "`vce'" == "boot" {
-			quietly bootstrap, reps(`reps') seed(`seed') : reg `h' `zlist' `control' `weight' `if' `in', cluster(`cluster')
-			local RSS_red =e(rss)	
+			quietly bootstrap, reps(`reps') seed(`seed') : reg `h' `zlist' `control' `weight' if !mi(`w')  `in', cluster(`cluster')
+			local RSS_red = `=e(rss)'	
 		}
 		else {
-			quietly reg `h' `zlist' `control' `weight' `if' `in', cluster(`cluster')
-			local RSS_red =e(rss)	
+			qui reg `h' `zlist' `control' `weight' if !mi(`w')  `in', cluster(`cluster')
+			local RSS_red = `=e(rss)'
 		}
 	}
+	}
+	else {
+			if "`fe'" != "" {
+		if "`vce'" == "boot" {
+			quietly bootstrap, reps(`reps') seed(`seed') : reghdfe `h' `zlist' `control' `weight' `if' & !mi(`w') `in', absorb(`fe') cluster(`cluster')
+			local RSS_red = `=e(rss)'
+		}
+		else {
+			quietly reghdfe `h' `zlist' `control' `weight' `if' & !mi(`w') `in', absorb(`fe') cluster(`cluster')
+			local RSS_red = `=e(rss)'
+		}
+	}
+	else {
+		if "`vce'" == "boot" {
+			quietly bootstrap, reps(`reps') seed(`seed') : reg `h' `zlist' `control' `weight' `if' & !mi(`w')  `in', cluster(`cluster')
+			local RSS_red = `=e(rss)'	
+		}
+		else {
+			qui reg `h' `zlist' `control' `weight' `if' & !mi(`w')  `in', cluster(`cluster')
+			local RSS_red = `=e(rss)'
+		}
+	}
+	}
 	
+	
+
+
 	*********** start CI cases
 	
 	if "`vce'" == "asymp"{ // asymptotic case
@@ -171,9 +198,9 @@ prog def aivreg, eclass
 	
 	* get first stage estimates
 	qui estimates restore _ivreg2_`h'
-	local n =e(N)
-	local k =e(df_m)
-	local RMSE_full = e(rmse)
+	local n = `=e(N)'
+	local k = `=e(df_m)'
+	local RMSE_full = `=e(rmse)'
 	local RSS_full = (`RMSE_full')^2 * (`n' - `k')
 	local partial_F = round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
 	
@@ -346,9 +373,9 @@ else if "`vce'" == "boot"{ // bootstrap case
 	
 	* get first stage estimates
 	qui estimates restore _ivreg2_`h'
-	local n =e(N)
-	local k =e(df_m)
-	local RSS_full = e(rss)
+	local n = `=e(N)'
+	local k = `=e(df_m)'
+	local RSS_full = `=e(rss)'
 	local partial_F = round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
 
 	* First Stage output option
@@ -757,7 +784,6 @@ if "`undef'" != "undef" {
 	else if "`est_opt'" == "1" {
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"	
 	}
-	
 
 	
 end
