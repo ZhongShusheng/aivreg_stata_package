@@ -1,7 +1,14 @@
+
+
 cap prog drop aivreg
 
 prog def aivreg, eclass
-	syntax varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst]
+	syntax varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)]
+	
+	* firststo
+	if "`firststo'" != ""{
+		local savefirst = "savefirst"
+	}
 	
 	* aiv is the new h
 	local h "`aiv'"
@@ -12,7 +19,9 @@ prog def aivreg, eclass
 	}
 	
 	* to make sure ivreg2 works
-	capture ereturn drop est1 _ivreg2_`h'
+	capture ereturn drop est1 
+	capture ereturn drop _ivreg2_`h' 
+	capture ereturn drop `firststo'
 	
 	* allow savefirst, not just savefirst(savefirst)
 
@@ -67,20 +76,11 @@ prog def aivreg, eclass
 		}
 	}
 	* catch Anderson-Rubin case
-	else if inlist("`vce'", "", "ar", "AR", "andersonrubin", "anderson-rubin") | inlist("`vce'", "AndersonRuben", "Anderson-Rubin", "Anderson Ruben", "anderson ruben") {
-		local vce = ""
-		
+	else if inlist("`vce'", "", "ar", "AR", "andersonrubin", "anderson-rubin") | inlist("`vce'", "AndersonRuben", "Anderson-Rubin", "Anderson Ruben", "anderson ruben") {	
 		if "`seed'" != "" | "`reps'" != "" {
 			dis " "
 			dis "WARNING: options seed or reps are invalid in asymptotic SE"
 		}
-		
-		if "`cluster'" != "" { // because AR clustering not set up
-			local vce = "asymp"
-			display "WARNING: Clustering not available for Anderson Ruben SE"
-			display _dup(9) " " "Defaults to asymptotic SE with custering"
-		}
-		
 	}
 	* No case detected
 	else{
@@ -267,6 +267,17 @@ prog def aivreg, eclass
 	collect get `w' = "[95% Conf.", tags(Col[ARCI_lb])
 	collect get `w' = "Interval]", tags(Col[ARCI_ub])
 	
+	quietly{
+	mat b = e(b)
+	mat b = b[1, 2..(`amenity_count' + 1)]
+	mat V = e(V)
+	mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
+    local N = `n'
+	local DOF = `n' - `k'
+	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
+	ereturn scalar Partial_F = `partial_F'
+	eststo `eststo'
+	}
 	
 	foreach z of varlist `zlist' {
 		* Make variables
@@ -305,16 +316,7 @@ prog def aivreg, eclass
 	qui collect layout (result) (Col)
 	collect preview
 	
-	quietly{
-	mat b = e(b)
-	mat b = b[1, 2..(`amenity_count' + 1)]
-	mat V = e(V)
-	mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
-    local N = `n'
-	local DOF = `n' - `k'
-	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
-	eststo `eststo'
-	}
+
 } 
 else if "`vce'" == "boot"{ // bootstrap case
 	
@@ -440,6 +442,17 @@ else if "`vce'" == "boot"{ // bootstrap case
 	collect get `w' = "[95% Conf.", tags(Col[ARCI_lb])
 	collect get `w' = "Interval]", tags(Col[ARCI_ub])
 	
+	quietly{
+	mat b = e(b)
+	mat b = b[1, 2..(`amenity_count' + 1)]
+	mat V = e(V)
+	mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
+    local N = `n'
+	local DOF = `n' - `k'
+	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
+	ereturn scalar Partial_F = `partial_F'
+	eststo `eststo'
+	}
 	
 	foreach z of varlist `zlist' {
 		* Make variables
@@ -478,24 +491,14 @@ else if "`vce'" == "boot"{ // bootstrap case
 	qui collect layout (result) (Col)
 	collect preview
 
-	
-	quietly{
-	mat b = e(b)
-	mat b = b[1, 2..(`amenity_count' + 1)]
-	mat V = e(V)
-	mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
-    local N = `n'
-	local DOF = `n' -`k'
-	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
-	eststo `eststo'
-	}
+
 }
 	else { // AR CI case
 	
 
 	if `k'==0 {
 		tempname RSS_full n k partial_F
-		qui reg `h' `w' `zlist' `control' `weight' `if' `in'
+		qui reg `h' `w' `zlist' `control' `weight' `if' `in', cluster(`cluster')
 		sca `RSS_full'=e(rss)
 		sca `n'=e(N)
 		sca `k'=e(rank)
@@ -503,7 +506,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 
 	else {
 		tempname RSS_full n k partial_F
-		qui reghdfe `h' `w' `zlist' `control' `weight' `if' `in', absorb(`fe')
+		qui reghdfe `h' `w' `zlist' `control' `weight' `if' `in', absorb(`fe') cluster(`cluster')
 		sca `RSS_full'=e(rss)
 		sca `n'=e(N)
 		sca `k'=e(rank)
@@ -513,7 +516,6 @@ else if "`vce'" == "boot"{ // bootstrap case
 	eststo _ivreg2_`h'
 
 	sca `partial_F'= round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
-
 		* First Stage output option
 	if "`savefirst'" == "savefirst" {
 		
@@ -574,7 +576,6 @@ else if "`vce'" == "boot"{ // bootstrap case
 	}
 	
 	
-	
 	* This adds the preamble like reghdfe
 	
 	dis " "
@@ -595,7 +596,6 @@ else if "`vce'" == "boot"{ // bootstrap case
 	collect get `w' = "Interval]", tags(Col[ARCI_ub])
 	
 	local i=1
-	
 	tempname b V
 	
 	matrix b = J(1, `amenity_count', 0)
@@ -603,14 +603,16 @@ else if "`vce'" == "boot"{ // bootstrap case
 	matrix V = J(`amenity_count', `amenity_count', 0)
 	matrix colnames V = `zlist' 
 	matrix rownames V = `zlist' 
+
 	foreach z of varlist `zlist' {
-		qui {
+		*qui {
 			* qui reg `h' `w' `zlist' `control' `weight' `if' `in'
 			tempname pi delta c_pipi c_deldel c_delpi crit a b c lb ub beta SE val_t test_stat b V
 
 			sca `pi' = _b[`w']
 			sca `delta' = _b[`z']
 			mat _v = e(V)
+
 			sca `c_pipi' = _v[1, 1]
 			sca `c_deldel' = _v[`i'+1,`i'+1]
 			sca `c_delpi' = _v[`i'+1, 1]
@@ -621,15 +623,16 @@ else if "`vce'" == "boot"{ // bootstrap case
 			sca `c' = ((`delta')^2) - (`crit'^2) * `c_deldel'
 
 			sca `lb' = - (-`b' + sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')
-			sca `ub' = - (-`b' - sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')
-			
+			sca `ub' = - (-`b' - sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')	
 			sca `SE' = (`ub' - `lb') / (2*1.96) // take radius of CI (even if uncentered)
 			
 			sca `beta' = -`delta' / `pi'
 			if `a' < 0 {
-				display "Error: Quadratic Term Smaller than Zero"
-				sca `lb' = .
-				sca `ub' = .
+				display "Error: CI undefined for `z'"
+				sca `lb' = "-Inf"
+				sca `ub' = "Inf"
+				sca `SE' = .
+				local undef = "undef"
 			}
 			
 			matrix b[1,`i'] = `beta'
@@ -649,14 +652,16 @@ else if "`vce'" == "boot"{ // bootstrap case
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			ereturn scalar beta`z' = `beta'
-			ereturn scalar SE_AR`z' = `SE'
-			ereturn scalar t_val`z' = `val_t'
-			ereturn scalar p_more_t`z' = `test_stat' 
-			ereturn scalar lb_AR`z' = `lb'
-			ereturn scalar ub_AR`z' = `ub'
+			local beta`z' = `beta'
+			local SE_AR`z' = `SE'
+			local t_val`z' = `val_t'
+			local p_more_t`z' = `test_stat' 
+			local lb_AR`z' = `lb'
+			local ub_AR`z' = `ub'
 			
-			}
+			
+			
+			*}
 
 		* di "`z':  " `lb' " <-- " `beta' " --> " `ub'
 		local i=`i'+1
@@ -670,16 +675,27 @@ else if "`vce'" == "boot"{ // bootstrap case
 	collect preview
 	
 
-	
+if "`undef'" != "undef" {
 	quietly{
 	local N = `n'
 	local DOF = `n' - `k'
 	ereturn clear
+
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
+	ereturn scalar Partial_F = `partial_F'
+	foreach z of varlist `zlist' {
+			ereturn scalar beta`z' = `beta`z''
+			ereturn scalar SE_AR`z' = `SE_AR`z''
+			ereturn scalar t_val`z' = `t_val`z''
+			ereturn scalar p_more_t`z' = `p_more_t`z''
+			ereturn scalar lb_AR`z' = `lb_AR`z''
+			ereturn scalar ub_AR`z' = `ub_AR`z''
+	}
+	
 	eststo `eststo'
 	}
 	}
-	
+	}
 	
 
 	* restore saved models to what the user specified
@@ -716,10 +732,27 @@ else if "`vce'" == "boot"{ // bootstrap case
 	}
 	*}
 	
+	* rename first stage
+		if "`firststo'" != "" {
+			qui est restore _ivreg2_`h'
+			qui est store `firststo'
+			qui est restore `eststo'
+			qui est drop _ivreg2_`h'
+			
+		}
+		if "`firststo'" == "" {
+			local firststo = "_ivreg2_`h'"
+		}
+	
 	* fix outputs for results
 	
 	if "`savefirst'" == "savefirst" {
-		display as text "(results" as result "{stata _ivreg2_`h': _ivreg2_`h' }" as result "{stata `eststo': `eststo' }" as text "are active now)"	
+		if "`undef'" != "undef"{
+			display as text "(results" as result "{stata `firststo': `firststo' }" as result "{stata `eststo': `eststo' }" as text "are active now)"	
+		}
+		else {
+			display as text "(result" as result "{stata `firststo': `firststo' }" as text "is active now)"
+		}
 	}
 	else if "`est_opt'" == "1" {
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"	

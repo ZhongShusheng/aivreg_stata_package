@@ -8,7 +8,7 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
 - Put **aivreg.ado** and **aivreg.sthlp** in the _PERSONAL_ directory
 
 ## Syntax
- **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst]
+ **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)]
 
 ## Input List
  - **depvar** the outcome variable 
@@ -21,8 +21,9 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
  - **vce** specify standard error estimation: Anderson-Rubin is the default; boot computes bootstrapped SE; asymp uses the SE of ivreg2 or ivreghdfe
  - **reps** number of repetitions (for bootstrap only)
  - **seed** seed for bootstrap (for bootstrap only)
- - **cluster** cluster variables for standard errors; not available for Anderson-Rubin standard errors
+ - **cluster** cluster variables for standard errors
  - **savefirst** when set to savefirst, the first stage regression is reported; this is also saved in eststo as \_ivreg2\_`h'
+ - **firststo** stores the name of the first stage estimates; automatically reports first stage
 ## Return List
  - **Partial F** Partial F-Stat at the first stage comparing with and without the depvar as a control.
  - **Coef.** Coefficient for the amenity "var" 

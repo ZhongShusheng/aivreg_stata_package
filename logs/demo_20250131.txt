@@ -124,7 +124,7 @@ medianaqi |  -.5250496   .0204574  -25.66557  5.1e-142   -.5666013  -.4864084
 . return list
 
 macros:
-              r(names) : "_ivreg2_afqt_1_1981 model1 model4 _ivreg2_rank model2"
+              r(names) : "_ivreg2_rank"
 
 . 
 . * Single-Amenity Anti-IV method using the Stata program, with ARCI standard errors 
@@ -221,5 +221,5 @@ Working on cases with multiple proxies
       name:  <unnamed>
        log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250131.txt
   log type:  text
- closed on:  31 Jan 2025, 11:46:33
+ closed on:  31 Jan 2025, 15:35:34
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
