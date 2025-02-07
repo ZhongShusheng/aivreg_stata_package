@@ -1,3 +1,4 @@
+
 cap prog drop aivreg
 
 prog def aivreg, eclass
@@ -18,6 +19,7 @@ prog def aivreg, eclass
 	
 	* to make sure ivreg2 works
 	capture ereturn drop est1 
+	capture ereturn drop `eststo'
 	capture ereturn drop _ivreg2_`h' 
 	capture ereturn drop `firststo'
 	
@@ -130,7 +132,7 @@ prog def aivreg, eclass
 		local k=`k'+1
 	}
 	
-	
+/*
 	* get half of Partial F-stat
 	
 	if "`if'" == ""{
@@ -177,7 +179,7 @@ prog def aivreg, eclass
 		}
 	}
 	}
-	
+*/
 	
 
 
@@ -200,11 +202,11 @@ prog def aivreg, eclass
 	qui estimates restore _ivreg2_`h'
 	local n = `=e(N)'
 	local k = `=e(df_m)'
-	local RMSE_full = `=e(rmse)'
-	local RSS_full = (`RMSE_full')^2 * (`n' - `k')
-	local partial_F = round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
-	
-	
+	local betaw = e(b)[1, "`w'"]
+	local sew = e(V)["`w'","`w'"]
+	local sew = sqrt(`sew')
+	local tsw = `betaw' / `sew'
+	local partial_F = `tsw'^2
 
 	* First Stage output option
 	if "`savefirst'" == "savefirst" {
@@ -231,7 +233,7 @@ prog def aivreg, eclass
 			sca `beta' = _b[`z']
 			sca `SE' = _se[`z']
 			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			local test_stat = 2 * ttail((`n'-`k') , abs(`val_t'))
 			sca `lb' = `beta' - 1.96*`SE'
 			sca `ub' = `beta' + 1.96*`SE'
 
@@ -266,10 +268,10 @@ prog def aivreg, eclass
 	
 
 	qui estimates restore `eststo'
-
 	
-	tempname n
+	tempname n k
 	sca `n'=e(N)
+	sca `k'=e(df_m)
 
 			* This adds the preamble like reghdfe
 	dis " "
@@ -308,13 +310,11 @@ prog def aivreg, eclass
 	
 	foreach z of varlist `zlist' {
 		* Make variables
-			tempname beta SE n k lb ub val_t test_stat 
-			sca `n'=e(N)
-			sca `k'=e(df_m)
+			tempname beta SE lb ub val_t test_stat
 			sca `beta' = _b[`z']
 			sca `SE' = _se[`z']
 			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			local test_stat = 2 * ttail(`n' - `k' , abs(`val_t'))
 			sca `lb' = `beta' - 1.96*`SE'
 			sca `ub' = `beta' + 1.96*`SE'
 
@@ -334,7 +334,6 @@ prog def aivreg, eclass
 			ereturn scalar ub_asymp`z' = `ub'
 		
 	}
-	
 	
 	*Output
 	collect style header Col, level(hide) // removes Col names
@@ -375,8 +374,11 @@ else if "`vce'" == "boot"{ // bootstrap case
 	qui estimates restore _ivreg2_`h'
 	local n = `=e(N)'
 	local k = `=e(df_m)'
-	local RSS_full = `=e(rss)'
-	local partial_F = round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
+	local betaw = e(b)[1, "`w'"]
+	local sew = e(V)["`w'","`w'"]
+	local sew = sqrt(`sew')
+	local tsw = `betaw' / `sew'
+	local partial_F = `tsw'^2
 
 	* First Stage output option
 	if "`savefirst'" == "savefirst" {
@@ -397,13 +399,11 @@ else if "`vce'" == "boot"{ // bootstrap case
 	
 		foreach z of varlist `w' `zlist' {
 		* Make variables
-			tempname beta SE n k lb ub val_t test_stat 
-			sca `n'=e(N)
-			sca `k'=e(df_m)
+			tempname beta SE lb ub val_t test_stat 
 			sca `beta' = _b[`z']
 			sca `SE' = _se[`z']
 			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
 			sca `lb' = `beta' - 1.96*`SE'
 			sca `ub' = `beta' + 1.96*`SE'
 
@@ -436,7 +436,9 @@ else if "`vce'" == "boot"{ // bootstrap case
 	}
 	
 	qui estimates restore `eststo'
-	
+	tempname n k
+		sca `n' =e(N)
+		sca `k' =e(df_m)
 		* This adds the preamble like reghdfe
 	dis " "
 	local align_col 60  // Desired column for the "=" alignment
@@ -483,13 +485,11 @@ else if "`vce'" == "boot"{ // bootstrap case
 	
 	foreach z of varlist `zlist' {
 		* Make variables
-			tempname beta SE n k lb ub val_t test_stat 
-			sca `n'=e(N)
-			sca `k'=e(df_m)
+			tempname beta SE lb ub val_t test_stat 
 			sca `beta' = _b[`z']
 			sca `SE' = _se[`z']
 			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
 			sca `lb' = `beta' - 1.96*`SE'
 			sca `ub' = `beta' + 1.96*`SE'
 
@@ -526,23 +526,29 @@ else if "`vce'" == "boot"{ // bootstrap case
 	if `k'==0 {
 		tempname RSS_full n k partial_F
 		qui reg `h' `w' `zlist' `control' `weight' `if' `in', cluster(`cluster')
-		sca `RSS_full'=e(rss)
-		sca `n'=e(N)
-		sca `k'=e(rank)
+		local n = `=e(N)'
+		local k = `=e(df_m)'
+		local betaw = e(b)[1, "`w'"]
+		local sew = e(V)["`w'","`w'"]
+		local sew = sqrt(`sew')
+		local tsw = `betaw' / `sew'
+		local partial_F = `tsw'^2
 	}
-
 	else {
 		tempname RSS_full n k partial_F
 		qui reghdfe `h' `w' `zlist' `control' `weight' `if' `in', absorb(`fe') cluster(`cluster')
-		sca `RSS_full'=e(rss)
-		sca `n'=e(N)
-		sca `k'=e(rank)
+		local n = `=e(N)'
+		local k = `=e(df_m)'
+		local betaw = e(b)[1, "`w'"]
+		local sew = e(V)["`w'","`w'"]
+		local sew = sqrt(`sew')
+		local tsw = `betaw' / `sew'
+		local partial_F = `tsw'^2
 	}
 			
 	* eststo first stage
 	eststo _ivreg2_`h'
 
-	sca `partial_F'= round((`RSS_red'-`RSS_full')/(`RSS_full'/(`n'-`k')))
 		* First Stage output option
 	if "`savefirst'" == "savefirst" {
 		
@@ -569,7 +575,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 			sca `beta' = _b[`z']
 			sca `SE' = _se[`z']
 			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
 			sca `lb' = `beta' - 1.96*`SE'
 			sca `ub' = `beta' + 1.96*`SE'
 			local N = `n'
@@ -670,7 +676,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 
 			* T-Test approximation
 			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , sqrt(`val_t'^2))
+			local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
 			
 			
 			
@@ -709,8 +715,6 @@ if "`undef'" != "undef" {
 	quietly{
 	local N = `n'
 	local DOF = `n' - `k'
-	ereturn clear
-
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
 	ereturn scalar Partial_F = `partial_F'
 	foreach z of varlist `zlist' {
@@ -790,4 +794,3 @@ if "`undef'" != "undef" {
 
 	
 end
-
