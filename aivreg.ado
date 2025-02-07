@@ -612,6 +612,9 @@ else if "`vce'" == "boot"{ // bootstrap case
 	local padding = `align_col' - length("Partial F-stat.") - length("Uses Anderson-Rubin CI")
 	display "Uses Anderson-Rubin CI" _dup(`padding') " " "Partial F-stat." " = " `partial_F'
 	display "SE inferred from radius"
+	if "`cluster'" != "" {
+		display "SE clustered by `cluster'"
+	}
 	
 	* This makes the column names for the stats
 	collect clear 
@@ -787,3 +790,4 @@ if "`undef'" != "undef" {
 
 	
 end
+
