@@ -8,111 +8,208 @@
 {viewerjumpto "Options" "aivreg##options"}{...}
 {viewerjumpto "Remarks" "aivreg##remarks"}{...}
 {viewerjumpto "Examples" "aivreg##examples"}{...}
-{title:Title}
-{phang}
-{bf:aivreg} {hline 2} Implements the Anti-IV method as used in {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":{it:Bell (2022)}}, {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093":{it:Bell, Calder-Wang, and Zhong (2023)}}, and {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":{it:Bell et.al (2024)}}.
-
-{marker syntax}{...}
-{title:Syntax}
-{p 8 17 2}
-{cmdab:aivreg}
-varlist
-[{help if}]
-[{help in}]
-[{cmd:,}
-{it:options}]
-
-{synoptset 20 tabbed}{...}
-{synopthdr}
-{synoptline}
-{syntab:Required }
-{synopt:{opt h(varlist)}} Specify the anti-IV variable to be used; {cmd:aivreg} command currently ony supports one anti-IV variable {p_end}
-{syntab:Optional }
-{synopt:{opt control(strings)}} Specify the control variables to be added to the baseline regression {p_end}
-{synopt:{opt fe(strings)}} Specify the fixed effects to be absorbed {p_end}
-{synopt:{opt weight(strings)}} Specify the weighting options {p_end}
-{synopt:{opt eststo(strings)}} Specify the model name to store estimates as; uses standard error from {cmdab:ivreghdfe} as the default standard error {p_end}
-
-
-{marker examples}{...}
-{title:Example 1: Job Safety}
-
-{pstd} Exercepted from {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":{it:Bell (2022)}}. {p_end}
-
-{pstd}Import accompanying labor market data. Wage is the outcome variable, safety is the amenity to be priced, and AFQT score is the anti-IV variable of choice. {p_end}
-{phang2}{cmd:. use safety_aivreg_example, clear}
-
-{pstd}Naive hedonic regression{p_end}
-{phang2}{cmd:. reg wage safety}
-
-{pstd}Hedonic regression with AFQT as control{p_end}
-{phang2}{cmd:. reg wage safety afqt_1_1981}
-
-{pstd}Apply the Anti-IV method using AFQT as anti-IV with the {cmd: aivreg} command, storing the estimated results as model1. {p_end}
-{phang2}{cmd:. aivreg wage safety, h(afqt_1_1981) eststo(model1)}
-
-
-{title:Example 2: Housing Amenities}
-
-{pstd} Exercepted from {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093":{it:Bell, Calder-Wang, and Zhong (2023)}}. {p_end}
-
-{pstd}Import accompanying housing market data. Log House Price Index(log_hpvi) is the outcome variables, crime_rate and medianaqi (Air Quality Index, higher means worse air) are the amenities to be priced, and rank (Geographic PageRank from migration flow) is the anti-IV variable of choice. {p_end}
-{phang2}{cmd:. use housing_aivreg_example, clear}
-
-{pstd} Single-amenity hedonic regression with geographic PageRank as controls to price air quality{p_end}
-{phang2}{cmd:. reg log_hpvi medianaqi rank i.rooms if year==2019}
-
-{pstd} Pricing a single housing amenity, air quality, using the {cmd: aivreg} command, with geographic PageRank as anti-IV, controlling for number of rooms as a categorical variable. Store the estimated results as model 2. {p_end}
-{phang2}{cmd:. aivreg log_hpvi medianaqi if year==2019, h(rank) control(i.rooms) eststo(model2)}
-
-{pstd} Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the {cmd: aivreg} command, with geographic PageRank as anti-IV, controlling for room fixed effects. {p_end}
-{phang2}{cmd:. aivreg log_hpvi medianaqi crime_rate if year==2019, h(rank) fe(rooms)}
-
-
-{title:Stored results}
+{smcl}
+{title:aivreg - Anti-IV Regression in Stata}
 
 {pstd}
-{cmd:aivreg} stores the following in {cmd:r()}:
+The Stata {bf:aivreg} command implements the anti-IV method used in {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":Bell (2022)}, {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093":Bell, Calder-Wang, and Zhong (2023)}, and {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":Bell et al. (2024)}.
 
-{synoptset 15 tabbed}{...}
-{p2col 5 15 19 2: Scalars}{p_end}
-{synopt:{cmd:r(partial_F)}} Partial F-Stats on the anti-IV variable in the baseline regression{p_end}
-{synopt:{cmd:r(beta`z')}} Estimated cofficient for the amenity "z" {p_end}
-{synopt:{cmd:r(lb_AR)}} Anderson-Rubin confidence interval lower bound for the amenity "z" {p_end}
-{synopt:{cmd:r(ub_AR)}} Anderson-Rubin confidence interval upper bound for the amenity "z" {p_end}
+{title:Installation}
+
+{phang} - Download {cmd:aivreg.ado} and {cmd:aivreg.sthlp} from the repository.
+
+{phang} - In Stata, type {cmd:sysdir} to find the directory listed as {cmd:PERSONAL}.
+
+{phang} - Move {cmd:aivreg.ado} and {cmd:aivreg.sthlp} into the {cmd:PERSONAL} directory.
+
+{title:Syntax}
+
+{phang} {cmd:aivreg} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], {cmd:aiv}({it:varlist}) [{cmd:control}({it:string})] [{cmd:fe}({it:varlist})] [{cmd:weight}({it:string})] [{cmd:eststo}({it:string})] [{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:seed}({it:string})] [{cmd:cluster}({it:varlist})] [{cmd:savefirst}] [{cmd:firststo}({it:string})]
+
+{title:Options}
+
+{phang} {cmd:depvar} - Outcome variable.
+
+{phang} {cmd:varlist} - List of amenities.
+
+{phang} {cmd:aiv}({it:varlist}) - List of anti-IV variables (currently supports one variable).
+
+{phang} {cmd:control}({it:string}) - List of control variables.
+
+{phang} {cmd:fe}({it:varlist}) - List of fixed effects (calls {cmd:ivreghdfe} or {cmd:reghdfe} instead of {cmd:ivreg2} or {cmd:reg}).
+
+{phang} {cmd:weight}({it:string}) - Weighting options (e.g., {cmd:weight([w=wt])}).
+
+{phang} {cmd:eststo}({it:string}) - Stores the model under a given name.
+
+{phang} {cmd:vce}({it:string}) - Standard error estimation method ({cmd:boot} for bootstrapped SE, {cmd:asymp} for {cmd:ivreg2} SE).
+
+{phang} {cmd:reps}({it:string}) - Number of bootstrap repetitions.
+
+{phang} {cmd:seed}({it:string}) - Seed for bootstrap.
+
+{phang} {cmd:cluster}({it:varlist}) - Cluster variables for standard errors.
+
+{phang} {cmd:savefirst} - Saves and reports first stage regression.
+
+{phang} {cmd:firststo}({it:string}) - Stores the first stage estimates under a specified name.
+
+{title:Returned Results}
+
+{phang} {bf:Partial F} - Partial F-statistic at the first stage.
+
+{phang} {bf:Coef.} - Estimated coefficient.
+
+{phang} {bf:Std. Err.} - Standard error.
+
+{phang} {bf:t} - t-statistic.
+
+{phang} {bf:P>|t|} - p-value.
+
+{phang} {bf:[95% Conf. Interval]} - 95% confidence interval.
+
+{title:Examples}
+
+{pstd} {bf:Example 1: Job Safety (from Bell 2022)}
+
+{cmd:. use safety_aivreg_example.dta, clear}
+
+{phang} Naive hedonic regression
+
+{cmd:. reg wage safety}
+
+      Source |       SS           df       MS      Number of obs   =     3,971
+-------------+----------------------------------   F(1, 3969)      =     38.01
+       Model |   58.098609         1   58.098609   Prob > F        =    0.0000
+    Residual |  6066.92616     3,969  1.52857802   R-squared       =    0.0095
+-------------+----------------------------------   Adj R-squared   =    0.0092
+       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.2364
+
+------------------------------------------------------------------------------
+        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      safety |   .1257863    .020403     6.17   0.000     .0857849    .1657877
+       _cons |   .1858175   .0196564     9.45   0.000     .1472798    .2243552
+------------------------------------------------------------------------------
+
+{phang} Hedonic regression with AFQT as control
+
+{cmd:. reg wage safety afqt_1_1981}
+
+      Source |       SS           df       MS      Number of obs   =     3,971
+-------------+----------------------------------   F(2, 3968)      =    157.55
+       Model |  450.608187         2  225.304094   Prob > F        =    0.0000
+    Residual |  5674.41659     3,968   1.4300445   R-squared       =    0.0736
+-------------+----------------------------------   Adj R-squared   =    0.0731
+       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.1958
+
+------------------------------------------------------------------------------
+        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      safety |   .0435653   .0203489     2.14   0.032       .00367    .0834607
+ afqt_1_1981 |   .0114346   .0006902    16.57   0.000     .0100814    .0127877
+       _cons |  -.3182425    .035877    -8.87   0.000    -.3885815   -.2479035
+------------------------------------------------------------------------------
+
+{phang} Apply the Anti-IV method using AFQT as anti-IV with the command, storing the estimated results as model1.
+
+{cmd:. aivreg wage safety, aiv(afqt_1_1981) eststo(model1)}
+ 
+Anti-IV Regression                             Number of obs = 3971
+Uses Anderson-Rubin CI                       Partial F-stat. = 341
+SE inferred from radius
+
+wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-------+------------------------------------------------------------------
+safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
+--------------------------------------------------------------------------
+(result model1 is active now)
+
+{pstd} {bf:Example 2: Housing Amenities (from Bell, Calder-Wang, and Zhong 2023)}
+
+{cmd:. use housing_aivreg_example, clear}
+
+{phang} Single-amenity hedonic regression with geographic PageRank as controls to price air quality
+
+{cmd:. reg log_hpvi medianaqi rank i.rooms if year==2019}
+
+      Source |       SS           df       MS      Number of obs   =    14,095
+-------------+----------------------------------   F(6, 14088)     =   1581.71
+       Model |  2446.93861         6  407.823102   Prob > F        =    0.0000
+    Residual |  3632.39585    14,088  .257836162   R-squared       =    0.4025
+-------------+----------------------------------   Adj R-squared   =    0.4022
+       Total |  6079.33447    14,094  .431342023   Root MSE        =    .50778
+
+------------------------------------------------------------------------------
+    log_hpvi | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+   medianaqi |  -.0179744   .0046326    -3.88   0.000    -.0270548   -.0088939
+        rank |   .1726248   .0044821    38.51   0.000     .1638394    .1814103
+             |
+       rooms |
+          2  |   .1426972   .0136676    10.44   0.000      .115907    .1694874
+          3  |   .5262077   .0136504    38.55   0.000     .4994511    .5529642
+          4  |   .8092507   .0136549    59.26   0.000     .7824852    .8360162
+          5  |   1.015283   .0137094    74.06   0.000     .9884108    1.042155
+             |
+       _cons |   11.40268   .0098292  1160.08   0.000     11.38341    11.42194
+------------------------------------------------------------------------------
+
+{phang} Pricing a single housing amenity, air quality, using the aivreg command, with geographic PageRank as aivreg, controlling for room fixed effects; storing the estimates as model2
+
+{cmd:. aivreg log_hpvi medianaqi if year==2019, aiv(rank) control(i.rooms) eststo(model2)}
+
+Anti-IV Regression                             Number of obs = 14095
+Uses Anderson-Rubin CI                       Partial F-stat. = 1483
+SE inferred from radius
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5250496   .0204574  -25.66557  5.1e-142   -.5666013  -.4864084
+-----------------------------------------------------------------------------
+(result model2 is active now)
+
+{phang} Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the aivreg command, with geographic PageRank as anti-IV, controlling for room fixed effects
+
+{cmd:. aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) fe(rooms)}
+
+Anti-IV Regression                             Number of obs = 14067
+Uses Anderson-Rubin CI                       Partial F-stat. = 1269
+SE inferred from radius
+
+log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-----------+------------------------------------------------------------------
+medianaqi  |   -.535451   .0221685  -24.15374  2.5e-126   -.5806173  -.4937169
+crime_rate |  -.6242351   .0277523  -22.49308  4.2e-110   -.6807541   -.571965
+------------------------------------------------------------------------------
+
+{phang} Export the aivreg results using esttab
+
+{cmd:. esttab model1 model2, mgroup("aivreg results" "aivreg results", pattern(1 1)) modelwidth(25) varwidth(20) label}
+
+------------------------------------------------------------------------------
+                                aivreg results               aivreg results   
+                                           (1)                          (2)   
+                                          wage       Log Zillow Price Index   
+------------------------------------------------------------------------------
+safety                                  -1.145***                             
+                                      (-10.39)                                
+
+Median AQI                                                           -0.525***
+                                                                   (-25.67)   
+------------------------------------------------------------------------------
+Observations                              3971                        14095   
+------------------------------------------------------------------------------
+t statistics in parentheses
+* p<0.05, ** p<0.01, *** p<0.001
 
 
-{marker references}{...}
 {title:References}
 
-{marker Bell2022}{...}
-{phang}
-Bell, Alex, 
-{browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":{it:Job Amenities and Earnings Inequality}.}
-Mimeo, 2022
+{phang} - Bell, A. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":Job Amenities and Earnings Inequality} (2022).
 
-{marker Bell2023}{...}
-{phang}
-Bell, Alex, Sophie Calder-Wang, and Shusheng Zhong,
-{browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093":{it:Pricing Neighborhood Amenities: A Proxy-Based Approach}.}
-Mimeo, 2023
-{p_end}
+{phang} - Bell, A., Calder-Wang, S., & Zhong, S. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093":Pricing Neighborhood Amenities: A Proxy-Based Approach} (2023).
 
-{marker Bell2024}{...}
-{phang}
-Bell, Alex, Stephen B. Billings, Sophie Calder-Wang, and Shusheng Zhong,
-{browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":{it:An Anti-IV Approach for Pricing Residential Amenities: Applications to Flood Risk}.}
-Mimeo, 2024
-{p_end}
+{phang} - Bell, A., Billings, S. B., Calder-Wang, S., & Zhong, S. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":An Anti-IV Approach for Pricing Residential Amenities} (2024).
 
-{marker Correia2018}{...}
-{phang}
-Correia, Sergio. {it:IVREGHDFE: Stata module for extended instrumental variable regressions with multiple levels of fixed effects.}
-Mimeo, 2018
-{p_end}
-
-
-
-
-
-
+{phang} - Correia, S. {browse "https://ideas.repec.org/c/boc/bocode/s458530.html":IVREGHDFE: Stata module for extended instrumental variable regressions} (2018).

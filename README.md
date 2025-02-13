@@ -139,7 +139,7 @@ medianaqi |  -.5250496   .0204574  -25.66557  5.1e-142   -.5666013  -.4864084
 -----------------------------------------------------------------------------
 (result model2 is active now)
 ```
-- Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the aivreg command, with geographic PageRank as anti-IV, controlling for room fixed effects; 
+- Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the aivreg command, with geographic PageRank as anti-IV, controlling for room fixed effects
 ```text
 . aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) fe(rooms)
  
