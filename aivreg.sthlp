@@ -24,7 +24,7 @@ The Stata {bf:aivreg} command implements the anti-IV method used in {browse "htt
 
 {title:Syntax}
 
-{phang} {cmd:aivreg} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], {cmd:aiv}({it:varlist}) [{cmd:control}({it:string})] [{cmd:fe}({it:varlist})] [{cmd:weight}({it:string})] [{cmd:eststo}({it:string})] [{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:seed}({it:string})] [{cmd:cluster}({it:varlist})] [{cmd:savefirst}] [{cmd:firststo}({it:string})]
+{phang} {cmd:aivreg} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], {cmd:aiv}({it:varlist}) [{cmd:control}({it:string})] [{cmd:fe}({it:varlist})] [{cmd:weight}({it:string})] [{cmd:eststo}({it:string})] [{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:seed}({it:string})] [{cmd:cluster}({it:varlist})] [{cmd:savefirst}] [{cmd:firststo}({it:string})] [{cmd:displayaiv}]
 
 {title:Options}
 
@@ -53,6 +53,8 @@ The Stata {bf:aivreg} command implements the anti-IV method used in {browse "htt
 {phang} {cmd:savefirst} - Saves and reports first stage regression.
 
 {phang} {cmd:firststo}({it:string}) - Stores the first stage estimates under a specified name.
+
+{phang} {cmd:displayaiv} - Displays the coefficient on the predicted value of the anti-instrumental variable. Unavailable when using Anderson-Rubin confidence intervals.
 
 {title:Returned Results}
 
@@ -117,7 +119,7 @@ The Stata {bf:aivreg} command implements the anti-IV method used in {browse "htt
  
 Anti-IV Regression                             Number of obs = 3971
 Uses Anderson-Rubin CI                       Partial F-stat. = 341
-SE inferred from radius
+SE inferred from radius closest to zero
 
 wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -------+------------------------------------------------------------------
@@ -161,7 +163,7 @@ safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
 
 Anti-IV Regression                             Number of obs = 14095
 Uses Anderson-Rubin CI                       Partial F-stat. = 1483
-SE inferred from radius
+SE inferred from radius closest to zero
 
 log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ----------+------------------------------------------------------------------
@@ -175,7 +177,7 @@ medianaqi |  -.5250496   .0204574  -25.66557  5.1e-142   -.5666013  -.4864084
 
 Anti-IV Regression                             Number of obs = 14067
 Uses Anderson-Rubin CI                       Partial F-stat. = 1269
-SE inferred from radius
+SE inferred from radius closest to zero
 
 log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -----------+------------------------------------------------------------------

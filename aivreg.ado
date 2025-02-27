@@ -1,12 +1,18 @@
 
+
 cap prog drop aivreg
 
 prog def aivreg, eclass
-	syntax varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)]
+	syntax varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 	
 	* firststo
 	if "`firststo'" != ""{
 		local savefirst = "savefirst"
+	}
+	
+	* displayaiv
+	if "`displayaiv'" != ""{
+		local displayaiv = "displayaiv"
 	}
 	
 	* aiv is the new h
@@ -298,16 +304,48 @@ prog def aivreg, eclass
 	
 	quietly{
 	mat b = e(b)
-	mat b = b[1, 2..(`amenity_count' + 1)]
 	mat V = e(V)
-	mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
-    local N = `n'
+	
+	if "`displayaiv'" == ""{
+		mat b = b[1, 2..(`amenity_count' + 1)]		
+		mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
+	}  
+	
+	local N = `n'
 	local DOF = `n' - `k'
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
 	ereturn scalar Partial_F = `partial_F'
 	eststo `eststo'
 	}
 	
+	if "`displayaiv'" == "displayaiv"{
+			foreach z of varlist `zlist' `h' {
+		* Make variables
+			tempname beta SE lb ub val_t test_stat
+			sca `beta' = _b[`z']
+			sca `SE' = _se[`z']
+			sca `val_t' = `beta' / `SE'
+			local test_stat = 2 * ttail(`n' - `k' , abs(`val_t'))
+			sca `lb' = `beta' - 1.96*`SE'
+			sca `ub' = `beta' + 1.96*`SE'
+
+		* table
+			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`SE', tags(Col[SE_AR])
+			collect get `z' = `val_t', tags(Col[t_val])
+			collect get `z' = `test_stat', tags(Col[p_more_t])
+			collect get `z'=`lb', tags(Col[ARCI_lb])
+			collect get `z'=`ub', tags(Col[ARCI_ub])
+			
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
+	}
+	}
+	else {
 	foreach z of varlist `zlist' {
 		* Make variables
 			tempname beta SE lb ub val_t test_stat
@@ -333,6 +371,7 @@ prog def aivreg, eclass
 			ereturn scalar lb_asymp`z' = `lb'
 			ereturn scalar ub_asymp`z' = `ub'
 		
+	}
 	}
 	
 	*Output
@@ -473,9 +512,11 @@ else if "`vce'" == "boot"{ // bootstrap case
 	
 	quietly{
 	mat b = e(b)
-	mat b = b[1, 2..(`amenity_count' + 1)]
 	mat V = e(V)
-	mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 
+	if "`displayaiv'" == ""{
+		mat b = b[1, 2..(`amenity_count' + 1)]		
+		mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 		
+	}
     local N = `n'
 	local DOF = `n' - `k'
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
@@ -483,6 +524,35 @@ else if "`vce'" == "boot"{ // bootstrap case
 	eststo `eststo'
 	}
 	
+	if "`displayaiv'" == "displayaiv"{
+	foreach z of varlist `zlist' `h' {
+		* Make variables
+			tempname beta SE lb ub val_t test_stat 
+			sca `beta' = _b[`z']
+			sca `SE' = _se[`z']
+			sca `val_t' = `beta' / `SE'
+			local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
+			sca `lb' = `beta' - 1.96*`SE'
+			sca `ub' = `beta' + 1.96*`SE'
+
+		* table
+			collect get `z'=`beta', tags(Col[Coef])
+			collect get `z'=`SE', tags(Col[SE_AR])
+			collect get `z' = `val_t', tags(Col[t_val])
+			collect get `z' = `test_stat', tags(Col[p_more_t])
+			collect get `z'=`lb', tags(Col[ARCI_lb])
+			collect get `z'=`ub', tags(Col[ARCI_ub])
+			
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_boot`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_boot`z' = `lb'
+			ereturn scalar ub_boot`z' = `ub'
+		
+	}		
+	}
+	else {
 	foreach z of varlist `zlist' {
 		* Make variables
 			tempname beta SE lb ub val_t test_stat 
@@ -509,7 +579,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 			ereturn scalar ub_boot`z' = `ub'
 		
 	}
-	
+	}
 	
 	*Output
 	collect style header Col, level(hide) // removes Col names
@@ -522,6 +592,9 @@ else if "`vce'" == "boot"{ // bootstrap case
 }
 	else { // AR CI case
 	
+	if "`displayaiv'" == "displayaiv"{
+		dis "Warning: option displayaiv is not available for Anderson-Rubin CI"
+	}
 
 	if `k'==0 {
 		tempname RSS_full n k partial_F
@@ -617,7 +690,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
 	local padding = `align_col' - length("Partial F-stat.") - length("Uses Anderson-Rubin CI")
 	display "Uses Anderson-Rubin CI" _dup(`padding') " " "Partial F-stat." " = " `partial_F'
-	display "SE inferred from radius"
+	display "SE inferred from radius closest to zero"
 	if "`cluster'" != "" {
 		display "SE clustered by `cluster'"
 	}
@@ -660,9 +733,18 @@ else if "`vce'" == "boot"{ // bootstrap case
 
 			sca `lb' = - (-`b' + sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')
 			sca `ub' = - (-`b' - sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')	
-			sca `SE' = (`ub' - `lb') / (2*1.96) // take radius of CI (even if uncentered)
+			*sca `SE' = (`ub' - `lb') / (2*1.96) // take radius of CI (even if uncentered)
 			
 			sca `beta' = -`delta' / `pi'
+			
+			if `beta' <= 0 {
+				sca `SE' = (`ub' - `beta') / 1.96
+			}
+			else {
+				sca `SE' = (`beta' - `lb') / 1.96
+			}
+			
+			* we approximate SE with the radius on the side closer to zero
 			if `a' < 0 {
 				display "Error: CI undefined for `z'"
 				sca `lb' = "-Inf"
@@ -733,7 +815,7 @@ if "`undef'" != "undef" {
 	
 
 	* restore saved models to what the user specified
-	*quietly {
+	quietly {
 	local new_models "" 
 	quiet est dir
 	foreach model_for_loop2 in `r(names)' { 
@@ -764,7 +846,7 @@ if "`undef'" != "undef" {
 			}
 		}
 	}
-	*}
+	}
 	
 	* rename first stage
 		if "`firststo'" != "" {

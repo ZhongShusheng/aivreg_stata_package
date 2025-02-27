@@ -8,7 +8,7 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
 - Put **aivreg.ado** and **aivreg.sthlp** in the _PERSONAL_ directory
 
 ## Syntax
- **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)]
+ **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 
 ## Input List
  - **depvar** the outcome variable 
@@ -24,6 +24,8 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
  - **cluster** cluster variables for standard errors
  - **savefirst** when set to savefirst, the first stage regression is reported; this is also saved in eststo as \_ivreg2\_`h'
  - **firststo** stores the name of the first stage estimates; automatically reports first stage
+ - **displayaiv** displays the coefficient on the predicted value of the anti-instrumental variable; unavailable when using Anderson-Rubin confidence intervals
+
 ## Return List
  - **Partial F** Partial F-Stat at the first stage comparing with and without the depvar as a control.
  - **Coef.** Coefficient for the amenity "var" 
@@ -83,7 +85,7 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
  
 Anti-IV Regression                             Number of obs = 3971
 Uses Anderson-Rubin CI                       Partial F-stat. = 341
-SE inferred from radius
+SE inferred from radius closest to zero
 
 wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -------+------------------------------------------------------------------
@@ -131,7 +133,7 @@ safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
  
 Anti-IV Regression                             Number of obs = 14095
 Uses Anderson-Rubin CI                       Partial F-stat. = 1483
-SE inferred from radius
+SE inferred from radius closest to zero
 
 log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ----------+------------------------------------------------------------------
@@ -145,7 +147,7 @@ medianaqi |  -.5250496   .0204574  -25.66557  5.1e-142   -.5666013  -.4864084
  
 Anti-IV Regression                             Number of obs = 14067
 Uses Anderson-Rubin CI                       Partial F-stat. = 1269
-SE inferred from radius
+SE inferred from radius closest to zero
 
 log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -----------+------------------------------------------------------------------
