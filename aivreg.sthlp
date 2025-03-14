@@ -58,17 +58,17 @@ The Stata {bf:aivreg} command implements the anti-IV method used in {browse "htt
 
 {title:Returned Results}
 
-{phang} {bf:Partial F} - Partial F-statistic at the first stage.
+{phang} {bf:Partial F} - Partial F-statistic at the first stage. (Available with "e(Partial_F)")
 
-{phang} {bf:Coef.} - Estimated coefficient.
+{phang} {bf:Coef.} - Estimated coefficient. (Available with "e(beta{it:varname})")
 
-{phang} {bf:Std. Err.} - Standard error.
+{phang} {bf:Std. Err.} - Standard error. (Available with "e(SE_{it:vcevarname})")
 
-{phang} {bf:t} - t-statistic.
+{phang} {bf:t} - t-statistic. (Available with "e(t_val{it:varname})")
 
-{phang} {bf:P>|t|} - p-value.
+{phang} {bf:P>|t|} - p-value. (Available with "e(p_{it:varname})")
 
-{phang} {bf:[95% Conf. Interval]} - 95% confidence interval.
+{phang} {bf:[95% Conf. Interval]} - 95% confidence interval. (Available with "e(ub_{it:vcevarname})" and "e(lb_{it:vcevarname})")
 
 {title:Examples}
 

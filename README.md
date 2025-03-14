@@ -27,12 +27,12 @@ The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)]
  - **displayaiv** displays the coefficient on the predicted value of the anti-instrumental variable; unavailable when using Anderson-Rubin confidence intervals
 
 ## Return List
- - **Partial F** Partial F-Stat at the first stage comparing with and without the depvar as a control.
- - **Coef.** Coefficient for the amenity "var" 
- - **Std. Err.** Standard error of the coefficient (in Anderson-Rubin case, this is approximated from the confidence interval)
- - **t** t-statistic estimate of the coefficient
- - **P>|t|** p value based on the t-statistic
- - **[95% Conf. Interval]** 95% confidence interval for the coefficient
+ - **Partial F** Partial F-Stat at the first stage comparing with and without the depvar as a control. (Available with "e(Partial_F)")
+ - **Coef.** Coefficient for the amenity "var". (Available with "e(beta_varname)")
+ - **Std. Err.** Standard error of the coefficient (in Anderson-Rubin case, this is approximated from the confidence interval) (Available with "e(SE\__vcevarname)")
+ - **t** t-statistic estimate of the coefficient (Available with "e(t\_val_varname)")
+ - **P>|t|** p value based on the t-statistic (Available with "e(p\__varname)")
+ - **[95% Conf. Interval]** 95% confidence interval for the coefficient (Available with "e(ub\__vcevarname)" and "e(lb\__vcevarname)")
 
 ## Examples
 ### Example 1: Job Safety
