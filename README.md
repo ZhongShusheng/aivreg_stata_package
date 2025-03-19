@@ -1,6 +1,6 @@
 
 # ReadMe File for aivreg Stata Package
-The Stata **aivreg** command implements the anti-IV method used in [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522), [Bell, Calder-Wang, and Zhong (2023)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093), and [Bell et.al (2024)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974).
+The Stata **aivreg** command implements the anti-IV method developed in [Bell, Billings, Calder-Wang, and Zhong (2024)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974) and [Bell (2022)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522).
 
 ## Installation
 - Download **aivreg.ado** and **aivreg.sthlp** from this repository
