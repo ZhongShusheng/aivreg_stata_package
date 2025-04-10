@@ -240,10 +240,12 @@ program define aivnonpar, eclass
 			egen `depvar'_mean =  median(`depvar'), by(`control_bins' `fe')
 			replace `depvar' = `depvar' - `depvar'_mean
 			drop `depvar'_mean
-			
-			egen `expvar'_mean = median(`expvar'), by(`control_bins' `fe')
-			replace `expvar' = `expvar' - `expvar'_mean
-			drop `expvar'_mean				
+
+			if "`xcategoryorder'" == ""{
+				egen `expvar'_mean = median(`expvar'), by(`control_bins' `fe')
+				replace `expvar' = `expvar' - `expvar'_mean
+				drop `expvar'_mean
+			}				
 		}
 		else{
 			egen `aiv'_mean = mean(`aiv'), by(`control_bins' `fe')
@@ -253,10 +255,12 @@ program define aivnonpar, eclass
 			egen `depvar'_mean =  mean(`depvar'), by(`control_bins' `fe')
 			replace `depvar' = `depvar' - `depvar'_mean
 			drop `depvar'_mean
-			
-			egen `expvar'_mean = mean(`expvar'), by(`control_bins' `fe')
-			replace `expvar' = `expvar' - `expvar'_mean
-			drop `expvar'_mean				
+
+			if "`xcategoryorder'" == ""{
+				egen `expvar'_mean = mean(`expvar'), by(`control_bins' `fe')
+				replace `expvar' = `expvar' - `expvar'_mean
+				drop `expvar'_mean	
+			}			
 		}
 	
 	}
