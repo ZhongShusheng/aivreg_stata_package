@@ -1,9 +1,48 @@
 
-
 cap prog drop aivreg
 
 prog def aivreg, eclass
 	syntax varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
+
+	preserve
+	
+	* if the explanatory variable is categorical
+	local j = 0
+	local varlist2 `varlist'
+	foreach v of varlist `varlist' {
+		local typ: type `v'
+		local typ = substr("`typ'", 1, 3)
+		quiet distinct `v'
+		local ndistinct = r(ndistinct)
+
+		
+		if `j' > 0 & "`typ'" == "str" {
+			quiet tabulate `v', generate(`v')
+
+			drop `v'1
+			
+			/*
+			local templist = ""
+			foreach u of varlist `varlist2'{
+				if "`u'" != "`v'"{
+					local templist = "`templist' `u'"
+				}
+			}
+			*/
+			local v `v'
+			*local varlist2 `varlist'
+			local varlist `varlist'
+			local varlist2 : list varlist2 - v
+
+			forvalues i = 2/`ndistinct' {
+				local varlist2 = "`varlist2' `v'`i'"
+			}
+
+		}
+		
+		local j = `j' + 1
+	}
+	local varlist = "`varlist2'"
 	
 	* firststo
 	if "`firststo'" != ""{
@@ -874,5 +913,5 @@ if "`undef'" != "undef" {
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"	
 	}
 
-	
+	restore
 end
