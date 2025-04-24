@@ -2,9 +2,62 @@
 cap prog drop aivreg
 
 prog def aivreg, eclass
-	syntax varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
+	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 
 	preserve
+	
+	* remove i. and c.
+	local varlist2 ""
+	local varlist "`varlist'"
+	
+	foreach v of local varlist {
+		
+		local lead = substr("`v'",1,1)
+		local dot2 = substr("`v'",2,1)
+		local dot4 = substr("`v'",4,1)
+		
+		if "`dot2'" == "." {
+			local u = substr("`v'",3,.)
+		}
+		if "`dot4'" == "." {
+			local u = substr("`v'",5,.)
+		}
+
+		if "`lead'" == "i"{
+			
+			local num3`u' = substr("`v'",3,1)
+			
+			if "`dot4'" != "." {
+				local num3`u' = 1
+			}
+			
+			if "`dot2'" != "." & "`dot4'" != "." {
+				local u "`v'"
+			}
+			
+			if "`dot2'" == "." | "`dot4'" == "." {
+				quiet tostring(`u'), replace
+				quiet drop if `u' == "."
+			}
+			
+		}
+		else {
+			local u "`v'"
+
+			local typ: type `u'
+			local typ = substr("`typ'", 1, 3)
+			if "`typ'" == "str" {
+				dis as error "`u': string variables may not be used as continuous variables"
+				exit
+			}
+		}
+
+		local varlist2 = "`varlist2' `u'"
+	}
+	
+	local varlist `varlist2'
+	
+	* throw an error if a variable is a string
 	
 	* if the explanatory variable is categorical
 	local j = 0
@@ -18,24 +71,17 @@ prog def aivreg, eclass
 		
 		if `j' > 0 & "`typ'" == "str" {
 			quiet tabulate `v', generate(`v')
-
-			drop `v'1
-			
-			/*
-			local templist = ""
-			foreach u of varlist `varlist2'{
-				if "`u'" != "`v'"{
-					local templist = "`templist' `u'"
-				}
-			}
-			*/
+			drop `v'`num3`v''
 			local v `v'
-			*local varlist2 `varlist'
+
 			local varlist `varlist'
 			local varlist2 : list varlist2 - v
-
-			forvalues i = 2/`ndistinct' {
-				local varlist2 = "`varlist2' `v'`i'"
+			
+			forvalues i = 1/`ndistinct' {
+				
+				if "`i'" != "`num3`v''" {
+					local varlist2 = "`varlist2' `v'`i'"					
+				}
 			}
 
 		}
@@ -915,3 +961,4 @@ if "`undef'" != "undef" {
 
 	restore
 end
+
