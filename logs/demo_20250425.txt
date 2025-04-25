@@ -1,0 +1,260 @@
+
+. 
+. 
+. ********************************************************************************
+. * 1. Labor Market Demo
+. ********************************************************************************
+. * Load Example
+. * Outcome: wage
+. * Amenity: safety
+. * Anti-IV: afqt_1_1981 (AFQT score)
+. 
+. use safety_aivreg_example.dta, clear
+
+. 
+. 
+. * naive hedonic regression
+. reg wage safety
+
+      Source |       SS           df       MS      Number of obs   =     3,971
+-------------+----------------------------------   F(1, 3969)      =     38.01
+       Model |   58.098609         1   58.098609   Prob > F        =    0.0000
+    Residual |  6066.92616     3,969  1.52857802   R-squared       =    0.0095
+-------------+----------------------------------   Adj R-squared   =    0.0092
+       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.2364
+
+------------------------------------------------------------------------------
+        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      safety |   .1257863    .020403     6.17   0.000     .0857849    .1657877
+       _cons |   .1858175   .0196564     9.45   0.000     .1472798    .2243552
+------------------------------------------------------------------------------
+
+. 
+. * hedonic regression with AFQT as control variables
+. reg wage safety afqt_1_1981
+
+      Source |       SS           df       MS      Number of obs   =     3,971
+-------------+----------------------------------   F(2, 3968)      =    157.55
+       Model |  450.608187         2  225.304094   Prob > F        =    0.0000
+    Residual |  5674.41659     3,968   1.4300445   R-squared       =    0.0736
+-------------+----------------------------------   Adj R-squared   =    0.0731
+       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.1958
+
+------------------------------------------------------------------------------
+        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      safety |   .0435653   .0203489     2.14   0.032       .00367    .0834607
+ afqt_1_1981 |   .0114346   .0006902    16.57   0.000     .0100814    .0127877
+       _cons |  -.3182425    .035877    -8.87   0.000    -.3885815   -.2479035
+------------------------------------------------------------------------------
+
+. 
+. eststo clear
+
+. * AntiIV method using AFQT as Anti-IV
+. aivreg wage safety, aiv(afqt_1_1981) eststo(model1)
+ 
+Anti-IV Regression                             Number of obs = 3971
+Uses Anderson-Rubin CI                       Partial F-stat. = 274.47368
+SE inferred from radius closest to zero
+
+wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-------+------------------------------------------------------------------
+safety |  -1.145084   .1010579  -11.33096  2.59e-29   -1.379237  -.9470102
+--------------------------------------------------------------------------
+(result model1 is active now)
+
+. 
+. 
+. ********************************************************************************
+. * 2. Housing Market Demo
+. ********************************************************************************
+. * Load Example Housing Market Data
+. * Outcome: log_hpvi (house price index for given # of rooms in a given county)
+. * Amenities: medianaqi (Air Quality Index, higher means worse air), crime_rate
+. * anti-IV: rank (Geographic PageRank based on migration flows)
+. 
+. use housing_aivreg_example, clear
+
+. 
+. * Hedonic Regression with Controls to Price a Single Amenity (i.e., medianaqi)
+. reg log_hpvi medianaqi rank i.rooms if year==2019
+
+      Source |       SS           df       MS      Number of obs   =    14,095
+-------------+----------------------------------   F(6, 14088)     =   1581.71
+       Model |  2446.93861         6  407.823102   Prob > F        =    0.0000
+    Residual |  3632.39585    14,088  .257836162   R-squared       =    0.4025
+-------------+----------------------------------   Adj R-squared   =    0.4022
+       Total |  6079.33447    14,094  .431342023   Root MSE        =    .50778
+
+------------------------------------------------------------------------------
+    log_hpvi | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+   medianaqi |  -.0179744   .0046326    -3.88   0.000    -.0270548   -.0088939
+        rank |   .1726248   .0044821    38.51   0.000     .1638394    .1814103
+             |
+       rooms |
+          2  |   .1426972   .0136676    10.44   0.000      .115907    .1694874
+          3  |   .5262077   .0136504    38.55   0.000     .4994511    .5529642
+          4  |   .8092507   .0136549    59.26   0.000     .7824852    .8360162
+          5  |   1.015283   .0137094    74.06   0.000     .9884108    1.042155
+             |
+       _cons |   11.40268   .0098292  1160.08   0.000     11.38341    11.42194
+------------------------------------------------------------------------------
+
+. eststo model4
+
+. 
+. 
+. * Single-Amenity Anti-IV method using the Stata program, with ARCI standard errors 
+. * Adding i.room as controls
+. aivreg log_hpvi medianaqi if year==2019, aiv(rank) control(i.rooms) eststo(model2)
+ 
+Anti-IV Regression                             Number of obs = 14095
+Uses Anderson-Rubin CI                       Partial F-stat. = 1483.3698
+SE inferred from radius closest to zero
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5250496   .0197149  -26.63215  1.7e-152   -.5666013  -.4864084
+-----------------------------------------------------------------------------
+(result model2 is active now)
+
+. return list
+
+macros:
+              r(names) : "_ivreg2_rank"
+
+. 
+. * Single-Amenity Anti-IV method using the Stata program, with ARCI standard errors 
+. * Adding # of Rooms as a fixed effect variable
+. aivreg log_hpvi medianaqi if year==2019, aiv(rank) fe(rooms)
+ 
+Anti-IV Regression                             Number of obs = 14095
+Uses Anderson-Rubin CI                       Partial F-stat. = 1483.3698
+SE inferred from radius closest to zero
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5250496   .0197149  -26.63215  1.7e-152   -.5666013  -.4864084
+-----------------------------------------------------------------------------
+
+. 
+. 
+. * the Equivalent way to calculate the antiIV coefficient with ivreg2 command
+. qui bootstrap, reps(100) seed(1): ivreg2 log_hpvi (rank=log_hpvi medianaqi) ///
+>                                 medianaqi i.rooms if year==2019, ffirst
+
+. 
+. esttab model1 model2, mgroup("aivreg results" "aivreg results", pattern(1 1)) modelwidth(25) varwidth(20) label
+
+------------------------------------------------------------------------------
+                                aivreg results               aivreg results   
+                                           (1)                          (2)   
+                                          wage       Log Zillow Price Index   
+------------------------------------------------------------------------------
+safety                                  -1.145***                             
+                                      (-11.33)                                
+
+Median AQI                                                           -0.525***
+                                                                   (-26.63)   
+------------------------------------------------------------------------------
+Observations                              3971                        14095   
+------------------------------------------------------------------------------
+t statistics in parentheses
+* p<0.05, ** p<0.01, *** p<0.001
+
+. 
+. * Hedonic Regression with Controls to Price Multiple Amenities (i.e., medianaqi)
+. reg log_hpvi medianaqi crime_rate rank i.rooms if year==2019
+
+      Source |       SS           df       MS      Number of obs   =    14,067
+-------------+----------------------------------   F(7, 14059)     =   1356.99
+       Model |  2434.12237         7  347.731767   Prob > F        =    0.0000
+    Residual |  3602.63794    14,059  .256251365   R-squared       =    0.4032
+-------------+----------------------------------   Adj R-squared   =    0.4029
+       Total |  6036.76031    14,066  .429173916   Root MSE        =    .50621
+
+------------------------------------------------------------------------------
+    log_hpvi | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+   medianaqi |   -.017584   .0046242    -3.80   0.000    -.0266481   -.0085199
+  crime_rate |   .0168477   .0058461     2.88   0.004     .0053885    .0283069
+        rank |   .1663094   .0046711    35.60   0.000     .1571533    .1754654
+             |
+       rooms |
+          2  |   .1430336   .0136392    10.49   0.000     .1162989    .1697683
+          3  |   .5268819   .0136221    38.68   0.000     .5001808     .553583
+          4  |   .8101727   .0136267    59.45   0.000     .7834627    .8368828
+          5  |   1.016263   .0136798    74.29   0.000     .9894485    1.043077
+             |
+       _cons |   11.40063   .0098081  1162.37   0.000      11.3814    11.41985
+------------------------------------------------------------------------------
+
+. 
+. * Multivariate anti-IV method with Stata program, with ARCI standard errors 
+. aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) fe(rooms)
+ 
+Anti-IV Regression                             Number of obs = 14067
+Uses Anderson-Rubin CI                       Partial F-stat. = 1267.617
+SE inferred from radius closest to zero
+
+log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-----------+------------------------------------------------------------------
+medianaqi  |   -.535451   .0212929  -25.14696  1.6e-136   -.5806173  -.4937169
+crime_rate |  -.6242351   .0266684  -23.40729  6.7e-119   -.6807541   -.571965
+------------------------------------------------------------------------------
+
+. return list
+
+macros:
+              r(names) : "est1"
+
+. 
+. * GMM
+. aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(rooms)
+note: 28 missing values returned for equation 4 at initial values.
+note: 28 missing values returned for equation 5 at initial values.
+
+Step 1
+Iteration 0:  GMM criterion Q(b) =  708.11072  
+Iteration 1:  GMM criterion Q(b) =  .07831625  
+Iteration 2:  GMM criterion Q(b) =  .07831625  
+
+Step 2
+Iteration 0:  GMM criterion Q(b) =  .22923656  
+Iteration 1:  GMM criterion Q(b) =  .16840582  
+Iteration 2:  GMM criterion Q(b) =  .16840582  
+
+GMM estimation 
+
+Number of parameters =   6
+Number of moments    =  15
+Initial weight matrix: Identity                   Number of obs   =     14,067
+GMM weight matrix:     Robust
+
+------------------------------------------------------------------------------
+             |               Robust
+             | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+  /medianaqi |  -.0866569   .0081522   -10.63   0.000    -.1026349   -.0706789
+       /rank |   .5511275    .036165    15.24   0.000     .4802454    .6220096
+      /rooms |   .2503887   .0035507    70.52   0.000     .2434294    .2573479
+     /const1 |   11.12557   .0123292   902.37   0.000      11.1014    11.14973
+ /crime_rate |   1.055259   .0594202    17.76   0.000     .9387973     1.17172
+     /const2 |   11.12566   .0139806   795.79   0.000     11.09826    11.15306
+------------------------------------------------------------------------------
+Instruments for equation 1: log_hpvi medianaqi rooms
+Instruments for equation 2: log_hpvi medianaqi rooms
+Instruments for equation 3: log_hpvi medianaqi rooms
+Instruments for equation 4: log_hpvi medianaqi rooms
+Instruments for equation 5: log_hpvi medianaqi rooms
+
+. 
+. log close
+      name:  <unnamed>
+       log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250425.txt
+  log type:  text
+ closed on:  25 Apr 2025, 15:30:09
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

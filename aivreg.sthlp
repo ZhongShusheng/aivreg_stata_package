@@ -1,18 +1,12 @@
 {smcl}
-{* *! version 1.0 16 Jul 2024}{...}
-{vieweralsosee "" "--"}{...}
-{vieweralsosee "Install command2" "ssc install command2"}{...}
-{vieweralsosee "Help command2 (if installed)" "help command2"}{...}
-{viewerjumpto "Syntax" "aivreg##syntax"}{...}
-{viewerjumpto "Description" "aivreg##description"}{...}
-{viewerjumpto "Options" "aivreg##options"}{...}
-{viewerjumpto "Remarks" "aivreg##remarks"}{...}
-{viewerjumpto "Examples" "aivreg##examples"}{...}
-{smcl}
+{* *! version 2.0 25 Apr 2025}{...}
 {title:aivreg - Anti-IV Regression in Stata}
 
 {pstd}
-The Stata {bf:aivreg} command implements the anti-IV method used in {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":Bell (2022)}, {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093":Bell, Calder-Wang, and Zhong (2023)}, and {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":Bell et al. (2024)}.
+The Stata {bf:aivreg} command implements the anti-IV method used in 
+{browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":Bell (2022)}, 
+{browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093":Bell, Calder-Wang, and Zhong (2023)}, and 
+{browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":Bell et al. (2024)}.
 
 {title:Installation}
 
@@ -22,189 +16,125 @@ The Stata {bf:aivreg} command implements the anti-IV method used in {browse "htt
 
 {phang} - Move {cmd:aivreg.ado} and {cmd:aivreg.sthlp} into the {cmd:PERSONAL} directory.
 
-{title:Syntax}
+{title:General Syntax}
 
-{phang} {cmd:aivreg} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], {cmd:aiv}({it:varlist}) [{cmd:control}({it:string})] [{cmd:fe}({it:varlist})] [{cmd:weight}({it:string})] [{cmd:eststo}({it:string})] [{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:seed}({it:string})] [{cmd:cluster}({it:varlist})] [{cmd:savefirst}] [{cmd:firststo}({it:string})] [{cmd:displayaiv}]
+{phang} {cmd:aivreg} [{it:estimator}] {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], 
+{cmd:aiv}({it:varlist}) [{cmd:control}({it:string})] [{cmd:fe}({it:varlist})] [{cmd:weight}({it:string})] 
+[{cmd:eststo}({it:string})] [{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:seed}({it:string})] 
+[{cmd:cluster}({it:varlist})] [{cmd:savefirst}] [{cmd:firststo}({it:string})] [{cmd:displayaiv}] 
+[{cmd:steps}({it:string})] [{cmd:conv_ptol}({it:string})] [{cmd:conv_vtol}({it:string})] 
+[{cmd:igmmiterate}({it:string})] [{cmd:igmmeps}({it:string})] [{cmd:igmmweps}({it:string})] 
+[{cmd:technique}({it:string})] [{cmd:conv_maxiter}({it:string})] [{cmd:tracelevel}({it:string})]
 
-{title:Options}
+{title:Syntax for OLS Estimator}
 
-{phang} {cmd:depvar} - Outcome variable.
+{phang} {cmd:aivreg} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], 
+{cmd:aiv}({it:varlist}) [{cmd:control}({it:string})] [{cmd:fe}({it:varlist})] [{cmd:weight}({it:string})] 
+[{cmd:eststo}({it:string})] [{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:seed}({it:string})] 
+[{cmd:cluster}({it:varlist})] [{cmd:savefirst}] [{cmd:firststo}({it:string})] [{cmd:displayaiv}]
 
-{phang} {cmd:varlist} - List of amenities.
+{title:Input List}
 
-{phang} {cmd:aiv}({it:varlist}) - List of anti-IV variables (currently supports one variable).
+{phang} - {bf:estimator} specify "gmm" for GMM estimation; otherwise leave blank
 
-{phang} {cmd:control}({it:string}) - List of control variables.
+{phang} - {bf:depvar} the outcome variable
 
-{phang} {cmd:fe}({it:varlist}) - List of fixed effects (calls {cmd:ivreghdfe} or {cmd:reghdfe} instead of {cmd:ivreg2} or {cmd:reg}).
+{phang} - {bf:varlist} the list of amenities
 
-{phang} {cmd:weight}({it:string}) - Weighting options (e.g., {cmd:weight([w=wt])}).
+{phang} - {bf:aiv} a list of anti-IV variables (currently supports one anti-IV variable for OLS)
 
-{phang} {cmd:eststo}({it:string}) - Stores the model under a given name.
+{phang} - {bf:control} specify the list of control variables
 
-{phang} {cmd:vce}({it:string}) - Standard error estimation method ({cmd:boot} for bootstrapped SE, {cmd:asymp} for {cmd:ivreg2} SE).
+{phang} - {bf:fe} list of fixed effects to be absorbed; uses {cmd:ivreghdfe} or {cmd:reghdfe}
 
-{phang} {cmd:reps}({it:string}) - Number of bootstrap repetitions.
+{phang} - {bf:weight} specifies weighting options; e.g., {cmd:weight([w=wt])}
 
-{phang} {cmd:seed}({it:string}) - Seed for bootstrap.
+{phang} - {bf:eststo} specifies the model name to store the estimates under
 
-{phang} {cmd:cluster}({it:varlist}) - Cluster variables for standard errors.
+{phang} - {bf:vce} specify standard error estimation: Anderson-Rubin (default); boot (bootstrap SE); asymp (ivreg2 or ivreghdfe SE)
 
-{phang} {cmd:savefirst} - Saves and reports first stage regression.
+{phang} - {bf:reps} number of repetitions (for bootstrap only)
 
-{phang} {cmd:firststo}({it:string}) - Stores the first stage estimates under a specified name.
+{phang} - {bf:seed} seed for bootstrap (for bootstrap only)
 
-{phang} {cmd:displayaiv} - Displays the coefficient on the predicted value of the anti-instrumental variable. Unavailable when using Anderson-Rubin confidence intervals.
+{phang} - {bf:cluster} cluster variables for standard errors
 
-{title:Returned Results}
+{phang} - {bf:savefirst} saves and reports the first-stage regression
 
-{phang} {bf:Partial F} - Partial F-statistic at the first stage. (Available with "e(Partial_F)")
+{phang} - {bf:firststo} stores the name of the first stage estimates
 
-{phang} {bf:Coef.} - Estimated coefficient. (Available with "e(beta{it:varname})")
+{phang} - {bf:displayaiv} displays the coefficient on the predicted value of the anti-IV (not available with Anderson-Rubin CI)
 
-{phang} {bf:Std. Err.} - Standard error. (Available with "e(SE_{it:vcevarname})")
+{title:Return List}
 
-{phang} {bf:t} - t-statistic. (Available with "e(t_val{it:varname})")
+{phang} - {bf:Partial F} Partial F-statistic at the first stage comparing with and without the depvar as a control (Available with {cmd:e(Partial_F)})
 
-{phang} {bf:P>|t|} - p-value. (Available with "e(p_{it:varname})")
+{phang} - {bf:Coef.} Coefficient for the amenity "var" (Available with {cmd:e(beta_varname)})
 
-{phang} {bf:[95% Conf. Interval]} - 95% confidence interval. (Available with "e(ub_{it:vcevarname})" and "e(lb_{it:vcevarname})")
+{phang} - {bf:Std. Err.} Standard error of the coefficient (in Anderson-Rubin case, approximated from CI) (Available with {cmd:e(SE_vcevarname)})
 
-{title:Examples}
+{phang} - {bf:t} t-statistic estimate of the coefficient (Available with {cmd:e(t_val_varname)})
 
-{pstd} {bf:Example 1: Job Safety (from Bell 2022)}
+{phang} - {bf:P>|t|} p-value based on the t-statistic (Available with {cmd:e(p_varname)})
 
-{cmd:. use safety_aivreg_example.dta, clear}
+{phang} - {bf:[95% Conf. Interval]} 95% confidence interval for the coefficient (Available with {cmd:e(ub_vcevarname)} and {cmd:e(lb_vcevarname)})
 
-{phang} Naive hedonic regression
+{title:Syntax for GMM Estimator}
 
-{cmd:. reg wage safety}
+{phang} {cmd:aivreg gmm} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], 
+{cmd:aiv}({it:varlist}) [{cmd:weight}({it:string})] [{cmd:control}({it:varlist})] [{cmd:fe}({it:varlist})] 
+[{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:eststo}({it:string})] [{cmd:cluster}({it:varlist})]
+[{cmd:savefirst}] [{cmd:steps}({it:string})] [{cmd:conv_ptol}({it:string})] [{cmd:conv_vtol}({it:string})] 
+[{cmd:igmmiterate}({it:string})] [{cmd:igmmeps}({it:string})] [{cmd:igmmweps}({it:string})]
+[{cmd:technique}({it:string})] [{cmd:conv_maxiter}({it:string})] [{cmd:tracelevel}({it:string})]
 
-      Source |       SS           df       MS      Number of obs   =     3,971
--------------+----------------------------------   F(1, 3969)      =     38.01
-       Model |   58.098609         1   58.098609   Prob > F        =    0.0000
-    Residual |  6066.92616     3,969  1.52857802   R-squared       =    0.0095
--------------+----------------------------------   Adj R-squared   =    0.0092
-       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.2364
+{title:Input List (GMM Version)}
 
-------------------------------------------------------------------------------
-        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-      safety |   .1257863    .020403     6.17   0.000     .0857849    .1657877
-       _cons |   .1858175   .0196564     9.45   0.000     .1472798    .2243552
-------------------------------------------------------------------------------
+{phang} - {bf:estimator} specify "gmm" for GMM estimation; otherwise leave blank
 
-{phang} Hedonic regression with AFQT as control
+{phang} - {bf:depvar} the outcome variable
 
-{cmd:. reg wage safety afqt_1_1981}
+{phang} - {bf:varlist} the list of endogenous regressors or amenities
 
-      Source |       SS           df       MS      Number of obs   =     3,971
--------------+----------------------------------   F(2, 3968)      =    157.55
-       Model |  450.608187         2  225.304094   Prob > F        =    0.0000
-    Residual |  5674.41659     3,968   1.4300445   R-squared       =    0.0736
--------------+----------------------------------   Adj R-squared   =    0.0731
-       Total |  6125.02477     3,970   1.5428274   Root MSE        =    1.1958
+{phang} - {bf:aiv} a list of one or more anti-IV variables (multiple allowed)
 
-------------------------------------------------------------------------------
-        wage | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-      safety |   .0435653   .0203489     2.14   0.032       .00367    .0834607
- afqt_1_1981 |   .0114346   .0006902    16.57   0.000     .0100814    .0127877
-       _cons |  -.3182425    .035877    -8.87   0.000    -.3885815   -.2479035
-------------------------------------------------------------------------------
+{phang} - {bf:control} specify the list of exogenous control variables
 
-{phang} Apply the Anti-IV method using AFQT as anti-IV with the command, storing the estimated results as model1.
+{phang} - {bf:fe} list of fixed effects to be absorbed
 
-{cmd:. aivreg wage safety, aiv(afqt_1_1981) eststo(model1)}
- 
-Anti-IV Regression                             Number of obs = 3971
-Uses Anderson-Rubin CI                       Partial F-stat. = 341
-SE inferred from radius closest to zero
+{phang} - {bf:weight} specifies weighting options
 
-wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
--------+------------------------------------------------------------------
-safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
---------------------------------------------------------------------------
-(result model1 is active now)
+{phang} - {bf:eststo} specifies the model name to store the estimates under
 
-{pstd} {bf:Example 2: Housing Amenities (from Bell, Calder-Wang, and Zhong 2023)}
+{phang} - {bf:vce} specify standard error estimation: asymp (default), boot, or cluster(varname)
 
-{cmd:. use housing_aivreg_example, clear}
+{phang} - {bf:reps} number of repetitions (for bootstrap only)
 
-{phang} Single-amenity hedonic regression with geographic PageRank as controls to price air quality
+{phang} - {bf:cluster} cluster variables for standard errors
 
-{cmd:. reg log_hpvi medianaqi rank i.rooms if year==2019}
+{phang} - {bf:savefirst} saves the first stage residual specification
 
-      Source |       SS           df       MS      Number of obs   =    14,095
--------------+----------------------------------   F(6, 14088)     =   1581.71
-       Model |  2446.93861         6  407.823102   Prob > F        =    0.0000
-    Residual |  3632.39585    14,088  .257836162   R-squared       =    0.4025
--------------+----------------------------------   Adj R-squared   =    0.4022
-       Total |  6079.33447    14,094  .431342023   Root MSE        =    .50778
+{phang} - {bf:steps} specify GMM steps (onestep, twostep, or iterated)
 
-------------------------------------------------------------------------------
-    log_hpvi | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
--------------+----------------------------------------------------------------
-   medianaqi |  -.0179744   .0046326    -3.88   0.000    -.0270548   -.0088939
-        rank |   .1726248   .0044821    38.51   0.000     .1638394    .1814103
-             |
-       rooms |
-          2  |   .1426972   .0136676    10.44   0.000      .115907    .1694874
-          3  |   .5262077   .0136504    38.55   0.000     .4994511    .5529642
-          4  |   .8092507   .0136549    59.26   0.000     .7824852    .8360162
-          5  |   1.015283   .0137094    74.06   0.000     .9884108    1.042155
-             |
-       _cons |   11.40268   .0098292  1160.08   0.000     11.38341    11.42194
-------------------------------------------------------------------------------
+{phang} - {bf:conv_ptol} parameter convergence tolerance
 
-{phang} Pricing a single housing amenity, air quality, using the aivreg command, with geographic PageRank as aivreg, controlling for room fixed effects; storing the estimates as model2
+{phang} - {bf:conv_vtol} objective function convergence tolerance
 
-{cmd:. aivreg log_hpvi medianaqi if year==2019, aiv(rank) control(i.rooms) eststo(model2)}
+{phang} - {bf:igmmiterate} number of iterations for IGMM
 
-Anti-IV Regression                             Number of obs = 14095
-Uses Anderson-Rubin CI                       Partial F-stat. = 1483
-SE inferred from radius closest to zero
+{phang} - {bf:igmmeps} parameter tolerance for IGMM
 
-log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
-----------+------------------------------------------------------------------
-medianaqi |  -.5250496   .0204574  -25.66557  5.1e-142   -.5666013  -.4864084
------------------------------------------------------------------------------
-(result model2 is active now)
+{phang} - {bf:igmmweps} weighting matrix tolerance for IGMM
 
-{phang} Simultaneously pricing multiple housing amenities, air quality and crime_rate, using the aivreg command, with geographic PageRank as anti-IV, controlling for room fixed effects
+{phang} - {bf:technique} optimization technique (e.g., nr, bfgs)
 
-{cmd:. aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) fe(rooms)}
+{phang} - {bf:conv_maxiter} maximum number of iterations allowed
 
-Anti-IV Regression                             Number of obs = 14067
-Uses Anderson-Rubin CI                       Partial F-stat. = 1269
-SE inferred from radius closest to zero
+{phang} - {bf:tracelevel} controls verbosity during estimation
 
-log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
------------+------------------------------------------------------------------
-medianaqi  |   -.535451   .0221685  -24.15374  2.5e-126   -.5806173  -.4937169
-crime_rate |  -.6242351   .0277523  -22.49308  4.2e-110   -.6807541   -.571965
-------------------------------------------------------------------------------
+{title:Return List (GMM Version)}
 
-{phang} Export the aivreg results using esttab
-
-{cmd:. esttab model1 model2, mgroup("aivreg results" "aivreg results", pattern(1 1)) modelwidth(25) varwidth(20) label}
-
-------------------------------------------------------------------------------
-                                aivreg results               aivreg results   
-                                           (1)                          (2)   
-                                          wage       Log Zillow Price Index   
-------------------------------------------------------------------------------
-safety                                  -1.145***                             
-                                      (-10.39)                                
-
-Median AQI                                                           -0.525***
-                                                                   (-25.67)   
-------------------------------------------------------------------------------
-Observations                              3971                        14095   
-------------------------------------------------------------------------------
-t statistics in parentheses
-* p<0.05, ** p<0.01, *** p<0.001
-
+{phang} See Stata’s {browse "https://www.stata.com/manuals13/rgmm.pdf":gmm manual} for full list of returned results.
 
 {title:References}
 
@@ -215,3 +145,4 @@ t statistics in parentheses
 {phang} - Bell, A., Billings, S. B., Calder-Wang, S., & Zhong, S. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":An Anti-IV Approach for Pricing Residential Amenities} (2024).
 
 {phang} - Correia, S. {browse "https://ideas.repec.org/c/boc/bocode/s458530.html":IVREGHDFE: Stata module for extended instrumental variable regressions} (2018).
+

@@ -1,7 +1,71 @@
 
-cap prog drop aivreg
+cap program drop aivreg
+program define aivreg, eclass
+    version 14.0
 
-prog def aivreg, eclass
+    /* 1.  Peek at first token ------------------------------------------ */
+    gettoken maybe_est rest : 0          // maybe_est = first word
+
+    capture confirm variable `maybe_est'
+    if _rc {                             // first word is NOT a variable
+        local estimator "`maybe_est'"    // so it must be the estimator
+        local 0 "`rest'"                 // put the remainder back for parsing
+    }
+    else {                               // first word IS a variable
+        local estimator "lin"            // default estimator
+        local 0 "`maybe_est' `rest'"     // put *all* words back for parsing
+    }
+
+    /* 2.  Now parse the standard pieces (including the varlist!) -------- */
+    syntax varlist(fv) [if] [in], aiv(varlist) ///
+        [control(string) fe(varlist) weight(string) eststo(string) ///
+         vce(string) reps(string) seed(string) cluster(varlist)   ///
+         savefirst firststo(string) displayaiv steps(string) /// 
+		 conv_ptol(string) conv_vtol(string) igmmiterate(string) ///
+		 igmmeps(string) igmmweps(string) technique(string) ///
+		 conv_maxiter(string) tracelevel(string)]
+
+    /* 3.  How many anti-IVs?  Decide which engine to call --------------- */
+
+	
+    local nvars = wordcount("`aiv'")
+
+    if "`estimator'" == "gmm" | `nvars' > 1 {
+		if "`estimator'" != "gmm" {
+			dis as text "Warning: Multiple anti-IVs inputted, switching to GMM"			
+		}
+
+        *aivgmm `varlist' `if' `in', aiv(`aiv') ///
+            control(`control') fe(`fe') vce(`vce') steps(`steps') ///
+			technique(`technique') conv_maxiter(`conv_maxiter') ///
+			tracelevel(`tracelevel') reps(`reps')
+			
+			aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
+			fe(`fe') weight(`weight') vce(`vce') steps(`steps') /// 
+			technique(`technique') conv_maxiter(`conv_maxiter') /// 
+			conv_ptol(`conv_ptol') conv_vtol(`conv_vtol') /// 
+			igmmiterate(`igmmiterate') igmmeps(`igmmeps') /// 
+			igmmweps(`igmmweps') cluster(`cluster') reps(`reps')
+
+			
+    }
+    else if inlist("`estimator'", "lin", "ols") {
+        aivreglinear `varlist' `if' `in', aiv(`aiv') ///
+            control(`control') fe(`fe') weight(`weight') eststo(`eststo') ///
+            vce(`vce') reps(`reps') seed(`seed') cluster(`cluster')       ///
+            `savefirst' firststo(`firststo') `displayaiv'
+    }
+    else {
+        di as error "Invalid estimator `estimator'.  Use lin or gmm."
+        exit 198
+    }
+end
+
+	
+	
+cap prog drop aivreglinear
+
+prog def aivreglinear, eclass
 	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 
 	preserve
@@ -961,4 +1025,196 @@ if "`undef'" != "undef" {
 
 	restore
 end
+
+
+cap program drop aivgmm
+
+program define aivgmm, eclass
+    
+    ******************************************************
+	/*
+      Syntax
+        aivgmm depvar expvars [if] [in] , aiv(varlist) \
+               [control(varlist)] [fe(varlist)]          \
+               [vce(string)] [steps(string)]
+      ----------------------------------------------------
+        depvar              outcome variable
+        expvars             one **or more** potentially‑endogenous regressors
+        aiv(varlist)        auxiliary instruments (one or more)
+        control(varlist)    exogenous control regressors (optional)
+		*/
+    ******************************************************
+
+    syntax varlist(min=2) [if] [in], aiv(varlist) [weight(string)] [control(varlist)] [fe(varlist)] [vce(string)] [reps(string)] [eststo(string)] [vce(string)] [cluster(string)] [savefirst] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] ///
+		 [igmmeps(string)] [igmmweps(string)] [technique(string)] ///
+		 [conv_maxiter(string)] [tracelevel(string)] 
+
+     ********************
+     * 1. Parse inputs *
+     ********************
+    tokenize `varlist'               // depvar followed by endogenous variables
+    local depvar `1'
+    macro shift                       // now `*' holds all expvars
+    local explist `*'
+    local nexp   : word count `explist'
+
+    local ctrls "`control'"          // may be empty
+    local nctrl : word count `ctrls'
+
+     ***********************************************
+     * 2. Build pieces that will enter the residual
+     ***********************************************
+
+    * 2a. Coefficient parameters & starting values for each expvar
+    local pars ""                       // will accumulate starting values
+    foreach e of local explist {
+        local pars "`pars' `e' 0"      // β_e starts at 0 (can be refined)
+    }
+
+    * 2b. Controls part of the residual and their starting values
+    local ctrl_resid ""
+    if "`ctrls'" != "" {
+        foreach c of local ctrls {
+            local ctrl_resid "`ctrl_resid' - {`c'}*`c'"
+            local pars       "`pars' `c' 0"   // γ_c parameter, start=0
+        }
+    }
+
+     ***************************************
+     * 3. Mean of depvar for constant start
+     ***************************************
+    quietly summarize `depvar', meanonly
+    local meandep = r(mean)
+
+     ************************************************
+     * 4. Construct moment conditions looped over AIVs
+     ************************************************
+
+    local moment_eq ""
+    local count    = 1        // AIV counter (for constants)
+
+    foreach h of local aiv {
+
+        * 4a. Residual expression for this AIV
+        local resid "`depvar'"
+        foreach e of local explist {
+            local resid "`resid' - {`e'}*`e'"
+        }
+        local resid "`resid' - {`h'}*`h' `ctrl_resid' - {const`count'}"
+
+        * 4b. Moment block for this AIV
+        local block ""
+        foreach e of local explist {
+            local block "`block' ((`resid')*`e')"
+        }
+        if `count' == 1 {                 // add additional orthogonality conditions only for first AIV
+            local block "`block' ((`resid')*`depvar') (`resid')"
+        }
+        else {                            // for other AIVs keep residual*expvars + residual
+            local block "`block' (`resid')"
+        }
+
+        local moment_eq "`moment_eq' `block'"
+
+        * 4c. Add starting‑value placeholders for this AIV‑specific coeff & constant
+        local pars "`pars' `h' 0 const`count' `meandep'"
+
+        local ++count
+    }
+
+     *********************************
+     * 5. Assemble instrument list   *
+     *********************************
+    local insts "`depvar' `explist'"
+    if "`ctrls'" != "" local insts "`insts' `ctrls'"
+
+     *************************
+     * 6. Run the GMM system *
+     *************************
+	 if "`vce'" == "cluster" {
+	 	local vce = "vce(`vce' `cluster')"
+	 }
+	 else if "`vce'" == "boot" | "`vce'" == "boots" | "`vce'" == "bootst" | "`vce'" == "bootstr" | "`vce'" == "bootstra" | "`vce'" == "bootstrap" {
+	 	if "`reps'" == "" {
+			local reps = 50
+		}
+	 	local vce = "vce(`vce', `reps')"
+	 }
+	 else if "`vce'" != "" {
+	 	local vce = "vce(`vce')"
+	 }
+
+	*------------------------------------------------------------------*
+	*  Derivative list: include d/d β_e′ for *all* endogenous betas
+	*------------------------------------------------------------------*
+	local deriv_spec ""
+	local eq   = 1
+	local kcnt = 1      // AIV counter (const1, const2, ...)
+
+	foreach h of local aiv {
+
+		/* ---------- residual × each endogenous regressor -------------- */
+		foreach e1 of local explist {                    // e1 is outside
+			foreach e2 of local explist {                // e2 is parameter
+				local deriv_spec "`deriv_spec' deriv(`eq'/`e2' = -`e2'*`e1')"
+			}
+			local deriv_spec "`deriv_spec' deriv(`eq'/`h' = -`h'*`e1')"
+			foreach c of local ctrls {
+				local deriv_spec "`deriv_spec' deriv(`eq'/`c' = -`c'*`e1')"
+			}
+			local deriv_spec "`deriv_spec' deriv(`eq'/const`kcnt' = -`e1')"
+			local ++eq
+		}
+
+		/* ---------- extra equations for first AIV --------------------- */
+		if `kcnt' == 1 {
+			/* residual × depvar */
+			foreach e2 of local explist {
+				local deriv_spec "`deriv_spec' deriv(`eq'/`e2' = -`e2'*P1)"
+			}
+			local deriv_spec "`deriv_spec' deriv(`eq'/`h' = -`h'*P1')"
+			foreach c of local ctrls {
+				local deriv_spec "`deriv_spec' deriv(`eq'/`c' = -`c'*P1)"
+			}
+			local deriv_spec "`deriv_spec' deriv(`eq'/const`kcnt' = -P1)"
+			local ++eq
+
+			/* residual alone */
+			foreach e2 of local explist {
+				local deriv_spec "`deriv_spec' deriv(`eq'/`e2' = -`e2')"
+			}
+			local deriv_spec "`deriv_spec' deriv(`eq'/`h' = -`h')"
+			foreach c of local ctrls {
+				local deriv_spec "`deriv_spec' deriv(`eq'/`c' = -`c')"
+			}
+			local deriv_spec "`deriv_spec' deriv(`eq'/const`kcnt' = -1)"
+			local ++eq
+		}
+		else {   /* residual alone for other AIVs */
+			foreach e2 of local explist {
+				local deriv_spec "`deriv_spec' deriv(`eq'/`e2' = -`e2')"
+			}
+			local deriv_spec "`deriv_spec' deriv(`eq'/`h' = -`h')"
+			foreach c of local ctrls {
+				local deriv_spec "`deriv_spec' deriv(`eq'/`c' = -`c')"
+			}
+			local deriv_spec "`deriv_spec' deriv(`eq'/const`kcnt' = -1)"
+			local ++eq
+		}
+
+		local ++kcnt
+	}
+	*------------------------------------------------------------------*
+
+    gmm `moment_eq' `if' `in' `weight', `derivspec' instruments(`insts', noconstant)  winit(id) `steps' `vce' `savefirst' from(`pars') conv_ptol(`conv_ptol') conv_vtol(`conv_vtol') technique(`technique') conv_maxiter(`conv_maxiter') tracelevel(`tracelevel') igmmiterate(`igmmiterate') igmmeps(`igmmeps') igmmweps(`igmmweps')
+		
+	if "`eststo'" != "" {
+		eststo `eststo'
+		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"
+	}
+	
+	
+end
+
+
 

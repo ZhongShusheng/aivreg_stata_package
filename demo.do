@@ -67,8 +67,8 @@ reg log_hpvi medianaqi crime_rate rank i.rooms if year==2019
 aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) fe(rooms)
 return list
 
-* Currently not allowing multiple anti-IV option
-aivreg log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(i.rooms)
+* GMM
+aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(rooms)
 
 log close
 

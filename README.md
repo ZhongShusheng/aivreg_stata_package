@@ -7,8 +7,12 @@ The Stata **aivreg** command implements the anti-IV method developed in [Bell, B
 - In Stata, type in _sysdir_, find the directory listed as _PERSONAL_
 - Put **aivreg.ado** and **aivreg.sthlp** in the _PERSONAL_ directory
 
-## Syntax
- **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
+## General syntax
+ **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] [igmmeps(string)] [igmmweps(string)] [technique(string)] [conv_maxiter(string)] [tracelevel(string)]
+
+##Syntax for OLS estimator
+
+**aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 
 ## Input List
  - **depvar** the outcome variable 
@@ -175,6 +179,36 @@ Observations                              3971                        14095
 t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 ```
+
+## Syntax for GMM estimator
+
+aivreg gmm depvar varlist [if] [in], aiv(varlist) [weight(string)] [control(varlist)] [fe(varlist)] [vce(string)] [reps(string)] [eststo(string)] [vce(string)] [cluster(string)] [savefirst] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] [igmmeps(string)] [igmmweps(string)] [technique(string)] [conv_maxiter(string)] [tracelevel(string)] 
+
+## Input List (GMM Version)
+ - **estimator** specify "gmm" for GMM estimation; otherwise leave blank  
+ - **depvar** the outcome variable  
+ - **varlist** the list of endogenous regressors or amenities  
+ - **aiv** a list of one or more anti-IV variables (multiple allowed with GMM)  
+ - **control** specify the list of exogenous control variables  
+ - **fe** list of fixed effects to be absorbed; if used, ivreghdfe or reghdfe is called instead of ivreg2 or reg  
+ - **weight** specifies weighting options; if specified, you should include the full weighting statement, e.g.: weight([w=wt])  
+ - **eststo** specifies the model name to store the estimates under  
+ - **vce** specify standard error estimation: asymp is the default; boot computes bootstrapped SE; cluster(varname) clusters SEs  
+ - **reps** number of repetitions (for bootstrap only)  
+ - **cluster** cluster variables for standard errors  
+ - **savefirst** saves and reports the first stage residual specification  
+ - **steps** specify GMM steps (onestep, twostep, or iterated)  
+ - **conv_ptol** parameter convergence tolerance for GMM  
+ - **conv_vtol** objective function convergence tolerance for GMM  
+ - **igmmiterate** number of iterations for IGMM  
+ - **igmmeps** parameter tolerance for IGMM convergence  
+ - **igmmweps** weighting matrix tolerance for IGMM convergence  
+ - **technique** optimization technique used in GMM (e.g., nr, bfgs)  
+ - **conv_maxiter** maximum number of iterations allowed  
+ - **tracelevel** controls verbosity during estimation  
+
+## Return List (GMM Version)
+ - See Stata's gmm manual
 
 
 ## Reference
