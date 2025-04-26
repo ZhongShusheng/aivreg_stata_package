@@ -35,6 +35,10 @@ program define aivreg, eclass
 			dis as text "Warning: Multiple anti-IVs inputted, switching to GMM"			
 		}
 
+		if "`fe'" != "" {
+			dis "Warning: Fixed effects not available for GMM estimation"
+		}
+
         *aivgmm `varlist' `if' `in', aiv(`aiv') ///
             control(`control') fe(`fe') vce(`vce') steps(`steps') ///
 			technique(`technique') conv_maxiter(`conv_maxiter') ///
@@ -51,7 +55,7 @@ program define aivreg, eclass
     }
     else if inlist("`estimator'", "lin", "ols") {
         aivreglinear `varlist' `if' `in', aiv(`aiv') ///
-            control(`control') fe(`fe') weight(`weight') eststo(`eststo') ///
+            control(`control') weight(`weight') eststo(`eststo') ///
             vce(`vce') reps(`reps') seed(`seed') cluster(`cluster')       ///
             `savefirst' firststo(`firststo') `displayaiv'
     }
@@ -66,7 +70,7 @@ end
 cap prog drop aivreglinear
 
 prog def aivreglinear, eclass
-	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
+	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 
 	preserve
 	

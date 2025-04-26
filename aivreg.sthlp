@@ -100,8 +100,6 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 
 {phang} - {bf:control} specify the list of exogenous control variables
 
-{phang} - {bf:fe} list of fixed effects to be absorbed
-
 {phang} - {bf:weight} specifies weighting options
 
 {phang} - {bf:eststo} specifies the model name to store the estimates under

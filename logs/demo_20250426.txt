@@ -132,12 +132,12 @@ macros:
 . aivreg log_hpvi medianaqi if year==2019, aiv(rank) fe(rooms)
  
 Anti-IV Regression                             Number of obs = 14095
-Uses Anderson-Rubin CI                       Partial F-stat. = 1483.3698
+Uses Anderson-Rubin CI                       Partial F-stat. = 922.75547
 SE inferred from radius closest to zero
 
 log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ----------+------------------------------------------------------------------
-medianaqi |  -.5250496   .0197149  -26.63215  1.7e-152   -.5666013  -.4864084
+medianaqi |  -.8222405   .0342757  -23.98901  1.1e-124   -.8965907  -.7550601
 -----------------------------------------------------------------------------
 
 . 
@@ -197,13 +197,13 @@ t statistics in parentheses
 . aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank) fe(rooms)
  
 Anti-IV Regression                             Number of obs = 14067
-Uses Anderson-Rubin CI                       Partial F-stat. = 1267.617
+Uses Anderson-Rubin CI                       Partial F-stat. = 789.55462
 SE inferred from radius closest to zero
 
 log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -----------+------------------------------------------------------------------
-medianaqi  |   -.535451   .0212929  -25.14696  1.6e-136   -.5806173  -.4937169
-crime_rate |  -.6242351   .0266684  -23.40729  6.7e-119   -.6807541   -.571965
+medianaqi  |  -.8396187   .0371928  -22.57475  7.1e-111   -.9210123  -.7667208
+crime_rate |   -1.00378   .0464751  -21.59824  8.3e-102   -1.105391  -.9126888
 ------------------------------------------------------------------------------
 
 . return list
@@ -254,7 +254,7 @@ Instruments for equation 5: log_hpvi medianaqi rooms
 . 
 . log close
       name:  <unnamed>
-       log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250425.txt
+       log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250426.txt
   log type:  text
- closed on:  25 Apr 2025, 15:37:09
+ closed on:  26 Apr 2025, 12:02:19
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
