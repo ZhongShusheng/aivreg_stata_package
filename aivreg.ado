@@ -1,4 +1,5 @@
 
+
 cap program drop aivreg
 program define aivreg, eclass
     version 14.0
@@ -34,18 +35,18 @@ program define aivreg, eclass
 		if "`estimator'" != "gmm" {
 			dis as text "Warning: Multiple anti-IVs inputted, switching to GMM"			
 		}
-
+		
 		if "`fe'" != "" {
 			dis "Warning: Fixed effects not available for GMM estimation"
 		}
-
+		
         *aivgmm `varlist' `if' `in', aiv(`aiv') ///
-            control(`control') fe(`fe') vce(`vce') steps(`steps') ///
+            control(`control') vce(`vce') steps(`steps') ///
 			technique(`technique') conv_maxiter(`conv_maxiter') ///
 			tracelevel(`tracelevel') reps(`reps')
 			
 			aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			fe(`fe') weight(`weight') vce(`vce') steps(`steps') /// 
+			weight(`weight') vce(`vce') steps(`steps') eststo(`eststo') /// 
 			technique(`technique') conv_maxiter(`conv_maxiter') /// 
 			conv_ptol(`conv_ptol') conv_vtol(`conv_vtol') /// 
 			igmmiterate(`igmmiterate') igmmeps(`igmmeps') /// 
@@ -55,7 +56,7 @@ program define aivreg, eclass
     }
     else if inlist("`estimator'", "lin", "ols") {
         aivreglinear `varlist' `if' `in', aiv(`aiv') ///
-            control(`control') weight(`weight') eststo(`eststo') ///
+            control(`control') fe(`fe') weight(`weight') eststo(`eststo') ///
             vce(`vce') reps(`reps') seed(`seed') cluster(`cluster')       ///
             `savefirst' firststo(`firststo') `displayaiv'
     }
@@ -70,7 +71,7 @@ end
 cap prog drop aivreglinear
 
 prog def aivreglinear, eclass
-	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
+	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 
 	preserve
 	
@@ -1049,7 +1050,7 @@ program define aivgmm, eclass
 		*/
     ******************************************************
 
-    syntax varlist(min=2) [if] [in], aiv(varlist) [weight(string)] [control(varlist)] [fe(varlist)] [vce(string)] [reps(string)] [eststo(string)] [vce(string)] [cluster(string)] [savefirst] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] ///
+    syntax varlist(min=2) [if] [in], aiv(varlist) [weight(string)] [control(varlist)] [vce(string)] [reps(string)] [eststo(string)] [vce(string)] [cluster(string)] [savefirst] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] ///
 		 [igmmeps(string)] [igmmweps(string)] [technique(string)] ///
 		 [conv_maxiter(string)] [tracelevel(string)] 
 
@@ -1219,6 +1220,4 @@ program define aivgmm, eclass
 	
 	
 end
-
-
 

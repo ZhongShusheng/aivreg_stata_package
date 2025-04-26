@@ -45,7 +45,7 @@ program define aivreg, eclass
 			tracelevel(`tracelevel') reps(`reps')
 			
 			aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			weight(`weight') vce(`vce') steps(`steps') /// 
+			weight(`weight') vce(`vce') steps(`steps') eststo(`eststo') /// 
 			technique(`technique') conv_maxiter(`conv_maxiter') /// 
 			conv_ptol(`conv_ptol') conv_vtol(`conv_vtol') /// 
 			igmmiterate(`igmmiterate') igmmeps(`igmmeps') /// 
@@ -1219,3 +1219,4 @@ program define aivgmm, eclass
 	
 	
 end
+

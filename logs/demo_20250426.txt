@@ -256,5 +256,5 @@ Instruments for equation 5: log_hpvi medianaqi rooms
       name:  <unnamed>
        log:  C:\Users\joshboyd\Documents\GitHub\aivreg_stata_package\logs/demo_20250426.txt
   log type:  text
- closed on:  26 Apr 2025, 12:02:19
+ closed on:  26 Apr 2025, 12:27:01
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
