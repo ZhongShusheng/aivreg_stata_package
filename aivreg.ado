@@ -1,5 +1,3 @@
-
-
 cap program drop aivreg
 program define aivreg, eclass
     version 14.0
@@ -67,17 +65,17 @@ program define aivreg, eclass
 end
 
 	
-	
 cap prog drop aivreglinear
 
 prog def aivreglinear, eclass
 	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 
-	preserve
+preserve
 	
 	* remove i. and c.
 	local varlist2 ""
 	local varlist "`varlist'"
+	local categ ""
 	
 	foreach v of local varlist {
 		
@@ -105,8 +103,7 @@ prog def aivreglinear, eclass
 			}
 			
 			if "`dot2'" == "." | "`dot4'" == "." {
-				quiet tostring(`u'), replace
-				quiet drop if `u' == "."
+				local categ = "`categ' `u'"
 			}
 			
 		}
@@ -128,37 +125,53 @@ prog def aivreglinear, eclass
 	
 	* throw an error if a variable is a string
 	
-	* if the explanatory variable is categorical
-	local j = 0
+		* if the explanatory variable is categorical
+
 	local varlist2 `varlist'
-	foreach v of varlist `varlist' {
-		local typ: type `v'
-		local typ = substr("`typ'", 1, 3)
+	local varlist_rows `varlist'
+	local categ `categ'
+	if "`categ'" != ""{
+			foreach v of varlist `categ' {
+
 		quiet distinct `v'
-		local ndistinct = r(ndistinct)
-
 		
-		if `j' > 0 & "`typ'" == "str" {
-			quiet tabulate `v', generate(`v')
-			drop `v'`num3`v''
-			local v `v'
+		quiet levelsof `v', local(levels)
 
-			local varlist `varlist'
-			local varlist2 : list varlist2 - v
-			
-			forvalues i = 1/`ndistinct' {
+		local llist 
+		local llist_rows
+			foreach l of local levels {
+				*gen `v'`l' = (`v' == `l')
 				
-				if "`i'" != "`num3`v''" {
-					local varlist2 = "`varlist2' `v'`i'"					
+				capture confirm variable `v'`l'
+				if _rc {
+					quiet gen `v'`l' = (`v' == `l')
 				}
-			}
+				else {
+					quiet replace `v'`l' = (`v' == `l')
+				}
+
+				
+				*label variable `v'`l' "`l'.`v'"
+				local base_label : variable label `v'
+				label variable `v'`l' "`base_label'=`l'"
+
+				local llist "`llist' `v'`l'"
+				local llist_rows "`llist_rows' `l'.`v'"
 
 		}
-		
-		local j = `j' + 1
+			quiet replace `v'`num3`v'' = 0
+			local varlist2 `varlist2'
+			local varlist_rows `varlist_rows'
+			local v `v'
+			local varlist2 : list varlist2 - v
+			local varlist_rows : list varlist_rows - v
+			local varlist2 "`varlist2' `llist'"
+			local varlist_rows "`varlist_rows' `llist_rows'"
 	}
-	local varlist = "`varlist2'"
 	
+	}
+	
+	local varlist = "`varlist2'"
 	* firststo
 	if "`firststo'" != ""{
 		local savefirst = "savefirst"
@@ -291,6 +304,10 @@ prog def aivreglinear, eclass
 	foreach fe_var in `fe' {
 		local k=`k'+1
 	}
+	local varlist_rows `varlist_rows'
+	local w `w'
+	local varlist_rows : list varlist_rows - w
+	
 	
 /*
 	* get half of Partial F-stat
@@ -968,7 +985,148 @@ if "`undef'" != "undef" {
 	}
 	
 
-	* restore saved models to what the user specified
+
+	
+	
+	* rename first stage
+		if "`firststo'" != "" {
+			qui est restore _ivreg2_`h'
+			qui est store `firststo'
+			qui est restore `eststo'
+			qui est drop _ivreg2_`h'
+			
+		}
+		if "`firststo'" == "" {
+			local firststo = "_ivreg2_`h'"
+		}
+	
+	* fix outputs for results
+	
+	// === Rename dummy rows in eststo to look like factor terms ===
+
+quietly {
+    // Step 1: Restore the model
+	if "`eststo'" != "" {
+    estimates restore `eststo'
+
+    // Step 2: Get matrices
+    matrix b = e(b)
+    matrix V = e(V)
+	
+	// Step 1: Extract original row names
+local oldnames : colnames b
+local newnames
+
+// Step 2: Loop over each row name in b
+foreach rn of local oldnames {
+    local renamed = "`rn'"
+	local temp = substr("`rn'",1,2)
+	if "`temp'" == "o." {
+		local renamed = substr("`rn'",3,.)
+		local rn = substr("`rn'",3,.)
+	}
+
+    // Step 3: Try to find a match in zlist
+    local zcount : word count `zlist'
+    forvalues i = 1/`zcount' {
+        local zi = word("`zlist'", `i')
+		local temp = substr("`zi'",1,2)
+		
+		if "`temp'" == "o." {
+			local zi = substr("`zi'",3,.)
+		}
+		
+        if "`rn'" == "`zi'" {
+            local renamed = word("`varlist_rows'", `i')
+            continue, break
+        }
+    }
+
+    // Step 4: Build new list
+    local newnames "`newnames' `renamed'"
+}
+
+
+// Step 5: Apply new row and column names
+matrix colnames b = `newnames'
+matrix rownames V = `newnames'
+matrix colnames V = `newnames'
+
+
+
+    // Step 6: Re-post and overwrite
+// Store required metadata before clearing
+
+local N = e(N)
+local df_r = e(df_r)
+ereturn clear
+ereturn post b V, depname("`w'") obs(`N') dof(`df_r')
+eststo `eststo'
+}
+
+if "`savefirst'" == "savefirst" {
+    estimates restore `firststo'
+
+    // Step 2: Get matrices
+    matrix b = e(b)
+    matrix V = e(V)
+	
+	// Step 1: Extract original row names
+local oldnames : colnames b
+local newnames
+
+// Step 2: Loop over each row name in b
+foreach rn of local oldnames {
+    local renamed = "`rn'"
+	local temp = substr("`rn'",1,2)
+	if "`temp'" == "o." {
+		local renamed = substr("`rn'",3,.)
+		local rn = substr("`rn'",3,.)
+	}
+
+    // Step 3: Try to find a match in zlist
+    local zcount : word count `zlist'
+    forvalues i = 1/`zcount' {
+        local zi = word("`zlist'", `i')
+		local temp = substr("`zi'",1,2)
+		
+		if "`temp'" == "o." {
+			local zi = substr("`zi'",3,.)
+		}
+		
+        if "`rn'" == "`zi'" {
+            local renamed = word("`varlist_rows'", `i')
+            continue, break
+        }
+    }
+
+    // Step 4: Build new list
+    local newnames "`newnames' `renamed'"
+}
+
+
+// Step 5: Apply new row and column names
+matrix colnames b = `newnames'
+matrix rownames V = `newnames'
+matrix colnames V = `newnames'
+
+
+
+    // Step 6: Re-post and overwrite
+// Store required metadata before clearing
+
+local N = e(N)
+local df_r = e(df_r)
+ereturn clear
+ereturn post b V, depname("`aiv'") obs(`N') dof(`df_r')
+eststo `firststo'
+
+estimates restore `eststo'
+}
+
+}
+
+* restore saved models to what the user specified
 	quietly {
 	local new_models "" 
 	quiet est dir
@@ -1001,20 +1159,8 @@ if "`undef'" != "undef" {
 		}
 	}
 	}
+
 	
-	* rename first stage
-		if "`firststo'" != "" {
-			qui est restore _ivreg2_`h'
-			qui est store `firststo'
-			qui est restore `eststo'
-			qui est drop _ivreg2_`h'
-			
-		}
-		if "`firststo'" == "" {
-			local firststo = "_ivreg2_`h'"
-		}
-	
-	* fix outputs for results
 	
 	if "`savefirst'" == "savefirst" {
 		if "`undef'" != "undef"{
@@ -1027,9 +1173,12 @@ if "`undef'" != "undef" {
 	else if "`est_opt'" == "1" {
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"	
 	}
+	
+	
+restore
 
-	restore
 end
+	
 
 
 cap program drop aivgmm
