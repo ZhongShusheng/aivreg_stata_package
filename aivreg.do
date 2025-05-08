@@ -1360,7 +1360,64 @@ program define aivgmm, eclass
 	}
 	*------------------------------------------------------------------*
 
-    gmm `moment_eq' `if' `in' `weight', `derivspec' instruments(`insts', noconstant)  winit(id) `steps' `vce' `savefirst' from(`pars') conv_ptol(`conv_ptol') conv_vtol(`conv_vtol') technique(`technique') conv_maxiter(`conv_maxiter') tracelevel(`tracelevel') igmmiterate(`igmmiterate') igmmeps(`igmmeps') igmmweps(`igmmweps')
+
+
+    quiet gmm `moment_eq' `if' `in' `weight', `derivspec' instruments(`insts', noconstant)  winit(id) `steps' `vce' from(`pars') conv_ptol(`conv_ptol') conv_vtol(`conv_vtol') technique(`technique') conv_maxiter(`conv_maxiter') igmmiterate(`igmmiterate') igmmeps(`igmmeps') igmmweps(`igmmweps')
+		
+	// Capture key matrices
+	matrix b = e(b)
+	matrix V = e(V)
+
+	// Optionally relabel row/column names
+	// (Only needed if you want to replace generic labels like "safety" with something pretty)
+
+	// Pull out obs and dof
+	local N = e(N)
+	local dof = e(J_df)
+
+	// Optionally: extract partial F-stat if your aivgmm program saved it
+	local Q = e(Q)
+
+
+	// Display clean summary like aivreglinear
+	display ""
+	local align_col 60
+	local pad1 = `align_col' - length("Number of obs") - length("Anti-IV GMM")
+	display "Anti-IV GMM" _dup(`pad1') " " "Number of obs = " "`N'"
+
+	local pad2 = `align_col' - length("Criteria Function")
+	display _dup(`pad2') " " "Criteria function = " `Q'
+
+	// Collect and display clean table
+	collect clear 
+	collect get `depvar' = "Coef.", tags(Col[Coef])
+	collect get `depvar' = "Std. Err.", tags(Col[SE])
+	collect get `depvar' = "t", tags(Col[t])
+	collect get `depvar' = "P>|t|", tags(Col[p])
+	collect get `depvar' = "[95% Conf.", tags(Col[CI_L])
+	collect get `depvar' = "Interval]", tags(Col[CI_U])
+
+	foreach var of local explist {
+		local coef = b[1, "`var':_cons"]
+		local se = sqrt(V["`var':_cons", "`var':_cons"])
+		local tstat = `coef' / `se'
+		local pval = 2 * ttail(`dof', abs(`tstat'))
+		local lb = `coef' - 1.96 * `se'
+		local ub = `coef' + 1.96 * `se'
+
+		collect get `var' = `coef', tags(Col[Coef])
+		collect get `var' = `se', tags(Col[SE])
+		collect get `var' = `tstat', tags(Col[t])
+		collect get `var' = `pval', tags(Col[p])
+		collect get `var' = `lb', tags(Col[CI_L])
+		collect get `var' = `ub', tags(Col[CI_U])
+	}
+
+	collect style header Col, level(hide)
+	collect style cell result[`depvar'], border(bottom) border(top, pattern(nil)) // new column names
+	collect style cell, sformat(" %s")
+	quiet collect layout (result) (Col)
+	collect preview
 		
 	if "`eststo'" != "" {
 		eststo `eststo'
@@ -1369,4 +1426,5 @@ program define aivgmm, eclass
 	
 	
 end
+
 

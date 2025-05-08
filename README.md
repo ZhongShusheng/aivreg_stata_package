@@ -182,7 +182,7 @@ t statistics in parentheses
 
 ## Syntax for GMM estimator
 
-aivreg gmm depvar varlist [if] [in], aiv(varlist) [weight(string)] [control(varlist)] [fe(varlist)] [vce(string)] [reps(string)] [eststo(string)] [vce(string)] [cluster(string)] [savefirst] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] [igmmeps(string)] [igmmweps(string)] [technique(string)] [conv_maxiter(string)] [tracelevel(string)] 
+aivreg gmm depvar varlist [if] [in], aiv(varlist) [weight(string)] [control(varlist)] [fe(varlist)] [vce(string)] [reps(string)] [eststo(string)] [vce(string)] [cluster(string)] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] [igmmeps(string)] [igmmweps(string)] [technique(string)] [conv_maxiter(string)] 
 
 ## Input List (GMM Version)
  - **estimator** specify "gmm" for GMM estimation; otherwise leave blank  
@@ -194,8 +194,7 @@ aivreg gmm depvar varlist [if] [in], aiv(varlist) [weight(string)] [control(varl
  - **eststo** specifies the model name to store the estimates under  
  - **vce** specify standard error estimation: asymp is the default; boot computes bootstrapped SE; cluster(varname) clusters SEs  
  - **reps** number of repetitions (for bootstrap only)  
- - **cluster** cluster variables for standard errors  
- - **savefirst** saves and reports the first stage residual specification  
+ - **cluster** cluster variables for standard errors    
  - **steps** specify GMM steps (onestep, twostep, or iterated)  
  - **conv_ptol** parameter convergence tolerance for GMM  
  - **conv_vtol** objective function convergence tolerance for GMM  
@@ -204,7 +203,6 @@ aivreg gmm depvar varlist [if] [in], aiv(varlist) [weight(string)] [control(varl
  - **igmmweps** weighting matrix tolerance for IGMM convergence  
  - **technique** optimization technique used in GMM (e.g., nr, bfgs)  
  - **conv_maxiter** maximum number of iterations allowed  
- - **tracelevel** controls verbosity during estimation  
 
 ## Return List (GMM Version)
  - See Stata's gmm manual

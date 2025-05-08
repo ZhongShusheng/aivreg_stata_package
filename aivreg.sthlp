@@ -84,9 +84,9 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 {phang} {cmd:aivreg gmm} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], 
 {cmd:aiv}({it:varlist}) [{cmd:weight}({it:string})] [{cmd:control}({it:varlist})] [{cmd:fe}({it:varlist})] 
 [{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:eststo}({it:string})] [{cmd:cluster}({it:varlist})]
-[{cmd:savefirst}] [{cmd:steps}({it:string})] [{cmd:conv_ptol}({it:string})] [{cmd:conv_vtol}({it:string})] 
+[{cmd:steps}({it:string})] [{cmd:conv_ptol}({it:string})] [{cmd:conv_vtol}({it:string})] 
 [{cmd:igmmiterate}({it:string})] [{cmd:igmmeps}({it:string})] [{cmd:igmmweps}({it:string})]
-[{cmd:technique}({it:string})] [{cmd:conv_maxiter}({it:string})] [{cmd:tracelevel}({it:string})]
+[{cmd:technique}({it:string})] [{cmd:conv_maxiter}({it:string})]
 
 {title:Input List (GMM Version)}
 
@@ -110,8 +110,6 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 
 {phang} - {bf:cluster} cluster variables for standard errors
 
-{phang} - {bf:savefirst} saves the first stage residual specification
-
 {phang} - {bf:steps} specify GMM steps (onestep, twostep, or iterated)
 
 {phang} - {bf:conv_ptol} parameter convergence tolerance
@@ -127,8 +125,6 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 {phang} - {bf:technique} optimization technique (e.g., nr, bfgs)
 
 {phang} - {bf:conv_maxiter} maximum number of iterations allowed
-
-{phang} - {bf:tracelevel} controls verbosity during estimation
 
 {title:Return List (GMM Version)}
 
