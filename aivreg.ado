@@ -485,7 +485,6 @@ preserve
 	local N = `n'
 	local DOF = `n' - `k'
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
-	ereturn scalar Partial_F = `partial_F'
 	eststo `eststo'
 	}
 	
@@ -691,7 +690,6 @@ else if "`vce'" == "boot"{ // bootstrap case
     local N = `n'
 	local DOF = `n' - `k'
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
-	ereturn scalar Partial_F = `partial_F'
 	eststo `eststo'
 	}
 	
@@ -969,7 +967,7 @@ if "`undef'" != "undef" {
 	local N = `n'
 	local DOF = `n' - `k'
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
-	ereturn scalar Partial_F = `partial_F'
+	/*
 	foreach z of varlist `zlist' {
 			ereturn scalar beta`z' = `beta`z''
 			ereturn scalar SE_AR`z' = `SE_AR`z''
@@ -978,7 +976,7 @@ if "`undef'" != "undef" {
 			ereturn scalar lb_AR`z' = `lb_AR`z''
 			ereturn scalar ub_AR`z' = `ub_AR`z''
 	}
-	
+	*/
 	eststo `eststo'
 	}
 	}
@@ -1173,7 +1171,7 @@ estimates restore `eststo'
 	else if "`est_opt'" == "1" {
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"	
 	}
-	
+	ereturn scalar Partial_F = `partial_F'
 	
 restore
 
@@ -1426,4 +1424,3 @@ program define aivgmm, eclass
 	
 	
 end
-
