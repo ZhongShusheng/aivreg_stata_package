@@ -22,9 +22,7 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 {cmd:aiv}({it:varlist}) [{cmd:control}({it:string})] [{cmd:fe}({it:varlist})] [{cmd:weight}({it:string})] 
 [{cmd:eststo}({it:string})] [{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:seed}({it:string})] 
 [{cmd:cluster}({it:varlist})] [{cmd:savefirst}] [{cmd:firststo}({it:string})] [{cmd:displayaiv}] 
-[{cmd:steps}({it:string})] [{cmd:conv_ptol}({it:string})] [{cmd:conv_vtol}({it:string})] 
-[{cmd:igmmiterate}({it:string})] [{cmd:igmmeps}({it:string})] [{cmd:igmmweps}({it:string})] 
-[{cmd:technique}({it:string})] [{cmd:conv_maxiter}({it:string})] [{cmd:tracelevel}({it:string})]
+[{cmd:conv_ptol}({it:string})] 
 
 {title:Syntax for OLS Estimator}
 
@@ -71,7 +69,7 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 
 {phang} - {bf:Coef.} Coefficient for the amenity "var" (Available with {cmd:e(beta_varname)})
 
-{phang} - {bf:Std. Err.} Standard error of the coefficient (in Anderson-Rubin case, approximated from CI) (Available with {cmd:e(SE_vcevarname)})
+{phang} - {bf:Std. Err.} Standard error of the coefficient (in Anderson-Rubin case, approximated from CI using the side closest to zero / 1.96) (Available with {cmd:e(SE_vcevarname)})
 
 {phang} - {bf:t} t-statistic estimate of the coefficient (Available with {cmd:e(t_val_varname)})
 
@@ -82,12 +80,7 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 {title:Syntax for GMM Estimator}
 
 {phang} {cmd:aivreg gmm} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], 
-{cmd:aiv}({it:varlist}) [{cmd:weight}({it:string})] [{cmd:control}({it:varlist})] [{cmd:fe}({it:varlist})] 
-[{cmd:vce}({it:string})] [{cmd:reps}({it:string})] [{cmd:eststo}({it:string})] [{cmd:cluster}({it:varlist})]
-[{cmd:steps}({it:string})] [{cmd:conv_ptol}({it:string})] [{cmd:conv_vtol}({it:string})] 
-[{cmd:igmmiterate}({it:string})] [{cmd:igmmeps}({it:string})] [{cmd:igmmweps}({it:string})]
-[{cmd:technique}({it:string})] [{cmd:conv_maxiter}({it:string})]
-
+{cmd:aiv}({it:varlist}) [{cmd:weight}({it:string})] [{cmd:control}({it:varlist})] [{cmd:eststo}({it:string})] [{cmd:cluster}({it:varlist})]
 {title:Input List (GMM Version)}
 
 {phang} - {bf:estimator} specify "gmm" for GMM estimation; otherwise leave blank
@@ -100,35 +93,24 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 
 {phang} - {bf:control} specify the list of exogenous control variables
 
-{phang} - {bf:weight} specifies weighting options
-
 {phang} - {bf:eststo} specifies the model name to store the estimates under
-
-{phang} - {bf:vce} specify standard error estimation: asymp (default), boot, or cluster(varname)
-
-{phang} - {bf:reps} number of repetitions (for bootstrap only)
 
 {phang} - {bf:cluster} cluster variables for standard errors
 
-{phang} - {bf:steps} specify GMM steps (onestep, twostep, or iterated)
-
-{phang} - {bf:conv_ptol} parameter convergence tolerance
-
-{phang} - {bf:conv_vtol} objective function convergence tolerance
-
-{phang} - {bf:igmmiterate} number of iterations for IGMM
-
-{phang} - {bf:igmmeps} parameter tolerance for IGMM
-
-{phang} - {bf:igmmweps} weighting matrix tolerance for IGMM
-
-{phang} - {bf:technique} optimization technique (e.g., nr, bfgs)
-
-{phang} - {bf:conv_maxiter} maximum number of iterations allowed
 
 {title:Return List (GMM Version)}
 
-{phang} See Stata’s {browse "https://www.stata.com/manuals13/rgmm.pdf":gmm manual} for full list of returned results.
+{phang} - {bf:b} the coefficients vector
+
+{phang} - {bf:V} the covariance matrix of the coefficients vector
+
+{phang} - {pval_J} the p value of the J-test
+
+{phang} - {Jval} the test statistic of th J-test
+
+{phang} - {df_r} the degrees of freedom
+
+{phang} - {N} the number of observations
 
 {title:References}
 

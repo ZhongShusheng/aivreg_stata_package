@@ -8,7 +8,8 @@ The Stata **aivreg** command implements the anti-IV method developed in [Bell, B
 - Put **aivreg.ado** and **aivreg.sthlp** in the _PERSONAL_ directory
 
 ## General syntax
- **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] [igmmeps(string)] [igmmweps(string)] [technique(string)] [conv_maxiter(string)] [tracelevel(string)]
+
+ **aivreg** depvar varlist [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv] 
 
 ## Syntax for OLS estimator
 
@@ -33,7 +34,7 @@ The Stata **aivreg** command implements the anti-IV method developed in [Bell, B
 ## Return List
  - **Coef.** Coefficient for the amenity "var". (Available with "e(beta_varname)")
  - **[95% Conf. Interval]** 95% confidence interval for the coefficient (Available with "e(ub\__vcevarname)" and "e(lb\__vcevarname)"). Default to Anderson-Rubin confidence interval. 
- - **Std. Err.** Standard error of the coefficient (in the Anderson-Rubin case, this is approximated from the confidence interval) (Available with "e(SE\__vcevarname)")
+ - **Std. Err.** Standard error of the coefficient (in the Anderson-Rubin case, this is approximated from the confidence interval using the side closest to zero / 1.96) (Available with "e(SE\__vcevarname)")
  - **t** t-statistic estimate of the coefficient (Available with "e(t\_val_varname)")
  - **P>|t|** p value based on the t-statistic (Available with "e(p\__varname)")
   - **Partial F** Partial F-Stat at the first stage comparing with and without the depvar as a control. (Available with "e(Partial_F)")
@@ -180,30 +181,23 @@ safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
  ```
 
 ## Syntax for GMM estimator
-aivreg gmm depvar varlist [if] [in], aiv(varlist) [weight(string)] [control(varlist)] [fe(varlist)] [vce(string)] [reps(string)] [eststo(string)] [vce(string)] [cluster(string)] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] [igmmeps(string)] [igmmweps(string)] [technique(string)] [conv_maxiter(string)] 
-
+aivreg gmm depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(string)] [eststo(string)] [cluster(string)]
 ## Input List (GMM Version)
  - **estimator** specify "gmm" for GMM estimation; otherwise leave blank  
  - **depvar** the outcome variable  
  - **varlist** the list of endogenous regressors or amenities  
  - **aiv** a list of one or more anti-IV variables (multiple allowed with GMM)  
  - **control** specify the list of exogenous control variables  
- - **weight** specifies weighting options; if specified, you should include the full weighting statement, e.g.: weight([w=wt])  
- - **eststo** specifies the model name to store the estimates under  
- - **vce** specify standard error estimation: asymp is the default; boot computes bootstrapped SE; cluster(varname) clusters SEs  
- - **reps** number of repetitions (for bootstrap only)  
+ - **eststo** specifies the model name to store the estimates under    
  - **cluster** cluster variables for standard errors    
- - **steps** specify GMM steps (onestep, twostep, or iterated)  
- - **conv_ptol** parameter convergence tolerance for GMM  
- - **conv_vtol** objective function convergence tolerance for GMM  
- - **igmmiterate** number of iterations for IGMM  
- - **igmmeps** parameter tolerance for IGMM convergence  
- - **igmmweps** weighting matrix tolerance for IGMM convergence  
- - **technique** optimization technique used in GMM (e.g., nr, bfgs)  
- - **conv_maxiter** maximum number of iterations allowed  
 
 ## Return List (GMM Version)
- - See Stata's gmm manual
+ - **b** coefficients vector.
+ - **V** covariance matrix of coefficient estimates.
+ - **pval_J** scalar value of the p value of the J-test.
+ - **Jval** the test statistic of the J-test.
+ - **df_r** the degrees of freedom.
+ - **N** the number of observations.
 
 
 ## Reference

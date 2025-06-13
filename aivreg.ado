@@ -43,13 +43,8 @@ program define aivreg, eclass
 			technique(`technique') conv_maxiter(`conv_maxiter') ///
 			tracelevel(`tracelevel') reps(`reps')
 			
-			aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			weight(`weight') vce(`vce') steps(`steps') eststo(`eststo') /// 
-			technique(`technique') conv_maxiter(`conv_maxiter') /// 
-			conv_ptol(`conv_ptol') conv_vtol(`conv_vtol') /// 
-			igmmiterate(`igmmiterate') igmmeps(`igmmeps') /// 
-			igmmweps(`igmmweps') cluster(`cluster') reps(`reps')
-
+		aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
+			eststo(`eststo') cluster(`cluster')
 			
     }
     else if inlist("`estimator'", "lin", "ols") {
@@ -1178,213 +1173,397 @@ restore
 end
 	
 
-
 cap program drop aivgmm
-
 program define aivgmm, eclass
-    
-    ******************************************************
-	/*
-      Syntax
-        aivgmm depvar expvars [if] [in] , aiv(varlist) \
-               [control(varlist)] [fe(varlist)]          \
-               [vce(string)] [steps(string)]
-      ----------------------------------------------------
-        depvar              outcome variable
-        expvars             one **or more** potentially‑endogenous regressors
-        aiv(varlist)        auxiliary instruments (one or more)
-        control(varlist)    exogenous control regressors (optional)
-		*/
-    ******************************************************
+    version 17
 
-    syntax varlist(min=2) [if] [in], aiv(varlist) [weight(string)] [control(varlist)] [vce(string)] [reps(string)] [eststo(string)] [vce(string)] [cluster(string)] [savefirst] [steps(string)] [conv_ptol(string)] [conv_vtol(string)] [igmmiterate(string)] ///
-		 [igmmeps(string)] [igmmweps(string)] [technique(string)] ///
-		 [conv_maxiter(string)] [tracelevel(string)] 
+    // Accept full varlist and separate out the depvar
+    syntax varlist [if], ///
+        aiv(varlist numeric) ///
+		[control(varlist)] ///
+		[eststo(string)] ///
+		[cluster(varlist)]
 
-     ********************
-     * 1. Parse inputs *
-     ********************
-    tokenize `varlist'               // depvar followed by endogenous variables
-    local depvar `1'
-    macro shift                       // now `*' holds all expvars
-    local explist `*'
-    local nexp   : word count `explist'
+	preserve	
 
-    local ctrls "`control'"          // may be empty
-    local nctrl : word count `ctrls'
+    // Get depvar variable from varlist
+	
+	quietly {
+		keep `varlist' `aiv' `control' `cluster'
+		* Create a count of missing values per row
+		egen nmiss = rowmiss(*)
 
-     ***********************************************
-     * 2. Build pieces that will enter the residual
-     ***********************************************
-
-    * 2a. Coefficient parameters & starting values for each expvar
-    local pars ""                       // will accumulate starting values
-    foreach e of local explist {
-        local pars "`pars' `e' 0"      // β_e starts at 0 (can be refined)
-    }
-
-    * 2b. Controls part of the residual and their starting values
-    local ctrl_resid ""
-    if "`ctrls'" != "" {
-        foreach c of local ctrls {
-            local ctrl_resid "`ctrl_resid' - {`c'}*`c'"
-            local pars       "`pars' `c' 0"   // γ_c parameter, start=0
-        }
-    }
-
-     ***************************************
-     * 3. Mean of depvar for constant start
-     ***************************************
-    quietly summarize `depvar', meanonly
-    local meandep = r(mean)
-
-     ************************************************
-     * 4. Construct moment conditions looped over AIVs
-     ************************************************
-
-    local moment_eq ""
-    local count    = 1        // AIV counter (for constants)
-
-    foreach h of local aiv {
-
-        * 4a. Residual expression for this AIV
-        local resid "`depvar'"
-        foreach e of local explist {
-            local resid "`resid' - {`e'}*`e'"
-        }
-        local resid "`resid' - {`h'}*`h' `ctrl_resid' - {const`count'}"
-
-        * 4b. Moment block for this AIV
-        local block ""
-        foreach e of local explist {
-            local block "`block' ((`resid')*`e')"
-        }
-        if `count' == 1 {                 // add additional orthogonality conditions only for first AIV
-            local block "`block' ((`resid')*`depvar') (`resid')"
-        }
-        else {                            // for other AIVs keep residual*expvars + residual
-            local block "`block' (`resid')"
-        }
-
-        local moment_eq "`moment_eq' `block'"
-
-        * 4c. Add starting‑value placeholders for this AIV‑specific coeff & constant
-        local pars "`pars' `h' 0 const`count' `meandep'"
-
-        local ++count
-    }
-
-     *********************************
-     * 5. Assemble instrument list   *
-     *********************************
-    local insts "`depvar' `explist'"
-    if "`ctrls'" != "" local insts "`insts' `ctrls'"
-
-     *************************
-     * 6. Run the GMM system *
-     *************************
-	 if "`vce'" == "cluster" {
-	 	local vce = "vce(`vce' `cluster')"
-	 }
-	 else if "`vce'" == "boot" | "`vce'" == "boots" | "`vce'" == "bootst" | "`vce'" == "bootstr" | "`vce'" == "bootstra" | "`vce'" == "bootstrap" {
-	 	if "`reps'" == "" {
-			local reps = 50
-		}
-	 	local vce = "vce(`vce', `reps')"
-	 }
-	 else if "`vce'" != "" {
-	 	local vce = "vce(`vce')"
-	 }
-
-	*------------------------------------------------------------------*
-	*  Derivative list: include d/d β_e′ for *all* endogenous betas
-	*------------------------------------------------------------------*
-	local deriv_spec ""
-	local eq   = 1
-	local kcnt = 1      // AIV counter (const1, const2, ...)
-
-	foreach h of local aiv {
-
-		/* ---------- residual × each endogenous regressor -------------- */
-		foreach e1 of local explist {                    // e1 is outside
-			foreach e2 of local explist {                // e2 is parameter
-				local deriv_spec "`deriv_spec' deriv(`eq'/`e2' = -`e2'*`e1')"
-			}
-			local deriv_spec "`deriv_spec' deriv(`eq'/`h' = -`h'*`e1')"
-			foreach c of local ctrls {
-				local deriv_spec "`deriv_spec' deriv(`eq'/`c' = -`c'*`e1')"
-			}
-			local deriv_spec "`deriv_spec' deriv(`eq'/const`kcnt' = -`e1')"
-			local ++eq
-		}
-
-		/* ---------- extra equations for first AIV --------------------- */
-		if `kcnt' == 1 {
-			/* residual × depvar */
-			foreach e2 of local explist {
-				local deriv_spec "`deriv_spec' deriv(`eq'/`e2' = -`e2'*P1)"
-			}
-			local deriv_spec "`deriv_spec' deriv(`eq'/`h' = -`h'*P1')"
-			foreach c of local ctrls {
-				local deriv_spec "`deriv_spec' deriv(`eq'/`c' = -`c'*P1)"
-			}
-			local deriv_spec "`deriv_spec' deriv(`eq'/const`kcnt' = -P1)"
-			local ++eq
-
-			/* residual alone */
-			foreach e2 of local explist {
-				local deriv_spec "`deriv_spec' deriv(`eq'/`e2' = -`e2')"
-			}
-			local deriv_spec "`deriv_spec' deriv(`eq'/`h' = -`h')"
-			foreach c of local ctrls {
-				local deriv_spec "`deriv_spec' deriv(`eq'/`c' = -`c')"
-			}
-			local deriv_spec "`deriv_spec' deriv(`eq'/const`kcnt' = -1)"
-			local ++eq
-		}
-		else {   /* residual alone for other AIVs */
-			foreach e2 of local explist {
-				local deriv_spec "`deriv_spec' deriv(`eq'/`e2' = -`e2')"
-			}
-			local deriv_spec "`deriv_spec' deriv(`eq'/`h' = -`h')"
-			foreach c of local ctrls {
-				local deriv_spec "`deriv_spec' deriv(`eq'/`c' = -`c')"
-			}
-			local deriv_spec "`deriv_spec' deriv(`eq'/const`kcnt' = -1)"
-			local ++eq
-		}
-
-		local ++kcnt
+		* Drop any observation with at least one missing
+		drop if nmiss > 0
+		drop nmiss
 	}
-	*------------------------------------------------------------------*
 
+	
+    local depvar : word 1 of `varlist'
+	local varlist `varlist'
+	local depvar `depvar'
+	local instruments : list varlist - depvar
+	local amenities `instruments'
+	local varlist `varlist' `control'
+	local instruments `instruments' `control'
+	local varlist `depvar'
+	local namen : word count `instruments'
+    local nvars : word count `varlist'
 
+    // Set dimensions
+    local k : word count `instruments'
+    local L : word count `aiv'
+    local rowlen = `k' + 2
+    local nX = `rowlen' * `L'
+    local Trows = `k' + 2 * `L'
 
-    quiet gmm `moment_eq' `if' `in' `weight', `derivspec' instruments(`insts', noconstant)  winit(id) `steps' `vce' from(`pars') conv_ptol(`conv_ptol') conv_vtol(`conv_vtol') technique(`technique') conv_maxiter(`conv_maxiter') igmmiterate(`igmmiterate') igmmeps(`igmmeps') igmmweps(`igmmweps')
+    // Create a working copy of depvar
+    tempvar Pval
+    gen double `Pval' = `depvar'
+	
+
+    // Initialize accumulators
+    matrix XT = J(`nX', `Trows', 0)
+    matrix XP = J(`nX', 1, 0)
+
+    local row = 1
+    *quietly {
+        forvalues i = 1/`=_N' {
+
+            // Build zi
+            matrix zi = J(1, `k', .)
+            forvalues j = 1/`k' {
+                local zj : word `j' of `instruments'
+                matrix zi[1, `j'] = `zj'[`i']
+            }
+
+            // Build hi
+            matrix hi = J(1, `L', .)
+            forvalues j = 1/`L' {
+                local hj : word `j' of `aiv'
+                matrix hi[1, `j'] = `hj'[`i']
+            }
+
+            scalar pi = `Pval'[`i']
+            matrix tmp = (zi, pi, 1)
+
+            // Build Xvec
+            matrix Xvec = J(1, `nX', .)
+            forvalues l = 0/`=`L'-1' {
+                forvalues j = 1/`rowlen' {
+                    local col = `l'*`rowlen' + `j'
+                    matrix Xvec[1, `col'] = tmp[1, `j']
+                }
+            }
+
+            matrix Xi = diag(Xvec)
+			
+            // Build Ttop
+            matrix Ttop = J(`k', `nX', 0)
+            forvalues r = 1/`k' {
+                forvalues c = 1/`nX' {
+					local zi_temp = zi[1, `r']
+                    matrix Ttop[`r', `c'] = `zi_temp'
+                }
+            }
+
+            // Build Tbot
+            matrix Tbot = J(2*`L', `nX', 0)
+            forvalues l = 0/`=`L'-1' {
+                forvalues j = 1/`rowlen' {
+                    local col = `l' * `rowlen' + `j'
+					local hi_temp = hi[1, `l'+1]
+                    matrix Tbot[2*`l'+1, `col'] = `hi_temp'
+                    matrix Tbot[2*`l'+2, `col'] = 1
+                }
+            }
+
+            matrix Tmat = Ttop \ Tbot
+			matrix Pmat = J(`nX', 1, pi)
+			
+            matrix XT_i = Xi * Tmat'
+            matrix XP_i = Xi * Pmat
+
+            matrix XT = XT + XT_i
+            matrix XP = XP + XP_i
+
+            local row = `row' + 1
+        }
+    *}
+
+    // Estimate theta
+
+		matrix XT = XT / `=_N'
+		matrix XP = XP / `=_N'
+	    matrix XtX = XT' * XT
+        matrix XtXinv = invsym(XtX)
+		matrix XtXP = XT' * XP
 		
-	// Capture key matrices
-	matrix b = e(b)
-	matrix V = e(V)
-
-	// Optionally relabel row/column names
-	// (Only needed if you want to replace generic labels like "safety" with something pretty)
-
-	// Pull out obs and dof
-	local N = e(N)
-	local dof = e(J_df)
-
-	// Optionally: extract partial F-stat if your aivgmm program saved it
-	local Q = e(Q)
+		matrix theta = XtXinv * XtXP
 
 
+* make moments here
+
+if "`cluster'" == "" {
+	local row = 1
+        forvalues i = 1/`=_N' {
+
+            // Build zi
+            matrix zi = J(1, `k', .)
+            forvalues j = 1/`k' {
+                local zj : word `j' of `instruments'
+                matrix zi[1, `j'] = `zj'[`i']
+            }
+
+            // Build hi
+            matrix hi = J(1, `L', .)
+            forvalues j = 1/`L' {
+                local hj : word `j' of `aiv'
+                matrix hi[1, `j'] = `hj'[`i']
+
+            }
+
+            scalar pi = `Pval'[`i']
+            matrix tmp = (zi, pi, 1)
+
+            // Build Xvec
+            matrix Xvec = J(1, `nX', .)
+            forvalues l = 0/`=`L'-1' {
+                forvalues j = 1/`rowlen' {
+                    local col = `l'*`rowlen' + `j'
+                    matrix Xvec[1, `col'] = tmp[1, `j']
+                }
+            }
+
+            matrix Xi = diag(Xvec)
+			
+            // Build Ttop
+            matrix Ttop = J(`k', `nX', 0)
+            forvalues r = 1/`k' {
+                forvalues c = 1/`nX' {
+					local zi_temp = zi[1, `r']
+                    matrix Ttop[`r', `c'] = `zi_temp'
+                }
+            }
+
+            // Build Tbot
+            matrix Tbot = J(2*`L', `nX', 0)
+            forvalues l = 0/`=`L'-1' {
+                forvalues j = 1/`rowlen' {
+                    local col = `l' * `rowlen' + `j'
+					local hi_temp = hi[1, `l'+1]
+                    matrix Tbot[2*`l'+1, `col'] = `hi_temp'
+                    matrix Tbot[2*`l'+2, `col'] = 1
+                }
+            }
+
+            matrix Tmat = Ttop \ Tbot
+
+			matrix epsilon = Xi * (Pmat - Tmat' * theta)
+
+			if `i' == 1 {
+				matrix Moments = J(`nX',`=_N',.)
+			}
+			
+
+            matrix XT_i = Xi * Tmat'
+            matrix XP_i = Xi * Pmat
+
+            matrix XT = XT + XT_i
+            matrix XP = XP + XP_i
+			
+			forvalues val = 1/`nX' {
+				scalar tempnum = epsilon[`val',1]
+				matrix Moments[`val',`i'] = tempnum
+			}
+
+            local row = `row' + 1
+        }
+
+
+}
+
+if "`cluster'" != ""{
+tempvar clustvar
+gettoken clustvar rest : cluster
+
+
+quiet levelsof `clustvar', local(cluster_ids)
+
+local G : word count `cluster_ids'
+
+matrix Moments_by_cluster = J(`nX', `G', 0)
+
+local g = 1
+foreach cl of local cluster_ids {
+
+    matrix gsum = J(`nX', 1, 0)
+
+
+        forvalues i = 1/`=_N' {
+            if `clustvar'[`i'] != `cl' {
+                continue
+            }
+
+            // Build zi
+            matrix zi = J(1, `k', .)
+            forvalues j = 1/`k' {
+                local zj : word `j' of `instruments'
+                matrix zi[1, `j'] = `zj'[`i']
+            }
+
+            // Build hi
+            matrix hi = J(1, `L', .)
+            forvalues j = 1/`L' {
+                local hj : word `j' of `aiv'
+                matrix hi[1, `j'] = `hj'[`i']
+            }
+
+            scalar pi = `Pval'[`i']
+            matrix tmp = (zi, pi, 1)
+
+            matrix Xvec = J(1, `nX', .)
+            forvalues l = 0/`=`L'-1' {
+                forvalues j = 1/`rowlen' {
+                    local col = `l'*`rowlen' + `j'
+                    matrix Xvec[1, `col'] = tmp[1, `j']
+                }
+            }
+
+            matrix Xi = diag(Xvec)
+
+            // Build Tmat
+            matrix Ttop = J(`k', `nX', 0)
+            forvalues r = 1/`k' {
+                forvalues c = 1/`nX' {
+                    local zi_temp = zi[1, `r']
+                    matrix Ttop[`r', `c'] = `zi_temp'
+                }
+            }
+
+            matrix Tbot = J(2*`L', `nX', 0)
+            forvalues l = 0/`=`L'-1' {
+                forvalues j = 1/`rowlen' {
+                    local col = `l' * `rowlen' + `j'
+                    local hi_temp = hi[1, `l'+1]
+                    matrix Tbot[2*`l'+1, `col'] = `hi_temp'
+                    matrix Tbot[2*`l'+2, `col'] = 1
+                }
+            }
+
+            matrix Tmat = Ttop \ Tbot
+            matrix epsilon = Xi * (Pmat - Tmat' * theta)
+            matrix gsum = gsum + epsilon
+        }
+
+
+    // Store the summed moment for this cluster
+    forvalues r = 1/`nX' {
+        scalar gval = gsum[`r',1]
+        matrix Moments_by_cluster[`r', `g'] = gval
+    }
+
+    local ++g
+}
+}
+
+matrix XT = XT / `=_N'
+if "`cluster'" == "" {
+    matrix Moments_all = Moments
+    matrix S        = (Moments_all * Moments_all') / `=_N'
+    matrix gbar     = Moments_all * J(`=_N',1,1) / `=_N'
+}
+else {
+    matrix S = (Moments_by_cluster * Moments_by_cluster') / (`=_N'^2)
+	matrix onesG = J(`G',1,1)
+    matrix gbar = Moments_by_cluster * onesG / `=_N'
+}
+
+
+matrix Vtheta = invsym(XT' * XT) * XT' * S * XT * invsym(XT' * XT)
+
+matrix Vtheta = Vtheta 
+
+matrix Vtheta = invsym(Vtheta)
+matrix Vtheta = Vtheta / sqrt(`=_N')
+
+
+	
+    matrix colnames theta = b
+
+	
+	matrix b = theta[1..`namen',1]
+    matrix V = Vtheta[1..`namen',1..`namen']
+
+	
+	foreach var of local instruments {
+		local names `names' `var'
+	}
+	
+	matrix b = b'
+	matrix colnames b = `names'
+	matrix rownames V = `names'
+	matrix colnames V = `names'
+
+	local N = `=_N'
+	local dof = `=_N' - `namen' - 2*`L'
+	
+	// J -Test
+if `L' > 1 {
+	// Compute average moment vector
+	matrix ones_mat = J(`=_N', 1, 1)
+
+
+
+	// Compute J-statistic
+	local Jdof = `L' * (`namen' + 2) - `namen' - 2*`L'
+
+	matrix Jstat = gbar' * invsym(S) * gbar / `=_N' 
+	scalar Jval = Jstat[1,1]
+	local Jval = string(Jval, "%9.4f")
+	local Jval : subinstr local Jval " " "", all
+
+	scalar pval_J = chi2tail(`Jdof', Jval)
+	local pval_J = string(pval_J, "%9.4f")
+	local pval_J : subinstr local pval_J " " "", all
+
+
+	*di as text _newline(1) "Test of overidentifying restrictions:"
+	*di as text "    Hansen J statistic = " as result %9.4f Jval
+	*di as text "    Degrees of freedom = " as result %9.0f `Jdof'
+	*di as text "    P-value            = " as result %9.4f pval_J
+}
+
+
+	
 	// Display clean summary like aivreglinear
 	display ""
 	local align_col 60
 	local pad1 = `align_col' - length("Number of obs") - length("Anti-IV GMM")
-	display "Anti-IV GMM" _dup(`pad1') " " "Number of obs = " "`N'"
+	display "Anti-IV GMM" _dup(`pad1') " " "Number of obs = " "`N'"	
+	if "`cluster'" == "" {
+		local pad2 = `align_col' - length("Number of anti-IVs")
+		display _dup(`pad2') " " "Number of anti-IVs = `L'"
+	}
+	else {
+		local pad2 = `align_col' - length("Number of anti-IVs") - length("SE clustered by `cluster'")
+		if `pad2' < 5 {
+			local pad2 = `align_col' - length("Number of anti-IVs") - length("Clustered SE")
+			display "Clustered SE" _dup(`pad2') " " "Number of anti-IVs = `L'"
+		}
+		else {
+			display "SE clustered by `cluster'" _dup(`pad2') " " "Number of anti-IVs = `L'"
+		}
 
-	local pad2 = `align_col' - length("Criteria Function")
-	display _dup(`pad2') " " "Criteria function = " `Q'
+	}
+
+	
+	if `L' > 1 {
+		local pad3 = `align_col' - length("J-stat") 
+		local pad4 = `align_col' - length("J-stat p value")
+		display _dup(`pad3') " " "J-stat = "  "`Jval'"
+		display _dup(`pad4') " " "J-stat p value = "  "`pval_J'"
+	}
 
 	// Collect and display clean table
 	collect clear 
@@ -1395,9 +1574,9 @@ program define aivgmm, eclass
 	collect get `depvar' = "[95% Conf.", tags(Col[CI_L])
 	collect get `depvar' = "Interval]", tags(Col[CI_U])
 
-	foreach var of local explist {
-		local coef = b[1, "`var':_cons"]
-		local se = sqrt(V["`var':_cons", "`var':_cons"])
+	foreach var of local amenities {
+		local coef = b[1, "`var'"]
+		local se = sqrt(V["`var'", "`var'"])
 		local tstat = `coef' / `se'
 		local pval = 2 * ttail(`dof', abs(`tstat'))
 		local lb = `coef' - 1.96 * `se'
@@ -1416,11 +1595,15 @@ program define aivgmm, eclass
 	collect style cell, sformat(" %s")
 	quiet collect layout (result) (Col)
 	collect preview
-		
+
+	ereturn post b V, dof(`dof') obs(`=_N')
+	ereturn scalar Jval = Jval
+	ereturn scalar pval_J = pval_J
+	
 	if "`eststo'" != "" {
 		eststo `eststo'
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"
 	}
 	
-	
+	restore
 end
