@@ -97,6 +97,8 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 
 {phang} - {bf:cluster} cluster variables for standard errors
 
+{phang} - {bf:weight} a weight matrix for the gmm, defaults to identity
+
 
 {title:Return List (GMM Version)}
 

@@ -44,7 +44,7 @@ program define aivreg, eclass
 			tracelevel(`tracelevel') reps(`reps')
 			
 		aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			eststo(`eststo') cluster(`cluster')
+			eststo(`eststo') cluster(`cluster') weight(`weight')
 			
     }
     else if inlist("`estimator'", "lin", "ols") {
@@ -1172,7 +1172,6 @@ restore
 
 end
 	
-
 cap program drop aivgmm
 program define aivgmm, eclass
     version 17
@@ -1182,10 +1181,12 @@ program define aivgmm, eclass
         aiv(varlist numeric) ///
 		[control(varlist)] ///
 		[eststo(string)] ///
-		[cluster(varlist)]
+		[cluster(varlist)] ///
+		[weight(string)]
 
 	preserve	
 
+	
     // Get depvar variable from varlist
 	
 	quietly {
@@ -1293,13 +1294,22 @@ program define aivgmm, eclass
     *}
 
     // Estimate theta
-
+		
 		matrix XT = XT / `=_N'
 		matrix XP = XP / `=_N'
-	    matrix XtX = XT' * XT
-        matrix XtXinv = invsym(XtX)
-		matrix XtXP = XT' * XP
 		
+
+		if "`weight'" == "" {
+			local XTrows = `: rowsof XT'
+			matrix weight = I(`XTrows')
+		}
+		else {
+			matrix weight = `weight'			
+		}
+		
+	    matrix XtX = XT' * weight * XT
+        matrix XtXinv = invsym(XtX)
+		matrix XtXP = XT' * weight * XP
 		matrix theta = XtXinv * XtXP
 
 
@@ -1481,7 +1491,7 @@ else {
 }
 
 
-matrix Vtheta = invsym(XT' * XT) * XT' * S * XT * invsym(XT' * XT)
+matrix Vtheta = invsym(XT' * weight *  XT) * XT' * weight *  S * weight *  XT * invsym(XT' * weight * XT)
 
 matrix Vtheta = Vtheta 
 
@@ -1608,5 +1618,7 @@ if `L' > 1 {
 	
 	restore
 end
+
+
 
 

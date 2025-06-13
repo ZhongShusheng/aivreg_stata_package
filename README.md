@@ -190,6 +190,7 @@ aivreg gmm depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(strin
  - **control** specify the list of exogenous control variables  
  - **eststo** specifies the model name to store the estimates under    
  - **cluster** cluster variables for standard errors    
+ - **weight** a weight matrix for the gmm, defaults to identity
 
 ## Return List (GMM Version)
  - **b** coefficients vector.
