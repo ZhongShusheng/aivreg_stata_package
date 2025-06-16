@@ -79,11 +79,11 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 
 {title:Syntax for GMM Estimator}
 
-{phang} {cmd:aivreg gmm} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], 
-{cmd:aiv}({it:varlist}) [{cmd:weight}({it:string})] [{cmd:control}({it:varlist})] [{cmd:eststo}({it:string})] [{cmd:cluster}({it:varlist})]
+{phang} {cmd:aivreg estimator} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], 
+{cmd:aiv}({it:varlist}) [{cmd:weight}({it:string})] [{cmd:control}({it:varlist})] [{cmd:eststo}({it:string})] [{cmd:cluster}({it:varlist})] [{cmd:weight}({it:Matrix})] [{it:displayaiv}]
 {title:Input List (GMM Version)}
 
-{phang} - {bf:estimator} specify "gmm" for GMM estimation; otherwise leave blank
+{phang} - {bf:estimator} specify "gmm" for GMM estimation; "2sls" for gmm with a weight matrix to match iv-reg implementation; otherwise leave blank
 
 {phang} - {bf:depvar} the outcome variable
 
@@ -99,6 +99,8 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 
 {phang} - {bf:weight} a weight matrix for the gmm, defaults to identity
 
+{phang} - {bf:displayaiv} display aiv coefficients
+
 
 {title:Return List (GMM Version)}
 
@@ -113,6 +115,10 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 {phang} - {df_r} the degrees of freedom
 
 {phang} - {N} the number of observations
+
+{phang} - {weight} the weight matrix
+
+{phang} - {S} the estimated covariance matrix of the moments
 
 {title:References}
 

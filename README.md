@@ -181,9 +181,11 @@ safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
  ```
 
 ## Syntax for GMM estimator
-aivreg gmm depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(string)] [eststo(string)] [cluster(string)]
+aivreg estimtor depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(string)] [eststo(string)] [cluster(string)] [weight(Matrix)] [displayaiv]
+
+
 ## Input List (GMM Version)
- - **estimator** specify "gmm" for GMM estimation; otherwise leave blank  
+ - **estimator** specify "gmm" for GMM estimation; "2sls" for GMM with weight matrix equivalent to iv-reg implementation; otherwise leave blank  
  - **depvar** the outcome variable  
  - **varlist** the list of endogenous regressors or amenities  
  - **aiv** a list of one or more anti-IV variables (multiple allowed with GMM)  
@@ -191,6 +193,7 @@ aivreg gmm depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(strin
  - **eststo** specifies the model name to store the estimates under    
  - **cluster** cluster variables for standard errors    
  - **weight** a weight matrix for the gmm, defaults to identity
+ - **displayaiv** displays the coefficients on the aiv
 
 ## Return List (GMM Version)
  - **b** coefficients vector.
@@ -199,6 +202,8 @@ aivreg gmm depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(strin
  - **Jval** the test statistic of the J-test.
  - **df_r** the degrees of freedom.
  - **N** the number of observations.
+ - **weight** weight matrix used.
+ - **S** estimated covariance of the moments.
 
 
 ## Reference

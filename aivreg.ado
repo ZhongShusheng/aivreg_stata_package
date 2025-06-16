@@ -28,23 +28,23 @@ program define aivreg, eclass
 
 	
     local nvars = wordcount("`aiv'")
-
-    if "`estimator'" == "gmm" | `nvars' > 1 {
-		if "`estimator'" != "gmm" {
+	
+    if "`estimator'" == "gmm" | "`estimator'" == "2sls" | `nvars' > 1 {
+		if "`estimator'" != "gmm" & "`estimator'" != "2sls" {
 			dis as text "Warning: Multiple anti-IVs inputted, switching to GMM"			
 		}
 		
 		if "`fe'" != "" {
 			dis "Warning: Fixed effects not available for GMM estimation"
 		}
-		
+
         *aivgmm `varlist' `if' `in', aiv(`aiv') ///
             control(`control') vce(`vce') steps(`steps') ///
 			technique(`technique') conv_maxiter(`conv_maxiter') ///
 			tracelevel(`tracelevel') reps(`reps')
 			
 		aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			eststo(`eststo') cluster(`cluster') weight(`weight')
+			eststo(`eststo') cluster(`cluster') weight(`weight') `displayaiv' `2sls'
 			
     }
     else if inlist("`estimator'", "lin", "ols") {
@@ -1182,17 +1182,37 @@ program define aivgmm, eclass
 		[control(varlist)] ///
 		[eststo(string)] ///
 		[cluster(varlist)] ///
-		[weight(string)]
+		[weight(string)] ///
+		[displayaiv] ///
+		[2sls]
 
 	preserve	
 
-	
-    // Get depvar variable from varlist
-	
 	quietly {
-		keep `varlist' `aiv' `control' `cluster'
+		if "`if'" != "" {
+			keep `if'
+		}
+		
+		if "`in'" != "" {
+			keep `in'
+		}
+		
+		// Get depvar variable from varlist
+
+		local keeplist `varlist' `aiv' 
+		
+		if "`control'" != "" {
+			local keeplist `keeplist' `control'
+		}
+		
+		if "`cluster'" != "" {
+			local keeplist `keeplist' `cluster'
+		}
+		
+		keep `keeplist'
+		
 		* Create a count of missing values per row
-		egen nmiss = rowmiss(*)
+		egen nmiss = rowmiss(`keeplist')
 
 		* Drop any observation with at least one missing
 		drop if nmiss > 0
@@ -1227,6 +1247,7 @@ program define aivgmm, eclass
     // Initialize accumulators
     matrix XT = J(`nX', `Trows', 0)
     matrix XP = J(`nX', 1, 0)
+	matrix effw = J(`nX', `nX',0)
 
     local row = 1
     *quietly {
@@ -1288,6 +1309,7 @@ program define aivgmm, eclass
 
             matrix XT = XT + XT_i
             matrix XP = XP + XP_i
+			matrix effw = effw + Xvec' * Xvec
 
             local row = `row' + 1
         }
@@ -1299,10 +1321,15 @@ program define aivgmm, eclass
 		matrix XP = XP / `=_N'
 		
 
-		if "`weight'" == "" {
+		if "`weight'" == "" & "`2sls'" == "" {
 			local XTrows = `: rowsof XT'
 			matrix weight = I(`XTrows')
 		}
+		else if "`2sls'" == "2sls" {
+			matrix effw = effw / `=_N'
+			matrix weight = invsym(effw)
+			mat list weight
+		} 
 		else {
 			matrix weight = `weight'			
 		}
@@ -1584,7 +1611,11 @@ if `L' > 1 {
 	collect get `depvar' = "P>|t|", tags(Col[p])
 	collect get `depvar' = "[95% Conf.", tags(Col[CI_L])
 	collect get `depvar' = "Interval]", tags(Col[CI_U])
-
+	
+	if "`displayaiv'" == "displayaiv" {
+		local amenities `amenities' `aiv'
+	}
+	
 	foreach var of local amenities {
 		local coef = b[1, "`var'"]
 		local se = sqrt(V["`var'", "`var'"])
@@ -1610,6 +1641,8 @@ if `L' > 1 {
 	ereturn post b V, dof(`dof') obs(`=_N')
 	ereturn scalar Jval = Jval
 	ereturn scalar pval_J = pval_J
+	ereturn matrix weight = weight
+	ereturn matrix S = S
 	
 	if "`eststo'" != "" {
 		eststo `eststo'
@@ -1618,4 +1651,5 @@ if `L' > 1 {
 	
 	restore
 end
+
 
