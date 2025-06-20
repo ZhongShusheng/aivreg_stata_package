@@ -42,9 +42,12 @@ program define aivreg, eclass
             control(`control') vce(`vce') steps(`steps') ///
 			technique(`technique') conv_maxiter(`conv_maxiter') ///
 			tracelevel(`tracelevel') reps(`reps')
+			if "`estimator'" == "2sls" {
+				local 2sls = "2sls"
+			}
 			
 		aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			eststo(`eststo') cluster(`cluster') weight(`weight') `displayaiv' `2sls'
+			eststo(`eststo') cluster(`cluster') weight(`weight') `2sls'
 			
     }
     else if inlist("`estimator'", "lin", "ols") {
@@ -1248,6 +1251,9 @@ program define aivgmm, eclass
     matrix XT = J(`nX', `Trows', 0)
     matrix XP = J(`nX', 1, 0)
 	matrix effw = J(`nX', `nX',0)
+	matrix Tfull = J(`=_N', `Trows', .)
+	matrix Pfull = J(`=_N', 1, .)
+
 
     local row = 1
     *quietly {
@@ -1311,10 +1317,25 @@ program define aivgmm, eclass
             matrix XP = XP + XP_i
 			matrix effw = effw + Xvec' * Xvec
 
+			matrix Tones = J(1, `Trows', 1)
+			matrix Tvec = Tones * Tmat / `Trows'
+			forvalues colval = 1/`Trows' {
+				scalar temp_T = Tvec[1, `colval']
+				matrix Tfull[`i',`colval'] = temp_T
+			}
+			
+			
+
+			matrix Pfull[`i',1] = pi
+
+
+			
             local row = `row' + 1
         }
     *}
 
+
+	
     // Estimate theta
 		
 		matrix XT = XT / `=_N'
@@ -1328,7 +1349,6 @@ program define aivgmm, eclass
 		else if "`2sls'" == "2sls" {
 			matrix effw = effw / `=_N'
 			matrix weight = invsym(effw)
-			mat list weight
 		} 
 		else {
 			matrix weight = `weight'			
@@ -1339,6 +1359,10 @@ program define aivgmm, eclass
 		matrix XtXP = XT' * weight * XP
 		matrix theta = XtXinv * XtXP
 
+		matrix Presid = Pfull - Tfull * theta
+		matrix mat_SE_2sls = Presid' * Presid
+		scalar SE_2sls = mat_SE_2sls[1,1]
+		
 
 * make moments here
 
@@ -1526,12 +1550,16 @@ matrix Vtheta = invsym(Vtheta)
 matrix Vtheta = Vtheta / sqrt(`=_N')
 
 
+
+
 	
     matrix colnames theta = b
 
 	
 	matrix b = theta[1..`namen',1]
-    matrix V = Vtheta[1..`namen',1..`namen']
+
+	matrix V = Vtheta[1..`namen',1..`namen']		
+
 
 	
 	foreach var of local instruments {
@@ -1639,8 +1667,10 @@ if `L' > 1 {
 	collect preview
 
 	ereturn post b V, dof(`dof') obs(`=_N')
-	ereturn scalar Jval = Jval
-	ereturn scalar pval_J = pval_J
+	if `L' > 1 {
+		ereturn scalar Jval = Jval
+		ereturn scalar pval_J = pval_J
+	}
 	ereturn matrix weight = weight
 	ereturn matrix S = S
 	

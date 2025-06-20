@@ -80,7 +80,7 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 {title:Syntax for GMM Estimator}
 
 {phang} {cmd:aivreg estimator} {it:depvar} {it:varlist} [{cmd:if}] [{cmd:in}], 
-{cmd:aiv}({it:varlist}) [{cmd:weight}({it:string})] [{cmd:control}({it:varlist})] [{cmd:eststo}({it:string})] [{cmd:cluster}({it:varlist})] [{cmd:weight}({it:Matrix})] [{it:displayaiv}]
+{cmd:aiv}({it:varlist}) [{cmd:weight}({it:string})] [{cmd:control}({it:varlist})] [{cmd:eststo}({it:string})] [{cmd:cluster}({it:varlist})] [{cmd:weight}({it:Matrix})]
 {title:Input List (GMM Version)}
 
 {phang} - {bf:estimator} specify "gmm" for GMM estimation; "2sls" for gmm with a weight matrix to match iv-reg implementation; otherwise leave blank
@@ -98,8 +98,6 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 {phang} - {bf:cluster} cluster variables for standard errors
 
 {phang} - {bf:weight} a weight matrix for the gmm, defaults to identity
-
-{phang} - {bf:displayaiv} display aiv coefficients
 
 
 {title:Return List (GMM Version)}

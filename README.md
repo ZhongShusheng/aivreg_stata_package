@@ -181,8 +181,7 @@ safety |  -1.145084    .110262  -10.38512  6.03e-25   -1.379237  -.9470102
  ```
 
 ## Syntax for GMM estimator
-aivreg estimtor depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(string)] [eststo(string)] [cluster(string)] [weight(Matrix)] [displayaiv]
-
+aivreg estimtor depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(string)] [eststo(string)] [cluster(string)] [weight(Matrix)]
 
 ## Input List (GMM Version)
  - **estimator** specify "gmm" for GMM estimation; "2sls" for GMM with weight matrix equivalent to iv-reg implementation; otherwise leave blank  
@@ -193,7 +192,6 @@ aivreg estimtor depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(
  - **eststo** specifies the model name to store the estimates under    
  - **cluster** cluster variables for standard errors    
  - **weight** a weight matrix for the gmm, defaults to identity
- - **displayaiv** displays the coefficients on the aiv
 
 ## Return List (GMM Version)
  - **b** coefficients vector.
