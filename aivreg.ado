@@ -1366,6 +1366,12 @@ program define aivgmm, eclass
 
 * make moments here
 
+    matrix XT = J(`nX', `Trows', 0)
+    matrix XP = J(`nX', 1, 0)
+	matrix effw = J(`nX', `nX',0)
+	matrix Tfull = J(`=_N', `Trows', .)
+	matrix Pfull = J(`=_N', 1, .)
+
 if "`cluster'" == "" {
 	local row = 1
         forvalues i = 1/`=_N' {
@@ -1532,13 +1538,13 @@ foreach cl of local cluster_ids {
 matrix XT = XT / `=_N'
 if "`cluster'" == "" {
     matrix Moments_all = Moments
-    matrix S        = (Moments_all * Moments_all') / `=_N'
-    matrix gbar     = Moments_all * J(`=_N',1,1) / `=_N'
+    matrix S        = (Moments_all * Moments_all') / (`=_N')
+    matrix gbar     = Moments_all * J(`=_N',1,1) / (`=_N')
 }
 else {
-    matrix S = (Moments_by_cluster * Moments_by_cluster') / (`=_N'^2)
+    matrix S = (Moments_by_cluster * Moments_by_cluster') / (`=_N')^2
 	matrix onesG = J(`G',1,1)
-    matrix gbar = Moments_by_cluster * onesG / `=_N'
+    matrix gbar = Moments_by_cluster * onesG / (`=_N')
 }
 
 
@@ -1546,8 +1552,8 @@ matrix Vtheta = invsym(XT' * weight *  XT) * XT' * weight *  S * weight *  XT * 
 
 matrix Vtheta = Vtheta 
 
-matrix Vtheta = invsym(Vtheta)
-matrix Vtheta = Vtheta / sqrt(`=_N')
+*matrix Vtheta = invsym(Vtheta)
+matrix Vtheta = Vtheta / (`=_N')
 
 
 

@@ -5,7 +5,7 @@ program define aivnonpar, eclass
 	
 	* save unaltered data
 		preserve
-	
+
 	if "`critvalue'" == ""{
 		local critvalue = 1.96
 	}
@@ -121,6 +121,7 @@ program define aivnonpar, eclass
 			local nbinx = `nbin'
 		}
     }
+
     if "`nbiny'" == "" {
         local nbiny = 5
 		
@@ -128,6 +129,10 @@ program define aivnonpar, eclass
 			local nbiny = `nbin'
 		}
     }
+
+	local n2binx = 2* `nbinx'
+	local n2biny = 2* `nbiny'
+
 	}
 	
 	if "`xtitle'" == ""{
@@ -155,9 +160,6 @@ program define aivnonpar, eclass
 	}
 	quietly{	
 	
-	* drop other vars
-	keep `expvar' `depvar' `aiv' `control' `fe'
-	
 	* if and in
 	
 	if "`in'" != ""{
@@ -166,6 +168,21 @@ program define aivnonpar, eclass
 	if "`if'" != ""{
 		keep `if'
 	}
+
+
+	* drop other vars
+	keep `expvar' `depvar' `aiv' `control' `fe'
+	
+
+	
+	gen weight = 1
+	if "`xcategoryorder'" == "" {
+		xtile weighty = `depvar', n(`n2biny')
+		xtile weightx = `expvar', n(`n2binx')
+		bys weighty weightx: egen altweight = sum(weight)
+		replace weight = 1 / altweight
+	}
+
 
 	* controls
 	if "`control'" != ""{
@@ -236,36 +253,26 @@ program define aivnonpar, eclass
 			egen `aiv'_mean = median(`aiv'), by(`control_bins' `fe')
 			replace `aiv' = `aiv' - `aiv'_mean
 			drop `aiv'_mean
-			
-			egen `depvar'_mean =  median(`depvar'), by(`control_bins' `fe')
-			replace `depvar' = `depvar' - `depvar'_mean
-			drop `depvar'_mean
-
-			if "`xcategoryorder'" == ""{
-				egen `expvar'_mean = median(`expvar'), by(`control_bins' `fe')
-				replace `expvar' = `expvar' - `expvar'_mean
-				drop `expvar'_mean
-			}				
+						
 		}
 		else{
-			egen `aiv'_mean = mean(`aiv'), by(`control_bins' `fe')
+			egen `aiv'_mean = mean(`aiv' * weight), by(`control_bins' `fe')
 			replace `aiv' = `aiv' - `aiv'_mean
 			drop `aiv'_mean
-			
-			egen `depvar'_mean =  mean(`depvar'), by(`control_bins' `fe')
-			replace `depvar' = `depvar' - `depvar'_mean
-			drop `depvar'_mean
-
-			if "`xcategoryorder'" == ""{
-				egen `expvar'_mean = mean(`expvar'), by(`control_bins' `fe')
-				replace `expvar' = `expvar' - `expvar'_mean
-				drop `expvar'_mean	
-			}			
+					
 		}
 	
 	}
 
+		egen `depvar'_mean =  mean(`depvar' * weight), by(`control_bins' `fe')
+		replace `depvar' = `depvar' - `depvar'_mean
+		drop `depvar'_mean
 
+		if "`xcategoryorder'" == ""{
+			egen `expvar'_mean = mean(`expvar' * weight), by(`control_bins' `fe')
+			replace `expvar' = `expvar' - `expvar'_mean
+			drop `expvar'_mean
+		}	
 
 	*categorical data
 
@@ -367,11 +374,11 @@ program define aivnonpar, eclass
 		}
 		
 		if "`binmedians'" != ""{
-			collapse (median) `aiv'=`aiv' `depvar' `expvar' (sum) special_sum_var (semean) SE=`aiv', by(bin_var1 bin_var2 `mid_var1' `mid_var2')	
+			collapse (median) `aiv'=`aiv' `depvar' `expvar' (sum) special_sum_var (semean) SE=`aiv' [aw=weight], by(bin_var1 bin_var2 `mid_var1' `mid_var2')	
 			replace SE = 1.253 * SE
 		}
 		else{
-			collapse (mean) `aiv'=`aiv' `depvar' `expvar' (sum) special_sum_var (semean) SE=`aiv', by(bin_var1 bin_var2 `mid_var1' `mid_var2')		
+			collapse (mean) `aiv'=`aiv' `depvar' `expvar' (sum) special_sum_var (semean) SE=`aiv' [aw = weight], by(bin_var1 bin_var2 `mid_var1' `mid_var2')		
 		}
 
         drop if mi(bin_var1) | mi(bin_var2)
@@ -518,8 +525,21 @@ program define aivnonpar, eclass
 				local b = 2 * (`crit'^2) * `c_delpi' - 2 * `delta' * `pi'
 				local c = ((`delta')^2) - (`crit'^2) * `c_deldel'
 				
-				matrix ub_result[`i',`j'] = - (-`b' - sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')
-				matrix lb_result[`i',`j'] = - (-`b' + sqrt(  ((`b')^2) - 4 * `a' * `c') ) / (2 * `a')
+				if `a' > 0 {
+   					matrix ub_result[`i',`j'] = - (-`b' - sqrt((`b')^2 - 4 * `a' * `c')) / (2 * `a')
+ 					matrix lb_result[`i',`j'] = - (-`b' + sqrt((`b')^2 - 4 * `a' * `c')) / (2 * `a')
+				}
+				else if `a' < 0 {
+    					* Flip the roots if the parabola opens downward
+    					matrix lb_result[`i',`j'] = - (-`b' - sqrt((`b')^2 - 4 * `a' * `c')) / (2 * `a')
+    					matrix ub_result[`i',`j'] = - (-`b' + sqrt((`b')^2 - 4 * `a' * `c')) / (2 * `a')
+				}
+				else {
+    					* a == 0 is linear; avoid divide-by-zero
+    					matrix lb_result[`i',`j'] = .
+   					matrix ub_result[`i',`j'] = .
+				}
+
         }
     }
 	
