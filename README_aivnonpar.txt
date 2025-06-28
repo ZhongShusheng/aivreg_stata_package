@@ -4,7 +4,7 @@ The Stata aivnonpar command implements a nonparametric approach to Anti-IV estim
 
 Syntax:
 
-aivnonpar varlist [if] [in], aiv(varlist) [control(varlist)] [fe(varlist)] [nbincontrol(string)] [equalbinwidthscontrol] [heatplot] [equalbinwidths] [equalbinwidthsx] [equalbinwidthsy] [nbin(string)] [nbinx(string)] [nbiny(string)] [firstheatplot] [ncolors(string)] [firstcontourplot] [asdata(string)] [firstdata(string)] [saveheatplot(string)] [savefirstheatplot(string)] [savefirstcontourplot(string)] [contourplot] [savecontourplot(string)] [xcategoryorder(string)] [contourplottitle(string)] [firstcontourplottitle(string)] [heatplottitle(string)] [firstheatplottitle(string)] [xtitle(string)] [ytitle(string)] [plotquantiles(string)] [scolor(string)] [ecolor(string)] [binmedians] [ccolors(string)] [estimatesequal(string)] [firstestimatesequal(string)] [firstestimatesequaltitle(string)] [estimatesequaltitle(string)] [savefirstestimatesequal(string)] [saveestimatesequal(string)] [critvalue(string)]
+aivnonpar varlist [if] [in], aiv(varlist) [control(varlist)] [fe(varlist)] [nbincontrol(string)] [equalbinwidthscontrol] [heatplot] [equalbinwidths] [equalbinwidthsx] [equalbinwidthsy] [nbin(string)] [nbinx(string)] [nbiny(string)] [firstheatplot] [ncolors(string)] [firstcontourplot] [asdata(string)] [firstdata(string)] [saveheatplot(string)] [savefirstheatplot(string)] [savefirstcontourplot(string)] [contourplot] [savecontourplot(string)] [xcategoryorder(string)] [contourplottitle(string)] [firstcontourplottitle(string)] [heatplottitle(string)] [firstheatplottitle(string)] [xtitle(string)] [ytitle(string)] [plotquantiles(string)] [scolor(string)] [ecolor(string)] [binmedians] [ccolors(string)] [estimatesequal(string)] [firstestimatesequal(string)] [firstestimatesequaltitle(string)] [estimatesequaltitle(string)] [savefirstestimatesequal(string)] [saveestimatesequal(string)] [critvalue(string)] [weight(varlist)]
 
 Options:
 
@@ -89,6 +89,8 @@ savefirstestimatesequal(string) - Save firstestimatesequal plot to pathway.
 saveestimatesequal(string) - Save estimatesequal plot to pathway. 
 
 critvalue(string) - Custom critical value; defaults to 1.96.
+
+weight(varlist) - User specified probability weights.
 
 Returned Results:
 

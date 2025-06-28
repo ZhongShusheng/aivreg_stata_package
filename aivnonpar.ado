@@ -1,7 +1,7 @@
 
 cap program drop aivnonpar
 program define aivnonpar, eclass
-    syntax varlist [if] [in], aiv(varlist) [control(varlist)] [fe(varlist)] [nbincontrol(string)] [equalbinwidthscontrol] [heatplot] [equalbinwidths] [equalbinwidthsx] [equalbinwidthsy] [nbin(string)] [nbinx(string)] [nbiny(string)] [firstheatplot] [ncolors(string)] [firstcontourplot] [asdata(string)] [firstdata(string)] [saveheatplot(string)] [savefirstheatplot(string)] [savefirstcontourplot(string)] [contourplot] [savecontourplot(string)] [xcategoryorder(string)] [contourplottitle(string)] [firstcontourplottitle(string)] [heatplottitle(string)] [firstheatplottitle(string)] [xtitle(string)] [ytitle(string)] [plotquantiles(string)] [scolor(string)] [ecolor(string)] [binmedians] [ccolors(string)] [estimatesequal(string)] [firstestimatesequal(string)] [firstestimatesequaltitle(string)] [estimatesequaltitle(string)] [savefirstestimatesequal(string)] [saveestimatesequal(string)] [critvalue(string)]
+    syntax varlist [if] [in], aiv(varlist) [control(varlist)] [fe(varlist)] [nbincontrol(string)] [equalbinwidthscontrol] [heatplot] [equalbinwidths] [equalbinwidthsx] [equalbinwidthsy] [nbin(string)] [nbinx(string)] [nbiny(string)] [firstheatplot] [ncolors(string)] [firstcontourplot] [asdata(string)] [firstdata(string)] [saveheatplot(string)] [savefirstheatplot(string)] [savefirstcontourplot(string)] [contourplot] [savecontourplot(string)] [xcategoryorder(string)] [contourplottitle(string)] [firstcontourplottitle(string)] [heatplottitle(string)] [firstheatplottitle(string)] [xtitle(string)] [ytitle(string)] [plotquantiles(string)] [scolor(string)] [ecolor(string)] [binmedians] [ccolors(string)] [estimatesequal(string)] [firstestimatesequal(string)] [firstestimatesequaltitle(string)] [estimatesequaltitle(string)] [savefirstestimatesequal(string)] [saveestimatesequal(string)] [critvalue(string)] [weight(varlist)]
 	
 	* save unaltered data
 		preserve
@@ -158,6 +158,7 @@ program define aivnonpar, eclass
 			exit
 		}
 	}
+
 	quietly{	
 	
 	* if and in
@@ -171,17 +172,11 @@ program define aivnonpar, eclass
 
 
 	* drop other vars
-	keep `expvar' `depvar' `aiv' `control' `fe'
+	keep `expvar' `depvar' `aiv' `control' `fe' `weight'
 	
 
-	
-	gen weight = 1
-	if "`xcategoryorder'" == "" {
-		xtile weighty = `depvar', n(`n2biny')
-		xtile weightx = `expvar', n(`n2binx')
-		bys weighty weightx: egen altweight = sum(weight)
-		replace weight = 1 / altweight
-	}
+
+
 
 
 	* controls
@@ -256,7 +251,7 @@ program define aivnonpar, eclass
 						
 		}
 		else{
-			egen `aiv'_mean = mean(`aiv' * weight), by(`control_bins' `fe')
+			egen `aiv'_mean = mean(`aiv'), by(`control_bins' `fe')
 			replace `aiv' = `aiv' - `aiv'_mean
 			drop `aiv'_mean
 					
@@ -264,12 +259,12 @@ program define aivnonpar, eclass
 	
 	}
 
-		egen `depvar'_mean =  mean(`depvar' * weight), by(`control_bins' `fe')
+		egen `depvar'_mean =  mean(`depvar'), by(`control_bins' `fe')
 		replace `depvar' = `depvar' - `depvar'_mean
 		drop `depvar'_mean
 
 		if "`xcategoryorder'" == ""{
-			egen `expvar'_mean = mean(`expvar' * weight), by(`control_bins' `fe')
+			egen `expvar'_mean = mean(`expvar'), by(`control_bins' `fe')
 			replace `expvar' = `expvar' - `expvar'_mean
 			drop `expvar'_mean
 		}	
@@ -302,7 +297,25 @@ program define aivnonpar, eclass
 	
 	
 	drop if mi(`aiv') |  mi(`depvar') | mi(`expvar')
-	
+
+	gen weight = 1
+	if "`weight'" == "" {
+
+		if "`xcategoryorder'" == "" {
+			xtile weightx = `expvar', n(`n2binx')
+		}
+
+		if "`xcategoryorder'" != "" {
+			gen weightx = `expvar'
+		}
+
+	xtile weighty = `depvar', n(`n2biny')
+	bys weighty weightx: egen altweight = sum(weight)
+	replace weight = 1 / altweight
+
+	}
+
+
 		if "`equalbinwidthsx'" == "equalbinwidthsx"{
 
 			summarize `expvar' , d 
@@ -957,4 +970,5 @@ program define aivnonpar, eclass
 	restore
 	
 end
+
 

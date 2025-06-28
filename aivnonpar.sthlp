@@ -7,7 +7,7 @@ The Stata {bf:aivnonpar} command implements a nonparametric approach to Anti-IV 
 {title:Syntax}
 
 {pstd}
-{cmd:aivnonpar} {it:varlist} [{cmd:if}] [{cmd:in}], {cmd:aiv}({it:varlist}) [{cmd:control}({it:varlist})] [{cmd:fe}({cmd:varlist})] [{cmd:nbincontrol}({it:string})] [{cmd:equalbinwidthscontrol}] [{cmd:heatplot}] [{cmd:equalbinwidths}] [{cmd:equalbinwidthsx}] [{cmd:equalbinwidthsy}] [{cmd:nbin}({it:string})] [{cmd:nbinx}({it:string})] [{cmd:nbiny}({it:string})] [{cmd:firstheatplot}] [{cmd:ncolors}({it:string})] [{cmd:firstcontourplot}] [{cmd:asdata}({it:string})] [{cmd:firstdata}({it:string})] [{cmd:saveheatplot}({it:string})] [{cmd:savefirstheatplot}({it:string})] [{cmd:savefirstcontourplot}({it:string})] [{cmd:contourplot}] [{cmd:savecontourplot}({it:string})] [{cmd:xcategoryorder}({it:string})] [{cmd:contourplottitle}({it:string})] [{cmd:firstcontourplottitle}({it:string})] [{cmd:heatplottitle}({it:string})] [{cmd:firstheatplottitle}({it:string})] [{cmd:xtitle}({it:string})] [{cmd:ytitle}({it:string})] [{cmd:plotquantiles}({it:string})] [{cmd:scolor}({it:string})] [{cmd:ecolor}({it:string})] [{cmd:binmedians}] [{cmd:ccolors}({it:string})] [{cmd:estimatesequal}({it:string})] [{cmd:firstestimatesequal}({it:string})] [{cmd:firstestimatesequaltitle}({it:string})] [{cmd:estimatesequaltitle}({it:string})] [{cmd:savefirstestimatesequal}({it:string})] [saveestimatesequal(string)] [critvalue(string)]
+{cmd:aivnonpar} {it:varlist} [{cmd:if}] [{cmd:in}], {cmd:aiv}({it:varlist}) [{cmd:control}({it:varlist})] [{cmd:fe}({cmd:varlist})] [{cmd:nbincontrol}({it:string})] [{cmd:equalbinwidthscontrol}] [{cmd:heatplot}] [{cmd:equalbinwidths}] [{cmd:equalbinwidthsx}] [{cmd:equalbinwidthsy}] [{cmd:nbin}({it:string})] [{cmd:nbinx}({it:string})] [{cmd:nbiny}({it:string})] [{cmd:firstheatplot}] [{cmd:ncolors}({it:string})] [{cmd:firstcontourplot}] [{cmd:asdata}({it:string})] [{cmd:firstdata}({it:string})] [{cmd:saveheatplot}({it:string})] [{cmd:savefirstheatplot}({it:string})] [{cmd:savefirstcontourplot}({it:string})] [{cmd:contourplot}] [{cmd:savecontourplot}({it:string})] [{cmd:xcategoryorder}({it:string})] [{cmd:contourplottitle}({it:string})] [{cmd:firstcontourplottitle}({it:string})] [{cmd:heatplottitle}({it:string})] [{cmd:firstheatplottitle}({it:string})] [{cmd:xtitle}({it:string})] [{cmd:ytitle}({it:string})] [{cmd:plotquantiles}({it:string})] [{cmd:scolor}({it:string})] [{cmd:ecolor}({it:string})] [{cmd:binmedians}] [{cmd:ccolors}({it:string})] [{cmd:estimatesequal}({it:string})] [{cmd:firstestimatesequal}({it:string})] [{cmd:firstestimatesequaltitle}({it:string})] [{cmd:estimatesequaltitle}({it:string})] [{cmd:savefirstestimatesequal}({it:string})] [saveestimatesequal(string)] [critvalue(string)] [weight(varlist)]
 
 {title:Options}
 
@@ -92,6 +92,8 @@ The Stata {bf:aivnonpar} command implements a nonparametric approach to Anti-IV 
 {phang} - {bf:saveestimatesequal}({it:string}) - Save estimatesequal plot to pathway. 
 
 {phang} - {bf:critvalue}({it:string}) - Custom critical value; defaults to 1.96.
+
+{phang} - {bf:weight}({it:varlist}) - User specified probability weights.
 
 {title:Returned Results}
 
