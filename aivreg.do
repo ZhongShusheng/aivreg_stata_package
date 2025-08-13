@@ -483,6 +483,7 @@ preserve
 	local N = `n'
 	local DOF = `n' - `k'
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
+	ereturn local cmd "aivreg"
 	eststo `eststo'
 	}
 	
@@ -541,7 +542,14 @@ preserve
 		
 	}
 	}
-	
+	* Save existing scalars
+	tempname savedscalars
+	local scalarnames : e(scalars)
+	foreach s of local scalarnames {
+		scalar `savedscalars'_`s' = e(`s')
+	}
+
+
 	*Output
 	collect style header Col, level(hide) // removes Col names
     collect style cell result[`w'], border(bottom) border(top, pattern(nil)) // new column names
@@ -688,6 +696,7 @@ else if "`vce'" == "boot"{ // bootstrap case
     local N = `n'
 	local DOF = `n' - `k'
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
+	ereturn local cmd "aivreg"
 	eststo `eststo'
 	}
 	
@@ -747,6 +756,14 @@ else if "`vce'" == "boot"{ // bootstrap case
 		
 	}
 	}
+	
+	* Save existing scalars
+	tempname savedscalars
+	local scalarnames : e(scalars)
+	foreach s of local scalarnames {
+		scalar `savedscalars'_`s' = e(`s')
+	}
+
 	
 	*Output
 	collect style header Col, level(hide) // removes Col names
@@ -952,6 +969,23 @@ else if "`vce'" == "boot"{ // bootstrap case
 		local i=`i'+1
 	}
 
+	foreach z of varlist `zlist' {
+			ereturn scalar beta`z' = `beta`z''
+			ereturn scalar SE_AR`z' = `SE_AR`z''
+			ereturn scalar t_val`z' = `t_val`z''
+			ereturn scalar p_more_t`z' = `p_more_t`z''
+			ereturn scalar lb_AR`z' = `lb_AR`z''
+			ereturn scalar ub_AR`z' = `ub_AR`z''
+	}
+	
+	* Save existing scalars
+	tempname savedscalars
+	local scalarnames : e(scalars)
+	foreach s of local scalarnames {
+		scalar `savedscalars'_`s' = e(`s')
+	}
+
+	
 	*Output
 	collect style header Col, level(hide) // removes Col names
     collect style cell result[`w'], border(bottom) border(top, pattern(nil)) // new column names
@@ -965,16 +999,10 @@ if "`undef'" != "undef" {
 	local N = `n'
 	local DOF = `n' - `k'
 	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
-	/*
-	foreach z of varlist `zlist' {
-			ereturn scalar beta`z' = `beta`z''
-			ereturn scalar SE_AR`z' = `SE_AR`z''
-			ereturn scalar t_val`z' = `t_val`z''
-			ereturn scalar p_more_t`z' = `p_more_t`z''
-			ereturn scalar lb_AR`z' = `lb_AR`z''
-			ereturn scalar ub_AR`z' = `ub_AR`z''
-	}
-	*/
+	ereturn local cmd "aivreg"
+	
+
+	
 	eststo `eststo'
 	}
 	}
@@ -1057,6 +1085,7 @@ local N = e(N)
 local df_r = e(df_r)
 ereturn clear
 ereturn post b V, depname("`w'") obs(`N') dof(`df_r')
+ereturn local cmd "aivreg"
 eststo `eststo'
 }
 
@@ -1115,6 +1144,7 @@ local N = e(N)
 local df_r = e(df_r)
 ereturn clear
 ereturn post b V, depname("`aiv'") obs(`N') dof(`df_r')
+ereturn local cmd "aivreg"
 eststo `firststo'
 
 estimates restore `eststo'
@@ -1170,6 +1200,14 @@ estimates restore `eststo'
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"	
 	}
 	ereturn scalar Partial_F = `partial_F'
+	
+	
+
+	* Restore scalars
+	foreach s of local scalarnames {
+		ereturn scalar `s' = `savedscalars'_`s'
+	}
+
 	
 restore
 
@@ -1667,6 +1705,7 @@ if `L' > 1 {
 	collect preview
 
 	ereturn post b V, dof(`dof') obs(`=_N')
+	ereturn local cmd "aivreg"
 	if `L' > 1 {
 		ereturn scalar Jval = Jval
 		ereturn scalar pval_J = pval_J
