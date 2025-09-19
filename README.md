@@ -203,6 +203,8 @@ aivreg estimtor depvar varlist [if] [in], aiv(varlist) [control(varlist)] [reps(
  - **weight** weight matrix used.
  - **S** estimated covariance of the moments.
 
+## Contact
+-  Questions or concerns can be sent to aivregstata@gmail.com
 
 ## Reference
 -  Bell, Alex, [Job Amenities and Earnings Inequality](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522), Working Paper, 2022.

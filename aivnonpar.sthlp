@@ -213,6 +213,11 @@ rank_means[5,5]
 5  -.18434342   .05928874   .36947023   .46497928   1.2101031
 
 
+{title:Contact}
+
+{phang} - Questions or concerns can be sent to aivregstata@gmail.com
+
+
 {title:References}
 
 {phang} - Bell, A., Billings, S. B., Calder-Wang, S., & Zhong, S. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":An Anti-IV Approach for Pricing Residential Amenities} (2024).

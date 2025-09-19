@@ -1,6 +1,6 @@
 cap program drop aivreg
 program define aivreg, eclass
-    version 14.0
+    version 17
 
     /* 1.  Peek at first token ------------------------------------------ */
     gettoken maybe_est rest : 0          // maybe_est = first word
@@ -62,14 +62,19 @@ program define aivreg, eclass
     }
 end
 
-	
 cap prog drop aivreglinear
-
 prog def aivreglinear, eclass
+	version 17
+	
 	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
 
 preserve
 	
+	****************************************************************************
+	* Sort factor and continuous variables
+	****************************************************************************
+	
+	* Convert factor variables to dummies
 	* remove i. and c.
 	local varlist2 ""
 	local varlist "`varlist'"
@@ -123,7 +128,7 @@ preserve
 	
 	* throw an error if a variable is a string
 	
-		* if the explanatory variable is categorical
+	* if the explanatory variable is categorical
 
 	local varlist2 `varlist'
 	local varlist_rows `varlist'
@@ -169,6 +174,10 @@ preserve
 	
 	}
 	
+	****************************************************************************
+	* Record user specified options and set defaults where appropriate
+	****************************************************************************
+	
 	local varlist = "`varlist2'"
 	* firststo
 	if "`firststo'" != ""{
@@ -188,8 +197,11 @@ preserve
 		local est_opt = 1
 	}
 	
+	****************************************************************************
+	* Keep track of estimation objects
+	****************************************************************************
+	
 	* to make sure ivreg2 works
-	capture ereturn drop est1 
 	capture ereturn drop `eststo'
 	capture ereturn drop _ivreg2_`h' 
 	capture ereturn drop `firststo'
@@ -211,9 +223,23 @@ preserve
 	}
 	* make eststo if empty
 	if "`eststo'" == "" {
-		local eststo "est1"
+		quietly {
+			estimates dir
+			local models " `r(names)' "   // pad with spaces
+
+			local check_est_num = 1
+			while strpos("`models'", " est`check_est_num' ") {
+				local ++check_est_num
+			}
+			local eststo est`check_est_num'
+		}
 	}
 
+
+
+	****************************************************************************
+	* Catch each standard error calculation option
+	****************************************************************************
 	
 	* make sure entries are valid
 	* first catch bootstrap case
@@ -232,7 +258,8 @@ preserve
 		capture confirm number `seed'
 		if _rc != 0 { 
 			dis " "
-			display "WARNING: seed must be a number. Seed left unspecified."
+			display "ERROR: seed must be a number."
+			exit
 		}
 		}
 		
@@ -261,7 +288,9 @@ preserve
 		local vce = ""
 	}
 	
-	* count variables
+	****************************************************************************
+	* Count variables and make a list for loops
+	****************************************************************************
 	
 	local j=0
 
@@ -307,67 +336,24 @@ preserve
 	local varlist_rows : list varlist_rows - w
 	
 	
-/*
-	* get half of Partial F-stat
+	****************************************************************************
+	****************************************************************************
+	* Start CI cases
+	****************************************************************************
+	****************************************************************************
 	
-	if "`if'" == ""{
-			if "`fe'" != "" {
-		if "`vce'" == "boot" {
-			quietly bootstrap, reps(`reps') seed(`seed') : reghdfe `h' `zlist' `control' `weight' if !mi(`w') `in', absorb(`fe') cluster(`cluster')
-			local RSS_red = `=e(rss)'
-		}
-		else {
-			quietly reghdfe `h' `zlist' `control' `weight' if !mi(`w') `in', absorb(`fe') cluster(`cluster')
-			local RSS_red = `=e(rss)'
-		}
-	}
-	else {
-		if "`vce'" == "boot" {
-			quietly bootstrap, reps(`reps') seed(`seed') : reg `h' `zlist' `control' `weight' if !mi(`w')  `in', cluster(`cluster')
-			local RSS_red = `=e(rss)'	
-		}
-		else {
-			qui reg `h' `zlist' `control' `weight' if !mi(`w')  `in', cluster(`cluster')
-			local RSS_red = `=e(rss)'
-		}
-	}
-	}
-	else {
-			if "`fe'" != "" {
-		if "`vce'" == "boot" {
-			quietly bootstrap, reps(`reps') seed(`seed') : reghdfe `h' `zlist' `control' `weight' `if' & !mi(`w') `in', absorb(`fe') cluster(`cluster')
-			local RSS_red = `=e(rss)'
-		}
-		else {
-			quietly reghdfe `h' `zlist' `control' `weight' `if' & !mi(`w') `in', absorb(`fe') cluster(`cluster')
-			local RSS_red = `=e(rss)'
-		}
-	}
-	else {
-		if "`vce'" == "boot" {
-			quietly bootstrap, reps(`reps') seed(`seed') : reg `h' `zlist' `control' `weight' `if' & !mi(`w')  `in', cluster(`cluster')
-			local RSS_red = `=e(rss)'	
-		}
-		else {
-			qui reg `h' `zlist' `control' `weight' `if' & !mi(`w')  `in', cluster(`cluster')
-			local RSS_red = `=e(rss)'
-		}
-	}
-	}
-*/
-	
-
-
-	*********** start CI cases
+	****************************************************************************
+	* Asymptotic case
+	****************************************************************************
 	
 	if "`vce'" == "asymp"{ // asymptotic case
 	quietly {
 	if  "`fe'" != "" {
-			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' savefirst
+			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in' `weight', absorb(`fe') cluster(`cluster') savefirst
 			eststo `eststo'
 	}
 	else {
-			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster')  `weight' savefirst
+			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in' `weight', cluster(`cluster') savefirst
 			eststo `eststo'
 	}
 	}
@@ -383,6 +369,8 @@ preserve
 	local tsw = `betaw' / `sew'
 	local partial_F = `tsw'^2
 
+	
+	* Create the table to display
 	* First Stage output option
 	if "`savefirst'" == "savefirst" {
 		dis " "
@@ -390,7 +378,7 @@ preserve
 
 	
 	
-			* This makes the column names for the stats
+	* This makes the column names for the stats
 	collect clear 
 	collect get `h' = "Coef.", tags(Col[Coef])
 	collect get `h' = "Std. Err.", tags(Col[SE_AR])
@@ -399,7 +387,7 @@ preserve
 	collect get `h' = "[95% Conf.", tags(Col[ARCI_lb])
 	collect get `h' = "Interval]", tags(Col[ARCI_ub])
 	
-
+	* Now loop over each amenity and compute the AIV coefficient 
 		foreach z of varlist `w' `zlist' {
 		* Make variables
 			tempname beta SE n k lb ub val_t test_stat 
@@ -441,25 +429,24 @@ preserve
 		
 	}
 	
-
+	* Get some summary stats
 	qui estimates restore `eststo'
-	
 	tempname n k
 	sca `n'=e(N)
 	sca `k'=e(df_m)
 
-			* This adds the preamble like reghdfe
+	* This adds the preamble like reghdfe
 	dis " "
 	local align_col 60  // Desired column for the "=" alignment
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
 	if "`cluster'" != ""{
 		local padding = `align_col' - length("SE clustered by ") - length("`cluster'") - length("Partial F-stat.")
-		display "SE clustered by " "`cluster'" _dup(`padding') " " "Partial F-stat." " = " "`partial_F'"
+		display "SE clustered by " "`cluster'" _dup(`padding') " " "Partial F-stat." " =" %9.3f `partial_F'
 	}
 	else {
 		local padding = `align_col'  - length("Partial F-stat.")
-		display _dup(`padding') " " "Partial F-stat." " = " `partial_F'		
+		display _dup(`padding') " " "Partial F-stat." " =" %9.3f `partial_F'		
 	}
 	
 	* This makes the column names for the stats
@@ -558,222 +545,235 @@ preserve
 	collect preview
 	
 
-} 
-else if "`vce'" == "boot"{ // bootstrap case
-	
-	quietly {
-	if "`fe'" != "" {
-		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' // this only works with verbose
-		eststo `eststo'
-	}
-	else {
-		qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreg2 `varlist' `control' (`h' = `varlist') `if' `in', cluster(`cluster') `weight' // this only works with verbose
-		eststo `eststo'
-	}
-	}
-	
-	
-	* get first stage estimates
+	} 
 
-	if "`fe'" != "" {
-			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reghdfe `h' `varlist' `control' `if' `in', absorb(`fe') cluster(`cluster') `weight' // this only works with verbose
-			eststo _ivreg2_`h'
-	}
-	else {
-			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reg `h' `varlist' `control' `if' `in', cluster(`cluster') `weight' // this only works with verbose
-			
-			eststo _ivreg2_`h'
-	}
-	
-	* get first stage estimates
-	qui estimates restore _ivreg2_`h'
-	local n = `=e(N)'
-	local k = `=e(df_m)'
-	local betaw = e(b)[1, "`w'"]
-	local sew = e(V)["`w'","`w'"]
-	local sew = sqrt(`sew')
-	local tsw = `betaw' / `sew'
-	local partial_F = `tsw'^2
+	********************************************************************************
+	* Bootstrap case
+	********************************************************************************
 
-	* First Stage output option
-	if "`savefirst'" == "savefirst" {
+	else if "`vce'" == "boot"{ // bootstrap case
 		
+		quietly {
+		if "`fe'" != "" {
+			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in' `weight', absorb(`fe') cluster(`cluster') // this only works with verbose
+			eststo `eststo'
+		}
+		else {
+			qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : ivreg2 `varlist' `control' (`h' = `varlist') `if' `in' `weight', cluster(`cluster') // this only works with verbose
+			eststo `eststo'
+		}
+		}
+		
+		
+		* get first stage estimates
+
+		if "`fe'" != "" {
+				qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reghdfe `h' `varlist' `control' `if' `in' `weight', absorb(`fe') cluster(`cluster') // this only works with verbose
+				eststo _ivreg2_`h'
+		}
+		else {
+				qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reg `h' `varlist' `control' `if' `in' `weight', cluster(`cluster') // this only works with verbose
+				
+				eststo _ivreg2_`h'
+		}
+		
+		* get first stage estimates
+		qui estimates restore _ivreg2_`h'
+		local n = `=e(N)'
+		local k = `=e(df_m)'
+		local betaw = e(b)[1, "`w'"]
+		local sew = e(V)["`w'","`w'"]
+		local sew = sqrt(`sew')
+		local tsw = `betaw' / `sew'
+		local partial_F = `tsw'^2
+
+		* First Stage output option
+		if "`savefirst'" == "savefirst" {
+			
+			dis " "
+			dis "{bf:First Stage:}"
+
+		* Make a table to display
+		* This makes the column names for the stats
+		collect clear 
+		collect get `h' = "Coef.", tags(Col[Coef])
+		collect get `h' = "Std. Err.", tags(Col[SE_AR])
+		collect get `h' = "t", tags(Col[t_val])
+		collect get `h' = "P>|t|", tags(Col[p_more_t])
+		collect get `h' = "[95% Conf.", tags(Col[ARCI_lb])
+		collect get `h' = "Interval]", tags(Col[ARCI_ub])
+		
+		
+			foreach z of varlist `w' `zlist' {
+			* Make variables
+				tempname beta SE lb ub val_t test_stat 
+				sca `beta' = _b[`z']
+				sca `SE' = _se[`z']
+				sca `val_t' = `beta' / `SE'
+				local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
+				sca `lb' = `beta' - 1.96*`SE'
+				sca `ub' = `beta' + 1.96*`SE'
+
+			* table
+				collect get `z'=`beta', tags(Col[Coef])
+				collect get `z'=`SE', tags(Col[SE_AR])
+				collect get `z' = `val_t', tags(Col[t_val])
+				collect get `z' = `test_stat', tags(Col[p_more_t])
+				collect get `z'=`lb', tags(Col[ARCI_lb])
+				collect get `z'=`ub', tags(Col[ARCI_ub])
+				
+				ereturn scalar beta`z' = `beta'
+				ereturn scalar SE_asymp`z' = `SE'
+				ereturn scalar t_val`z' = `val_t'
+				ereturn scalar p_more_t`z' = `test_stat' 
+				ereturn scalar lb_asymp`z' = `lb'
+				ereturn scalar ub_asymp`z' = `ub'
+			
+		}
+			
+			collect style header Col, level(hide) // removes Col names
+			collect style cell result[`h'], border(bottom) border(top, pattern(nil)) // new column names
+			collect style cell, sformat(" %s") // increase spacing
+			qui collect layout (result) (Col)
+			collect preview
+			
+			dis " "
+			dis "{bf:Second Stage:}"
+			
+		}
+		
+		* get some summary stats
+		qui estimates restore `eststo'
+		tempname n k
+			sca `n' =e(N)
+			sca `k' =e(df_m)
+			
+			
+			* This adds the preamble like reghdfe
 		dis " "
-		dis "{bf:First Stage:}"
+		local align_col 60  // Desired column for the "=" alignment
+		local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
+		display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
+		local padding = `align_col' - length("Uses bootstrapped SE") - length("number of reps")	
+		display "Uses bootstrapped SE" _dup(`padding') " " "number of reps" " = " "`reps'"
+		local padding = `align_col' - length("Partial F-stat.")
+		display _dup(`padding') " " "Partial F-stat." " =" %9.3f `partial_F'
+		if length("`seed'") > 0 & "`cluster'" == "" {
+				local padding = `align_col' - length("seed")	
+				display  _dup(`padding') " " "seed" " = " "`seed'"
+		} 
+		
+		if "`cluster'" != "" & length("`seed'") == 0 {
+			dis "SE clustered by " "`cluster'"
+		}
+		
+		if "`cluster'" != "" & length("`seed'") > 0 {
+				local padding = `align_col' - length("SE clustered by ") - length("`cluster'") - length("seed")	
+				display "SE clustered by " "`cluster'" _dup(`padding') " " "seed" " = " "`seed'"
+		}
+		
+		* This makes the column names for the stats
+		collect clear 
+		collect get `w' = "Coef.", tags(Col[Coef])
+		collect get `w' = "Std. Err.", tags(Col[SE_AR])
+		collect get `w' = "t", tags(Col[t_val])
+		collect get `w' = "P>|t|", tags(Col[p_more_t])
+		collect get `w' = "[95% Conf.", tags(Col[ARCI_lb])
+		collect get `w' = "Interval]", tags(Col[ARCI_ub])
+		
+		quietly{
+		mat b = e(b)
+		mat V = e(V)
+		if "`displayaiv'" == ""{
+			mat b = b[1, 2..(`amenity_count' + 1)]		
+			mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 		
+		}
+		local N = `n'
+		local DOF = `n' - `k'
+		ereturn post b V, depname(`w') obs(`N') dof(`DOF')
+		ereturn local cmd "aivreg"
+		eststo `eststo'
+		}
+		
+		if "`displayaiv'" == "displayaiv"{
+		foreach z of varlist `zlist' `h' {
+			* Make variables
+				tempname beta SE lb ub val_t test_stat 
+				sca `beta' = _b[`z']
+				sca `SE' = _se[`z']
+				sca `val_t' = `beta' / `SE'
+				local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
+				sca `lb' = `beta' - 1.96*`SE'
+				sca `ub' = `beta' + 1.96*`SE'
 
-	
-	* This makes the column names for the stats
-	collect clear 
-	collect get `h' = "Coef.", tags(Col[Coef])
-	collect get `h' = "Std. Err.", tags(Col[SE_AR])
-	collect get `h' = "t", tags(Col[t_val])
-	collect get `h' = "P>|t|", tags(Col[p_more_t])
-	collect get `h' = "[95% Conf.", tags(Col[ARCI_lb])
-	collect get `h' = "Interval]", tags(Col[ARCI_ub])
-	
-	
-		foreach z of varlist `w' `zlist' {
-		* Make variables
-			tempname beta SE lb ub val_t test_stat 
-			sca `beta' = _b[`z']
-			sca `SE' = _se[`z']
-			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
-			sca `lb' = `beta' - 1.96*`SE'
-			sca `ub' = `beta' + 1.96*`SE'
-
-		* table
-			collect get `z'=`beta', tags(Col[Coef])
-			collect get `z'=`SE', tags(Col[SE_AR])
-			collect get `z' = `val_t', tags(Col[t_val])
-			collect get `z' = `test_stat', tags(Col[p_more_t])
-			collect get `z'=`lb', tags(Col[ARCI_lb])
-			collect get `z'=`ub', tags(Col[ARCI_ub])
+			* table
+				collect get `z'=`beta', tags(Col[Coef])
+				collect get `z'=`SE', tags(Col[SE_AR])
+				collect get `z' = `val_t', tags(Col[t_val])
+				collect get `z' = `test_stat', tags(Col[p_more_t])
+				collect get `z'=`lb', tags(Col[ARCI_lb])
+				collect get `z'=`ub', tags(Col[ARCI_ub])
+				
+				ereturn scalar beta`z' = `beta'
+				ereturn scalar SE_boot`z' = `SE'
+				ereturn scalar t_val`z' = `val_t'
+				ereturn scalar p_more_t`z' = `test_stat' 
+				ereturn scalar lb_boot`z' = `lb'
+				ereturn scalar ub_boot`z' = `ub'
 			
-			ereturn scalar beta`z' = `beta'
-			ereturn scalar SE_asymp`z' = `SE'
-			ereturn scalar t_val`z' = `val_t'
-			ereturn scalar p_more_t`z' = `test_stat' 
-			ereturn scalar lb_asymp`z' = `lb'
-			ereturn scalar ub_asymp`z' = `ub'
+		}		
+		}
+		else {
+		foreach z of varlist `zlist' {
+			* Make variables
+				tempname beta SE lb ub val_t test_stat 
+				sca `beta' = _b[`z']
+				sca `SE' = _se[`z']
+				sca `val_t' = `beta' / `SE'
+				local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
+				sca `lb' = `beta' - 1.96*`SE'
+				sca `ub' = `beta' + 1.96*`SE'
+
+			* table
+				collect get `z'=`beta', tags(Col[Coef])
+				collect get `z'=`SE', tags(Col[SE_AR])
+				collect get `z' = `val_t', tags(Col[t_val])
+				collect get `z' = `test_stat', tags(Col[p_more_t])
+				collect get `z'=`lb', tags(Col[ARCI_lb])
+				collect get `z'=`ub', tags(Col[ARCI_ub])
+				
+				ereturn scalar beta`z' = `beta'
+				ereturn scalar SE_boot`z' = `SE'
+				ereturn scalar t_val`z' = `val_t'
+				ereturn scalar p_more_t`z' = `test_stat' 
+				ereturn scalar lb_boot`z' = `lb'
+				ereturn scalar ub_boot`z' = `ub'
+			
+		}
+		}
 		
-	}
+		* Save existing scalars
+		tempname savedscalars
+		local scalarnames : e(scalars)
+		foreach s of local scalarnames {
+			scalar `savedscalars'_`s' = e(`s')
+		}
+
 		
+		*Output
 		collect style header Col, level(hide) // removes Col names
-		collect style cell result[`h'], border(bottom) border(top, pattern(nil)) // new column names
+		collect style cell result[`w'], border(bottom) border(top, pattern(nil)) // new column names
 		collect style cell, sformat(" %s") // increase spacing
 		qui collect layout (result) (Col)
 		collect preview
-		
-		dis " "
-		dis "{bf:Second Stage:}"
-		
-	}
-	
-	qui estimates restore `eststo'
-	tempname n k
-		sca `n' =e(N)
-		sca `k' =e(df_m)
-		* This adds the preamble like reghdfe
-	dis " "
-	local align_col 60  // Desired column for the "=" alignment
-	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
-	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
-	local padding = `align_col' - length("Uses bootstrapped SE") - length("number of reps")	
-	display "Uses bootstrapped SE" _dup(`padding') " " "number of reps" " = " "`reps'"
-	local padding = `align_col' - length("Partial F-stat.")
-	display _dup(`padding') " " "Partial F-stat." " = " `partial_F'
-	if length("`seed'") > 0 & "`cluster'" == "" {
-			local padding = `align_col' - length("seed")	
-			display  _dup(`padding') " " "seed" " = " "`seed'"
-	} 
-	
-	if "`cluster'" != "" & length("`seed'") == 0 {
-		dis "SE clustered by " "`cluster'"
-	}
-	
-	if "`cluster'" != "" & length("`seed'") > 0 {
-			local padding = `align_col' - length("SE clustered by ") - length("`cluster'") - length("seed")	
-			display "SE clustered by " "`cluster'" _dup(`padding') " " "seed" " = " "`seed'"
-	}
-	
-	* This makes the column names for the stats
-	collect clear 
-	collect get `w' = "Coef.", tags(Col[Coef])
-	collect get `w' = "Std. Err.", tags(Col[SE_AR])
-	collect get `w' = "t", tags(Col[t_val])
-	collect get `w' = "P>|t|", tags(Col[p_more_t])
-	collect get `w' = "[95% Conf.", tags(Col[ARCI_lb])
-	collect get `w' = "Interval]", tags(Col[ARCI_ub])
-	
-	quietly{
-	mat b = e(b)
-	mat V = e(V)
-	if "`displayaiv'" == ""{
-		mat b = b[1, 2..(`amenity_count' + 1)]		
-		mat V = V[2..(`amenity_count'+1), 2..(`amenity_count'+1)] 		
-	}
-    local N = `n'
-	local DOF = `n' - `k'
-	ereturn post b V, depname(`w') obs(`N') dof(`DOF')
-	ereturn local cmd "aivreg"
-	eststo `eststo'
-	}
-	
-	if "`displayaiv'" == "displayaiv"{
-	foreach z of varlist `zlist' `h' {
-		* Make variables
-			tempname beta SE lb ub val_t test_stat 
-			sca `beta' = _b[`z']
-			sca `SE' = _se[`z']
-			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
-			sca `lb' = `beta' - 1.96*`SE'
-			sca `ub' = `beta' + 1.96*`SE'
-
-		* table
-			collect get `z'=`beta', tags(Col[Coef])
-			collect get `z'=`SE', tags(Col[SE_AR])
-			collect get `z' = `val_t', tags(Col[t_val])
-			collect get `z' = `test_stat', tags(Col[p_more_t])
-			collect get `z'=`lb', tags(Col[ARCI_lb])
-			collect get `z'=`ub', tags(Col[ARCI_ub])
-			
-			ereturn scalar beta`z' = `beta'
-			ereturn scalar SE_boot`z' = `SE'
-			ereturn scalar t_val`z' = `val_t'
-			ereturn scalar p_more_t`z' = `test_stat' 
-			ereturn scalar lb_boot`z' = `lb'
-			ereturn scalar ub_boot`z' = `ub'
-		
-	}		
-	}
-	else {
-	foreach z of varlist `zlist' {
-		* Make variables
-			tempname beta SE lb ub val_t test_stat 
-			sca `beta' = _b[`z']
-			sca `SE' = _se[`z']
-			sca `val_t' = `beta' / `SE'
-			local test_stat : dis 2 * ttail((`n' - `k') , abs(`val_t'))
-			sca `lb' = `beta' - 1.96*`SE'
-			sca `ub' = `beta' + 1.96*`SE'
-
-		* table
-			collect get `z'=`beta', tags(Col[Coef])
-			collect get `z'=`SE', tags(Col[SE_AR])
-			collect get `z' = `val_t', tags(Col[t_val])
-			collect get `z' = `test_stat', tags(Col[p_more_t])
-			collect get `z'=`lb', tags(Col[ARCI_lb])
-			collect get `z'=`ub', tags(Col[ARCI_ub])
-			
-			ereturn scalar beta`z' = `beta'
-			ereturn scalar SE_boot`z' = `SE'
-			ereturn scalar t_val`z' = `val_t'
-			ereturn scalar p_more_t`z' = `test_stat' 
-			ereturn scalar lb_boot`z' = `lb'
-			ereturn scalar ub_boot`z' = `ub'
-		
-	}
-	}
-	
-	* Save existing scalars
-	tempname savedscalars
-	local scalarnames : e(scalars)
-	foreach s of local scalarnames {
-		scalar `savedscalars'_`s' = e(`s')
-	}
-
-	
-	*Output
-	collect style header Col, level(hide) // removes Col names
-    collect style cell result[`w'], border(bottom) border(top, pattern(nil)) // new column names
-	collect style cell, sformat(" %s") // increase spacing
-	qui collect layout (result) (Col)
-	collect preview
 
 
-}
+	}
+
+	********************************************************************************
+	* Anderson-Rubin case
+	********************************************************************************
+
 	else { // AR CI case
 	
 	if "`displayaiv'" == "displayaiv"{
@@ -814,7 +814,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 	
 	* get first stage estimates
 	
-			* This makes the column names for the stats
+	* This makes the column names for the stats
 	collect clear 
 	collect get `h' = "Coef.", tags(Col[Coef])
 	collect get `h' = "Std. Err.", tags(Col[SE_AR])
@@ -873,7 +873,7 @@ else if "`vce'" == "boot"{ // bootstrap case
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
 	local padding = `align_col' - length("Partial F-stat.") - length("Uses Anderson-Rubin CI")
-	display "Uses Anderson-Rubin CI" _dup(`padding') " " "Partial F-stat." " = " `partial_F'
+	display "Uses Anderson-Rubin CI" _dup(`padding') " " "Partial F-stat." " =" %9.3f `partial_F'
 	display "SE inferred from radius closest to zero"
 	if "`cluster'" != "" {
 		display "SE clustered by `cluster'"
@@ -1009,8 +1009,13 @@ if "`undef'" != "undef" {
 	}
 	
 
-
 	
+	****************************************************************************
+	****************************************************************************
+	* Save results post estimation
+	****************************************************************************
+	****************************************************************************
+
 	
 	* rename first stage
 		if "`firststo'" != "" {
@@ -1229,6 +1234,10 @@ program define aivgmm, eclass
 
 	preserve	
 
+	****************************************************************************
+	* Clean data for estimation
+	****************************************************************************
+	
 	quietly {
 		if "`if'" != "" {
 			keep `if'
@@ -1259,8 +1268,11 @@ program define aivgmm, eclass
 		drop if nmiss > 0
 		drop nmiss
 	}
+	
 
-
+	****************************************************************************
+	* Generate objects that will be used for indexing
+	****************************************************************************
 	
     local depvar : word 1 of `varlist'
 	local varlist `varlist'
@@ -1284,6 +1296,9 @@ program define aivgmm, eclass
     tempvar Pval
     gen double `Pval' = `depvar'
 	
+	****************************************************************************
+	* Run estimator
+	****************************************************************************
 
     // Initialize accumulators
     matrix XT = J(`nX', `Trows', 0)
@@ -1389,8 +1404,26 @@ program define aivgmm, eclass
 			matrix weight = invsym(effw)
 		} 
 		else {
-			matrix weight = `weight'			
+			// validate user-supplied weight matrix size vs effw
+			capture confirm matrix `weight'
+			if _rc {
+				di as err "weight matrix: specify the name of an existing matrix"
+				exit 198
+			}
+
+			local nEff = rowsof(effw)
+			local mEff = colsof(effw)
+			local nW   = rowsof(`weight')
+			local mW   = colsof(`weight')
+
+			if (`nW' != `nEff') | (`mW' != `mEff') {
+				di as err "weight matrix is `nW' x `mW'; expected `nEff' x `mEff'"
+				exit 198
+			}
+
+			matrix weight = `weight'
 		}
+
 		
 	    matrix XtX = XT' * weight * XT
         matrix XtXinv = invsym(XtX)
@@ -1402,193 +1435,199 @@ program define aivgmm, eclass
 		scalar SE_2sls = mat_SE_2sls[1,1]
 		
 
-* make moments here
+		************************************************************************
+		* Estimate SE
+		************************************************************************
+		
+	* Make moments for SE
 
-if "`cluster'" == "" {
-	local row = 1
-        forvalues i = 1/`=_N' {
+	if "`cluster'" == "" { // no clustering
+		local row = 1
+			forvalues i = 1/`=_N' {
 
-            // Build zi
-            matrix zi = J(1, `k', .)
-            forvalues j = 1/`k' {
-                local zj : word `j' of `instruments'
-                matrix zi[1, `j'] = `zj'[`i']
-            }
+				// Build zi
+				matrix zi = J(1, `k', .)
+				forvalues j = 1/`k' {
+					local zj : word `j' of `instruments'
+					matrix zi[1, `j'] = `zj'[`i']
+				}
 
-            // Build hi
-            matrix hi = J(1, `L', .)
-            forvalues j = 1/`L' {
-                local hj : word `j' of `aiv'
-                matrix hi[1, `j'] = `hj'[`i']
+				// Build hi
+				matrix hi = J(1, `L', .)
+				forvalues j = 1/`L' {
+					local hj : word `j' of `aiv'
+					matrix hi[1, `j'] = `hj'[`i']
 
-            }
+				}
 
-            scalar pi = `Pval'[`i']
-            matrix tmp = (zi, pi, 1)
+				scalar pi = `Pval'[`i']
+				matrix tmp = (zi, pi, 1)
 
-            // Build Xvec
-            matrix Xvec = J(1, `nX', .)
-            forvalues l = 0/`=`L'-1' {
-                forvalues j = 1/`rowlen' {
-                    local col = `l'*`rowlen' + `j'
-                    matrix Xvec[1, `col'] = tmp[1, `j']
-                }
-            }
+				// Build Xvec
+				matrix Xvec = J(1, `nX', .)
+				forvalues l = 0/`=`L'-1' {
+					forvalues j = 1/`rowlen' {
+						local col = `l'*`rowlen' + `j'
+						matrix Xvec[1, `col'] = tmp[1, `j']
+					}
+				}
 
-            matrix Xi = diag(Xvec)
-			
-            // Build Ttop
-            matrix Ttop = J(`k', `nX', 0)
-            forvalues r = 1/`k' {
-                forvalues c = 1/`nX' {
-					local zi_temp = zi[1, `r']
-                    matrix Ttop[`r', `c'] = `zi_temp'
-                }
-            }
+				matrix Xi = diag(Xvec)
+				
+				// Build Ttop
+				matrix Ttop = J(`k', `nX', 0)
+				forvalues r = 1/`k' {
+					forvalues c = 1/`nX' {
+						local zi_temp = zi[1, `r']
+						matrix Ttop[`r', `c'] = `zi_temp'
+					}
+				}
 
-            // Build Tbot
-            matrix Tbot = J(2*`L', `nX', 0)
-            forvalues l = 0/`=`L'-1' {
-                forvalues j = 1/`rowlen' {
-                    local col = `l' * `rowlen' + `j'
-					local hi_temp = hi[1, `l'+1]
-                    matrix Tbot[2*`l'+1, `col'] = `hi_temp'
-                    matrix Tbot[2*`l'+2, `col'] = 1
-                }
-            }
+				// Build Tbot
+				matrix Tbot = J(2*`L', `nX', 0)
+				forvalues l = 0/`=`L'-1' {
+					forvalues j = 1/`rowlen' {
+						local col = `l' * `rowlen' + `j'
+						local hi_temp = hi[1, `l'+1]
+						matrix Tbot[2*`l'+1, `col'] = `hi_temp'
+						matrix Tbot[2*`l'+2, `col'] = 1
+					}
+				}
 
-            matrix Tmat = Ttop \ Tbot
+				matrix Tmat = Ttop \ Tbot
 
-			matrix epsilon = Xi * (Pmat - Tmat' * theta)
+				matrix Pmat = J(`nX',1, pi)
+				matrix epsilon = Xi * (Pmat - Tmat' * theta)
 
-			if `i' == 1 {
-				matrix Moments = J(`nX',`=_N',.)
+				if `i' == 1 {
+					matrix Moments = J(`nX',`=_N',.)
+				}
+				
+				forvalues val = 1/`nX' {
+					scalar tempnum = epsilon[`val',1]
+					matrix Moments[`val',`i'] = tempnum
+				}
+
+				local row = `row' + 1
 			}
-			
 
-            matrix XT_i = Xi * Tmat'
-            matrix XP_i = Xi * Pmat
 
-            matrix XT = XT + XT_i
-            matrix XP = XP + XP_i
-			
-			forvalues val = 1/`nX' {
-				scalar tempnum = epsilon[`val',1]
-				matrix Moments[`val',`i'] = tempnum
+	}
+
+	if "`cluster'" != ""{ // clustered SE
+	tempvar clustvar
+	gettoken clustvar rest : cluster
+
+
+	quiet levelsof `clustvar', local(cluster_ids)
+
+	local G : word count `cluster_ids'
+	
+	if (`G' < 2) {
+		dis as warning "Error: Number of clusters in `clustvar' < 2"
+		exit 498
+	}
+
+	matrix Moments_by_cluster = J(`nX', `G', 0)
+
+	local g = 1
+	foreach cl of local cluster_ids {
+
+		matrix gsum = J(`nX', 1, 0)
+
+
+			forvalues i = 1/`=_N' {
+				if `clustvar'[`i'] != `cl' {
+					continue
+				}
+
+				// Build zi
+				matrix zi = J(1, `k', .)
+				forvalues j = 1/`k' {
+					local zj : word `j' of `instruments'
+					matrix zi[1, `j'] = `zj'[`i']
+				}
+
+				// Build hi
+				matrix hi = J(1, `L', .)
+				forvalues j = 1/`L' {
+					local hj : word `j' of `aiv'
+					matrix hi[1, `j'] = `hj'[`i']
+				}
+
+				scalar pi = `Pval'[`i']
+				matrix tmp = (zi, pi, 1)
+
+				matrix Xvec = J(1, `nX', .)
+				forvalues l = 0/`=`L'-1' {
+					forvalues j = 1/`rowlen' {
+						local col = `l'*`rowlen' + `j'
+						matrix Xvec[1, `col'] = tmp[1, `j']
+					}
+				}
+
+				matrix Xi = diag(Xvec)
+
+				// Build Tmat
+				matrix Ttop = J(`k', `nX', 0)
+				forvalues r = 1/`k' {
+					forvalues c = 1/`nX' {
+						local zi_temp = zi[1, `r']
+						matrix Ttop[`r', `c'] = `zi_temp'
+					}
+				}
+
+				matrix Tbot = J(2*`L', `nX', 0)
+				forvalues l = 0/`=`L'-1' {
+					forvalues j = 1/`rowlen' {
+						local col = `l' * `rowlen' + `j'
+						local hi_temp = hi[1, `l'+1]
+						matrix Tbot[2*`l'+1, `col'] = `hi_temp'
+						matrix Tbot[2*`l'+2, `col'] = 1
+					}
+				}
+
+				matrix Tmat = Ttop \ Tbot
+				matrix Pmat = J(`nX',1, pi)
+				matrix epsilon = Xi * (Pmat - Tmat' * theta)
+				matrix gsum = gsum + epsilon
 			}
 
-            local row = `row' + 1
-        }
+
+		// Store the summed moment for this cluster
+		forvalues r = 1/`nX' {
+			scalar gval = gsum[`r',1]
+			matrix Moments_by_cluster[`r', `g'] = gval
+		}
+
+		local ++g
+	}
+	}
+
+	* Now use moments to estimate the covariance matrix
 
 
-}
-
-if "`cluster'" != ""{
-tempvar clustvar
-gettoken clustvar rest : cluster
-
-
-quiet levelsof `clustvar', local(cluster_ids)
-
-local G : word count `cluster_ids'
-
-matrix Moments_by_cluster = J(`nX', `G', 0)
-
-local g = 1
-foreach cl of local cluster_ids {
-
-    matrix gsum = J(`nX', 1, 0)
+	if "`cluster'" == "" {
+		matrix Moments_all = Moments
+		matrix S        = (Moments_all * Moments_all') / `=_N'
+		matrix S = (`=_N' / (`=_N' - rowsof(theta)) ) * S
+		matrix gbar     = Moments_all * J(`=_N',1,1) / `=_N'
+	}
+	else {
+		matrix S = (Moments_by_cluster * Moments_by_cluster') / `=_N'
+		local G : word count `cluster_ids'
+		matrix S = (`G'/(`G'-1)) * ((`=_N' - 1)/(`=_N'-rowsof(theta))) * S
+		matrix onesG = J(`G',1,1)
+		matrix gbar = Moments_by_cluster * onesG / `=_N'
+	}
 
 
-        forvalues i = 1/`=_N' {
-            if `clustvar'[`i'] != `cl' {
-                continue
-            }
+	matrix Vtheta = invsym(XT' * weight *  XT) * XT' * weight *  S * weight *  XT * invsym(XT' * weight * XT)
 
-            // Build zi
-            matrix zi = J(1, `k', .)
-            forvalues j = 1/`k' {
-                local zj : word `j' of `instruments'
-                matrix zi[1, `j'] = `zj'[`i']
-            }
-
-            // Build hi
-            matrix hi = J(1, `L', .)
-            forvalues j = 1/`L' {
-                local hj : word `j' of `aiv'
-                matrix hi[1, `j'] = `hj'[`i']
-            }
-
-            scalar pi = `Pval'[`i']
-            matrix tmp = (zi, pi, 1)
-
-            matrix Xvec = J(1, `nX', .)
-            forvalues l = 0/`=`L'-1' {
-                forvalues j = 1/`rowlen' {
-                    local col = `l'*`rowlen' + `j'
-                    matrix Xvec[1, `col'] = tmp[1, `j']
-                }
-            }
-
-            matrix Xi = diag(Xvec)
-
-            // Build Tmat
-            matrix Ttop = J(`k', `nX', 0)
-            forvalues r = 1/`k' {
-                forvalues c = 1/`nX' {
-                    local zi_temp = zi[1, `r']
-                    matrix Ttop[`r', `c'] = `zi_temp'
-                }
-            }
-
-            matrix Tbot = J(2*`L', `nX', 0)
-            forvalues l = 0/`=`L'-1' {
-                forvalues j = 1/`rowlen' {
-                    local col = `l' * `rowlen' + `j'
-                    local hi_temp = hi[1, `l'+1]
-                    matrix Tbot[2*`l'+1, `col'] = `hi_temp'
-                    matrix Tbot[2*`l'+2, `col'] = 1
-                }
-            }
-
-            matrix Tmat = Ttop \ Tbot
-            matrix epsilon = Xi * (Pmat - Tmat' * theta)
-            matrix gsum = gsum + epsilon
-        }
+	matrix Vtheta = Vtheta / `=_N'
 
 
-    // Store the summed moment for this cluster
-    forvalues r = 1/`nX' {
-        scalar gval = gsum[`r',1]
-        matrix Moments_by_cluster[`r', `g'] = gval
-    }
-
-    local ++g
-}
-}
-
-matrix XT = XT / `=_N'
-if "`cluster'" == "" {
-    matrix Moments_all = Moments
-    matrix S        = (Moments_all * Moments_all') / `=_N'
-    matrix gbar     = Moments_all * J(`=_N',1,1) / `=_N'
-}
-else {
-    matrix S = (Moments_by_cluster * Moments_by_cluster') / (`=_N'^2)
-	matrix onesG = J(`G',1,1)
-    matrix gbar = Moments_by_cluster * onesG / `=_N'
-}
-
-
-matrix Vtheta = invsym(XT' * weight *  XT) * XT' * weight *  S * weight *  XT * invsym(XT' * weight * XT)
-
-matrix Vtheta = Vtheta 
-
-matrix Vtheta = invsym(Vtheta)
-matrix Vtheta = Vtheta / sqrt(`=_N')
-
-
-
+	* Look only at amenities and collect results for ereturn
 
 	
     matrix colnames theta = b
@@ -1612,35 +1651,40 @@ matrix Vtheta = Vtheta / sqrt(`=_N')
 	local N = `=_N'
 	local dof = `=_N' - `namen' - 2*`L'
 	
-	// J -Test
-if `L' > 1 {
-	// Compute average moment vector
-	matrix ones_mat = J(`=_N', 1, 1)
-
-
-
-	// Compute J-statistic
-	local Jdof = `L' * (`namen' + 2) - `namen' - 2*`L'
-
-	matrix Jstat = gbar' * invsym(S) * gbar / `=_N' 
-	scalar Jval = Jstat[1,1]
-	local Jval = string(Jval, "%9.4f")
-	local Jval : subinstr local Jval " " "", all
-
-	scalar pval_J = chi2tail(`Jdof', Jval)
-	local pval_J = string(pval_J, "%9.4f")
-	local pval_J : subinstr local pval_J " " "", all
-
-
-	*di as text _newline(1) "Test of overidentifying restrictions:"
-	*di as text "    Hansen J statistic = " as result %9.4f Jval
-	*di as text "    Degrees of freedom = " as result %9.0f `Jdof'
-	*di as text "    P-value            = " as result %9.4f pval_J
-}
-
-
+	****************************************************************************
+	* Perform J-Test
+	****************************************************************************
 	
-	// Display clean summary like aivreglinear
+	if `L' > 1 {
+		// Compute average moment vector
+		matrix ones_mat = J(`=_N', 1, 1)
+
+
+
+		// Compute J-statistic
+		local Jdof = `L' * (`namen' + 2) - `namen' - 2*`L'
+
+		matrix Jstat = `=_N' * gbar' * invsym(S) * gbar
+		scalar Jval = Jstat[1,1]
+		local Jval = string(Jval, "%9.4f")
+		local Jval : subinstr local Jval " " "", all
+
+		scalar pval_J = chi2tail(`Jdof', Jval)
+		local pval_J = string(pval_J, "%9.4f")
+		local pval_J : subinstr local pval_J " " "", all
+
+
+		*di as text _newline(1) "Test of overidentifying restrictions:"
+		*di as text "    Hansen J statistic = " as result %9.4f Jval
+		*di as text "    Degrees of freedom = " as result %9.0f `Jdof'
+		*di as text "    P-value            = " as result %9.4f pval_J
+	}
+
+
+	****************************************************************************
+	* Display clean output table like aivreglinear
+	****************************************************************************
+	
 	display ""
 	local align_col 60
 	local pad1 = `align_col' - length("Number of obs") - length("Anti-IV GMM")
@@ -1699,12 +1743,17 @@ if `L' > 1 {
 	}
 
 	collect style header Col, level(hide)
-	collect style cell result[`depvar'], border(bottom) border(top, pattern(nil)) // new column names
+	collect style cell result[`depvar'], border(bottom) border(top, pattern(nil))
 	collect style cell, sformat(" %s")
 	quiet collect layout (result) (Col)
 	collect preview
 
-	ereturn post b V, dof(`dof') obs(`=_N')
+	
+	****************************************************************************
+	* Ereturn results
+	****************************************************************************
+	
+	ereturn post b V, dof(`dof') obs(`=_N') depname("`depvar'")
 	ereturn local cmd "aivreg"
 	if `L' > 1 {
 		ereturn scalar Jval = Jval
@@ -1720,7 +1769,5 @@ if `L' > 1 {
 	
 	restore
 end
-
-
 
 

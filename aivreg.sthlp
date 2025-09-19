@@ -118,6 +118,12 @@ The Stata {bf:aivreg} command implements the anti-IV method used in
 
 {phang} - {S} the estimated covariance matrix of the moments
 
+
+{title:Contact}
+
+{phang} - Questions or concerns can be sent to aivregstata@gmail.com
+
+
 {title:References}
 
 {phang} - Bell, A. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":Job Amenities and Earnings Inequality} (2022).

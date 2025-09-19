@@ -218,6 +218,9 @@ rank_means[5,5]
 
 ```
 
+## Contact
+-  Questions or concerns can be sent to aivregstata@gmail.com
+
 References:
 
 - Bell, A., Billings, S. B., Calder-Wang, S., & Zhong, S. An Anti-IV Approach for Pricing Residential Amenities (2024). SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974
