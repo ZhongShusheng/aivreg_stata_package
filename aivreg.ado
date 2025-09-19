@@ -260,7 +260,7 @@ preserve
 		capture confirm number `seed'
 		if _rc != 0 { 
 			dis " "
-			display "ERROR: seed must be a number."
+			display "Error: seed must be a number."
 			exit
 		}
 		}
