@@ -17,12 +17,9 @@ program define aivreg, eclass
 
     /* 2.  Now parse the standard pieces (including the varlist!) -------- */
     syntax varlist(fv) [if] [in], aiv(varlist) ///
-        [control(string) fe(varlist) weight(string) eststo(string) ///
+        [control(string) fe(varlist) weight(string) weightmatrix(string) eststo(string) ///
          vce(string) reps(string) seed(string) cluster(varlist)   ///
-         savefirst firststo(string) displayaiv steps(string) /// 
-		 conv_ptol(string) conv_vtol(string) igmmiterate(string) ///
-		 igmmeps(string) igmmweps(string) technique(string) ///
-		 conv_maxiter(string) tracelevel(string)]
+         savefirst firststo(string) displayaiv]
 
     /* 3.  How many anti-IVs?  Decide which engine to call --------------- */
 
@@ -38,16 +35,12 @@ program define aivreg, eclass
 			dis "Warning: Fixed effects not available for GMM estimation"
 		}
 
-        *aivgmm `varlist' `if' `in', aiv(`aiv') ///
-            control(`control') vce(`vce') steps(`steps') ///
-			technique(`technique') conv_maxiter(`conv_maxiter') ///
-			tracelevel(`tracelevel') reps(`reps')
-			if "`estimator'" == "2sls" {
-				local 2sls = "2sls"
-			}
+		if "`estimator'" == "2sls" {
+			local 2sls = "2sls"
+		}
 			
 		aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			eststo(`eststo') cluster(`cluster') weight(`weight') `2sls'
+			eststo(`eststo') cluster(`cluster') weight(`weight') weightmatrix(`weightmatrix') `2sls'
 			
     }
     else if inlist("`estimator'", "lin", "ols") {
@@ -57,7 +50,7 @@ program define aivreg, eclass
             `savefirst' firststo(`firststo') `displayaiv'
     }
     else {
-        di as error "Invalid estimator `estimator'.  Use lin or gmm."
+        di as error "Invalid estimator `estimator'.  Use ols (default), gmm, or 2sls."
         exit 198
     }
 end
@@ -274,7 +267,7 @@ preserve
 		}
 	}
 	* catch Anderson-Rubin case
-	else if inlist("`vce'", "", "ar", "AR", "andersonrubin", "anderson-rubin") | inlist("`vce'", "AndersonRuben", "Anderson-Rubin", "Anderson Ruben", "anderson ruben") {	
+	else if inlist("`vce'", "", "ar", "AR", "andersonrubin", "anderson-rubin") | inlist("`vce'", "AndersonRubin", "Anderson-Rubin", "Anderson Rubin", "anderson rubin") {	
 		if "`seed'" != "" | "`reps'" != "" {
 			dis " "
 			dis "WARNING: options seed or reps are invalid in asymptotic SE"
@@ -623,11 +616,11 @@ preserve
 				collect get `z'=`ub', tags(Col[ARCI_ub])
 				
 				ereturn scalar beta`z' = `beta'
-				ereturn scalar SE_asymp`z' = `SE'
+				ereturn scalar SE_boot`z' = `SE'
 				ereturn scalar t_val`z' = `val_t'
 				ereturn scalar p_more_t`z' = `test_stat' 
-				ereturn scalar lb_asymp`z' = `lb'
-				ereturn scalar ub_asymp`z' = `ub'
+				ereturn scalar lb_boot`z' = `lb'
+				ereturn scalar ub_boot`z' = `ub'
 			
 		}
 			
@@ -930,10 +923,9 @@ preserve
 			
 			* we approximate SE with the radius on the side closer to zero
 			if `a' < 0 {
-				display "Error: CI undefined for `z'"
 				sca `lb' = "-Inf"
 				sca `ub' = "Inf"
-				sca `SE' = .
+				sca `SE' = 0
 				local undef = "undef"
 			}
 			
@@ -974,8 +966,14 @@ preserve
 			ereturn scalar SE_AR`z' = `SE_AR`z''
 			ereturn scalar t_val`z' = `t_val`z''
 			ereturn scalar p_more_t`z' = `p_more_t`z''
-			ereturn scalar lb_AR`z' = `lb_AR`z''
-			ereturn scalar ub_AR`z' = `ub_AR`z''
+			if "`undef'" != "undef" {
+				ereturn scalar lb_AR`z' = `lb_AR`z''
+				ereturn scalar ub_AR`z' = `ub_AR`z''				
+			}
+			else {
+			ereturn scalar lb_AR`z' = .
+			ereturn scalar ub_AR`z' = .
+			}
 	}
 	
 	* Save existing scalars
@@ -993,8 +991,10 @@ preserve
 	qui collect layout (result) (Col)
 	collect preview
 	
+	if "`undef'" == "undef" {
+		display "Warning: CI undefined. Anti-IV is not relevant, or regression lacks sufficient power."
+	}
 
-if "`undef'" != "undef" {
 	quietly{
 	local N = `n'
 	local DOF = `n' - `k'
@@ -1005,7 +1005,7 @@ if "`undef'" != "undef" {
 	
 	eststo `eststo'
 	}
-	}
+
 	}
 	
 
@@ -1229,6 +1229,7 @@ program define aivgmm, eclass
 		[eststo(string)] ///
 		[cluster(varlist)] ///
 		[weight(string)] ///
+		[weightmatrix(string)] ///
 		[displayaiv] ///
 		[2sls]
 
@@ -1251,6 +1252,11 @@ program define aivgmm, eclass
 
 		local keeplist `varlist' `aiv' 
 		
+			
+		if "`weight'" != "" {
+			local keeplist `keeplist' `weight'
+		}	
+		
 		if "`control'" != "" {
 			local keeplist `keeplist' `control'
 		}
@@ -1269,7 +1275,40 @@ program define aivgmm, eclass
 		drop nmiss
 	}
 	
-
+	****************************************************************************
+	* Weight matrix for gmm moments
+	****************************************************************************
+	
+	if "`weightmatrix'" != "" {
+		// validate user-supplied weight matrix size vs effw
+		capture confirm matrix `weightmatrix'
+		if _rc {
+			di as err "weight matrix: specify the name of an existing matrix"
+			exit 198
+		}
+		matrix weightmatrix = `weightmatrix'
+		}
+	
+	****************************************************************************
+	* observation weights
+	****************************************************************************
+	
+	quietly {
+	tempvar w
+	if "`weight'" != "" {
+		confirm variable `weight'
+		gen double `w' = `weight'
+		drop if missing(`w') | `w' < 0
+	}
+	else {
+		gen double `w' = 1
+	}
+	summ `w', meanonly
+	scalar W = r(sum)
+	}
+	
+		
+	
 	****************************************************************************
 	* Generate objects that will be used for indexing
 	****************************************************************************
@@ -1309,7 +1348,7 @@ program define aivgmm, eclass
 
 
     local row = 1
-    *quietly {
+
         forvalues i = 1/`=_N' {
 
             // Build zi
@@ -1366,9 +1405,15 @@ program define aivgmm, eclass
             matrix XT_i = Xi * Tmat'
             matrix XP_i = Xi * Pmat
 
-            matrix XT = XT + XT_i
-            matrix XP = XP + XP_i
-			matrix effw = effw + Xvec' * Xvec
+			* sum with weighting
+			scalar wi = `w'[`i']
+			scalar wnorm = wi / W
+
+			matrix XT   = XT   + wnorm * (Xi * Tmat')
+			matrix XP   = XP   + wnorm * (Xi * Pmat)
+			matrix effw = effw + wnorm * (Xvec' * Xvec)
+
+			* make full T matrix
 
 			matrix Tones = J(1, `Trows', 1)
 			matrix Tvec = Tones * Tmat / `Trows'
@@ -1385,54 +1430,39 @@ program define aivgmm, eclass
 			
             local row = `row' + 1
         }
-    *}
 
 
 	
-    // Estimate theta
-		
-		matrix XT = XT / `=_N'
-		matrix XP = XP / `=_N'
+		// Estimate theta
 		
 
-		if "`weight'" == "" & "`2sls'" == "" {
+		if "`weightmatrix'" == "" & "`2sls'" == "" {
 			local XTrows = `: rowsof XT'
-			matrix weight = I(`XTrows')
+			matrix weightmatrix = I(`XTrows')
 		}
 		else if "`2sls'" == "2sls" {
-			matrix effw = effw / `=_N'
-			matrix weight = invsym(effw)
+			matrix weightmatrix = invsym(effw)
 		} 
 		else {
-			// validate user-supplied weight matrix size vs effw
-			capture confirm matrix `weight'
-			if _rc {
-				di as err "weight matrix: specify the name of an existing matrix"
-				exit 198
-			}
-
 			local nEff = rowsof(effw)
 			local mEff = colsof(effw)
-			local nW   = rowsof(`weight')
-			local mW   = colsof(`weight')
+			local nW   = rowsof(weightmatrix)
+			local mW   = colsof(weightmatrix)
 
 			if (`nW' != `nEff') | (`mW' != `mEff') {
 				di as err "weight matrix is `nW' x `mW'; expected `nEff' x `mEff'"
 				exit 198
 			}
-
-			matrix weight = `weight'
 		}
 
-		
-	    matrix XtX = XT' * weight * XT
-        matrix XtXinv = invsym(XtX)
-		matrix XtXP = XT' * weight * XP
-		matrix theta = XtXinv * XtXP
 
-		matrix Presid = Pfull - Tfull * theta
-		matrix mat_SE_2sls = Presid' * Presid
-		scalar SE_2sls = mat_SE_2sls[1,1]
+
+
+		
+	    matrix XtX = XT' * weightmatrix * XT
+        matrix XtXinv = invsym(XtX)
+		matrix XtXP = XT' * weightmatrix * XP
+		matrix theta = XtXinv * XtXP
 		
 
 		************************************************************************
@@ -1497,7 +1527,12 @@ program define aivgmm, eclass
 				matrix Tmat = Ttop \ Tbot
 
 				matrix Pmat = J(`nX',1, pi)
-				matrix epsilon = Xi * (Pmat - Tmat' * theta)
+				
+				// weights
+				scalar wi = `w'[`i']
+				scalar wroot = sqrt(wi / W)
+				
+				matrix epsilon = wroot * Xi * (Pmat - Tmat' * theta)
 
 				if `i' == 1 {
 					matrix Moments = J(`nX',`=_N',.)
@@ -1590,7 +1625,12 @@ program define aivgmm, eclass
 				matrix Tmat = Ttop \ Tbot
 				matrix Pmat = J(`nX',1, pi)
 				matrix epsilon = Xi * (Pmat - Tmat' * theta)
-				matrix gsum = gsum + epsilon
+				
+				// weights
+				scalar wi = `w'[`i']
+				scalar wroot = sqrt(wi / W)
+				
+				matrix gsum = gsum + wroot * epsilon
 			}
 
 
@@ -1609,23 +1649,42 @@ program define aivgmm, eclass
 
 	if "`cluster'" == "" {
 		matrix Moments_all = Moments
-		matrix S        = (Moments_all * Moments_all') / `=_N'
-		matrix S = (`=_N' / (`=_N' - rowsof(theta)) ) * S
-		matrix gbar     = Moments_all * J(`=_N',1,1) / `=_N'
+		matrix S        = (Moments_all * Moments_all')
+		
+		// build a vector of sqrt weights
+		tempname v ones
+		matrix `v' = J(`=_N',1,.)
+		forvalues i = 1/`=_N' {
+			matrix `v'[`i',1] = sqrt(`w'[`i'] / W)
+		}
+		// gbar = Moments * diag(v) * 1_N
+		matrix `ones' = J(`=_N',1,1)
+		matrix gbar = Moments * diag(`v') * `ones'
+	
 	}
 	else {
-		matrix S = (Moments_by_cluster * Moments_by_cluster') / `=_N'
-		local G : word count `cluster_ids'
-		matrix S = (`G'/(`G'-1)) * ((`=_N' - 1)/(`=_N'-rowsof(theta))) * S
-		matrix onesG = J(`G',1,1)
-		matrix gbar = Moments_by_cluster * onesG / `=_N'
+		matrix S = (Moments_by_cluster * Moments_by_cluster')
+		
+		tempname wcl
+		matrix `wcl' = J(`G',1,.)
+		local g = 1
+		foreach cl of local cluster_ids {
+			// compute cluster weight share
+			quietly summarize `w' if `clustvar'==`cl'
+			scalar wsum = r(sum) / W
+			matrix `wcl'[`g',1] = wsum
+			local ++g
+		}
+
+		matrix gbar = Moments_by_cluster * `wcl'
+
 	}
 
+	local Ndisp = round(W)
+	local dof   = `Ndisp' - `namen' - 2*`L'
 
-	matrix Vtheta = invsym(XT' * weight *  XT) * XT' * weight *  S * weight *  XT * invsym(XT' * weight * XT)
-
-	matrix Vtheta = Vtheta / `=_N'
-
+	matrix Vtheta = invsym(XT' * weightmatrix *  XT) * XT' * weightmatrix *  S * weightmatrix *  XT * invsym(XT' * weightmatrix * XT)
+	matrix Vtheta = Vtheta / `Ndisp'
 
 	* Look only at amenities and collect results for ereturn
 
@@ -1648,23 +1707,17 @@ program define aivgmm, eclass
 	matrix rownames V = `names'
 	matrix colnames V = `names'
 
-	local N = `=_N'
-	local dof = `=_N' - `namen' - 2*`L'
 	
 	****************************************************************************
 	* Perform J-Test
 	****************************************************************************
 	
 	if `L' > 1 {
-		// Compute average moment vector
-		matrix ones_mat = J(`=_N', 1, 1)
-
-
 
 		// Compute J-statistic
 		local Jdof = `L' * (`namen' + 2) - `namen' - 2*`L'
 
-		matrix Jstat = `=_N' * gbar' * invsym(S) * gbar
+		matrix Jstat = gbar' * invsym(S) * gbar
 		scalar Jval = Jstat[1,1]
 		local Jval = string(Jval, "%9.4f")
 		local Jval : subinstr local Jval " " "", all
@@ -1672,12 +1725,6 @@ program define aivgmm, eclass
 		scalar pval_J = chi2tail(`Jdof', Jval)
 		local pval_J = string(pval_J, "%9.4f")
 		local pval_J : subinstr local pval_J " " "", all
-
-
-		*di as text _newline(1) "Test of overidentifying restrictions:"
-		*di as text "    Hansen J statistic = " as result %9.4f Jval
-		*di as text "    Degrees of freedom = " as result %9.0f `Jdof'
-		*di as text "    P-value            = " as result %9.4f pval_J
 	}
 
 
@@ -1688,7 +1735,8 @@ program define aivgmm, eclass
 	display ""
 	local align_col 60
 	local pad1 = `align_col' - length("Number of obs") - length("Anti-IV GMM")
-	display "Anti-IV GMM" _dup(`pad1') " " "Number of obs = " "`N'"	
+	display "Anti-IV GMM" _dup(`pad1') " " "Number of obs = " "`Ndisp'"
+
 	if "`cluster'" == "" {
 		local pad2 = `align_col' - length("Number of anti-IVs")
 		display _dup(`pad2') " " "Number of anti-IVs = `L'"
@@ -1753,13 +1801,13 @@ program define aivgmm, eclass
 	* Ereturn results
 	****************************************************************************
 	
-	ereturn post b V, dof(`dof') obs(`=_N') depname("`depvar'")
+	ereturn post b V, dof(`dof') obs(`Ndisp') depname("`depvar'")
 	ereturn local cmd "aivreg"
 	if `L' > 1 {
 		ereturn scalar Jval = Jval
 		ereturn scalar pval_J = pval_J
 	}
-	ereturn matrix weight = weight
+	ereturn matrix weightmatrix = weightmatrix
 	ereturn matrix S = S
 	
 	if "`eststo'" != "" {
@@ -1769,5 +1817,3 @@ program define aivgmm, eclass
 	
 	restore
 end
-
-
