@@ -1,52 +1,51 @@
-{smcl}
-{* *! version 1.0 25 Apr 2025}{...}
-{title:aivreg — Anti-IV Regression}
+# aivreg — Anti-IV Regression
 
-Syntax
-------
+## Syntax
+```stata
 
     aivreg [estimator] depvar varlist [if] [in], aiv(varlist) [options]
 
-Options
--------
+```
 
-Model specification
+## Options
+
+
+### Model specification
     aiv(varlist)        anti-IV variables (one for OLS, multiple for GMM).
     control(varlist)    control variables.
     fe(varlist)         fixed effects to absorb (via reghdfe or ivreghdfe). Not available for GMM.
     weight(...)         observation weights for estimation.
     weightmatrix(matrix) estimation weight matrix for estimation (GMM only).
 
-Estimation & storage
+### Estimation & storage
     eststo(name)        store estimates under name.
     savefirst           save first-stage regression results.
     firststo(name)      store first-stage estimates under name.
     displayaiv          display coefficient on predicted anti-IV.
 
-Variance & inference
+### Variance & inference
     vce(type)           variance estimator: ar (default), boot, asymp.
     cluster(varlist)    cluster-robust SEs.
     reps(#)             number of bootstrap replications.
     seed(#)             random seed for bootstrap.
 
-Description
------------
+## Description
 
 aivreg implements the anti-IV estimator outlined in Bell et al. (2025). 
 The method allows consistent estimation of hedonic prices when an imperfectly 
 informative proxy (anti-IV) for a confounder exists. 
 Example: the cost of flood risk to home prices, where buyer income proxies for unobserved home quality.
 
-Details
--------
+## Details
 
-Estimator
+
+### Estimator
     If estimator is blank, aivreg defaults to OLS using ivreg2, reg, reghdfe, or ivreghdfe.
     If estimator = gmm, aivreg uses the GMM estimator (default weight matrix = identity).
     If estimator = 2sls, aivreg uses GMM with the optimal homoskedastic weight matrix.
     With one anti-IV, 2SLS and OLS yield identical point estimates.
 
-Model specification
+### Model specification
     aiv(varlist)   One anti-IV for OLS, multiple for GMM (switches automatically).
     control(varlist) Exogenous controls included in both stages.
     fe(varlist)    Fixed effects absorbed using reghdfe/ivreghdfe. Not allowed with GMM.
@@ -54,27 +53,30 @@ Model specification
                    For GMM, provide just the variable name; GMM uses probability weights.
     weightmatrix() Square matrix with (# amenities + # controls + 2 × # anti-IVs). Defaults to identity.
 
-Estimation & storage
+### Estimation & storage
     eststo(name)   Stores results under name.
     savefirst      Reports and stores first-stage regression.
     firststo(name) Stores first-stage estimates under name.
     displayaiv     Displays coefficient on predicted anti-IV (not with AR CIs).
 
-Variance & inference
+### Variance & inference
     vce(type)      ar (Anderson–Rubin, default), boot (bootstrap), asymp (asymptotic).
     cluster()      Cluster-robust SEs.
     reps(#)        Bootstrap replications.
     seed(#)        Bootstrap seed.
 
-Examples
---------
+### Examples
+
 
 Load the sample wagesdatasets.
-    . stata use safety_aivreg_example.dta, clear
-
+```stata
+    . use safety_aivreg_example.dta, clear
+```
 A naive hedonic regression can be misleading.
-    . stata reg wage safety
-
+```stata
+    . reg wage safety
+```
+```
 
       Source |       SS           df       MS      Number of obs   =     3,971
 -------------+----------------------------------   F(1, 3969)      =     38.01
@@ -89,11 +91,13 @@ A naive hedonic regression can be misleading.
       safety |   .1257863    .020403     6.17   0.000     .0857849    .1657877
        _cons |   .1858175   .0196564     9.45   0.000     .1472798    .2243552
 ------------------------------------------------------------------------------
-
+```
 
 Even adding a proxy for the confounder may not fix it.
-    . stata reg wage safety afqt_1_1981
-
+```stata
+    . reg wage safety afqt_1_1981
+```
+```
 
       Source |       SS           df       MS      Number of obs   =     3,971
 -------------+----------------------------------   F(2, 3968)      =    157.55
@@ -109,11 +113,13 @@ Even adding a proxy for the confounder may not fix it.
  afqt_1_1981 |   .0114346   .0006902    16.57   0.000     .0100814    .0127877
        _cons |  -.3182425    .035877    -8.87   0.000    -.3885815   -.2479035
 ------------------------------------------------------------------------------
-
+```
 
 aivreg improves identification using a proxy (anti-IV).
-    . stata aivreg wage safety, aiv(afqt_1_1981) eststo(model1)
-
+```stata
+    . aivreg wage safety, aiv(afqt_1_1981) eststo(model1)
+```
+```
 
 Anti-IV Regression                             Number of obs = 3971
 Uses Anderson-Rubin CI                       Partial F-stat. =  274.474
@@ -124,12 +130,13 @@ wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 safety |  -1.145084   .1010579  -11.33096  2.59e-29   -1.379237  -.9470102
 --------------------------------------------------------------------------
 (result model1 is active now)
-
+```
 
 Show results in esttab
+```stata
    . esttab model1
-
-
+```
+```
 ----------------------------
                       (1)   
                      wage   
@@ -141,14 +148,19 @@ N                    3971
 ----------------------------
 t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
-
+```
 
 Load simulated dataset.
+```stata
     . use simulated_flood_risk.dta, clear
-
+```
 Baseline OLS with a proxy for quality (buyer income).
+
+```stata
     . reg log_price i.flood_factor log_income
     
+```
+```
 
       Source |       SS           df       MS      Number of obs   =    10,000
 -------------+----------------------------------   F(10, 9989)     =  15595.36
@@ -174,12 +186,14 @@ flood_factor |
   log_income |   1.162906   .0031784   365.87   0.000     1.156676    1.169137
        _cons |   .0779676   .0331978     2.35   0.019     .0128933     .143042
 ------------------------------------------------------------------------------
-
+```
 
 High-dimensional FE with clustering by block.
+```stata
     . reghdfe log_price i.flood_factor elev_m distcoast log_income, absorb(block_id) vce(cluster block_id)
     . estimates store hdfe1
-    
+```
+```
 (dropped 2 singleton observations)
 (MWFE estimator converged in 1 iterations)
 
@@ -220,12 +234,14 @@ Absorbed degrees of freedom:
     block_id |        30          30           0    *|
 -----------------------------------------------------+
 * = FE nested within cluster; treated as redundant for DoF computation
-
+```
 
 aivreg using income as anti-IV.
+```stata
     . aivreg log_price i.flood_factor, aiv(log_income) eststo(aiv1)
-    
- 
+```
+```
+
 Anti-IV Regression                             Number of obs = 10000
 Uses Anderson-Rubin CI                       Partial F-stat. = 1.34e+05
 SE inferred from radius closest to zero
@@ -244,11 +260,13 @@ flood_factor9  |   .0095011   .0112999   .8408138  .4004724   -.0126467   .03159
 flood_factor10 |  -.0309191   .0114866  -2.691762  .0071194   -.0535217  -.0084054
 ----------------------------------------------------------------------------------
 (result aiv1 is active now)
-
+```
 
 aivreg with controls and block fixed effects; clustered SEs.
+```stata
     . aivreg log_price i.flood_factor, aiv(log_income) control(elev_m distcoast) fe(block_id) cluster(block_id) eststo(aiv2)
-    
+```   
+```
  
 Anti-IV Regression                             Number of obs = 9998
 Uses Anderson-Rubin CI                       Partial F-stat. =91001.537
@@ -269,11 +287,13 @@ flood_factor9  |   .0087179   .0149753   .5821482    .56048   -.0206338   .03804
 flood_factor10 |  -.0319271   .0105879   -3.01542  .0025727   -.0527365  -.0111747
 ----------------------------------------------------------------------------------
 (result aiv2 is active now)
-
+```
 
 Display/export results with esttab.
+```stata
     . esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg+ctrl+FE" "aivreg GMM" "aivreg 2SLS", pattern(1 1 1)) modelwidth(20) varwidth(18) label
-    
+```
+```   
 ------------------------------------------------------------------------------------------
                                 reghdfe                  aivreg          aivreg+ctrl+FE   
                                     (1)                     (2)                     (3)   
@@ -325,13 +345,15 @@ Observations                       9998                   10000                 
 ------------------------------------------------------------------------------------------
 t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
-
+```
 
 Make singular dummy for flood factor 10 as GMM does not accept factor variables.
+```stata
     . tabulate flood_factor, generate(flood_factor)
     . label var flood_factor10 "Flood risk factor=10"
     . drop if flood_factor != 1 & flood_factor != 10
-	
+```
+```	
  Flood risk |
      factor |      Freq.     Percent        Cum.
 ------------+-----------------------------------
@@ -348,11 +370,13 @@ Make singular dummy for flood factor 10 as GMM does not accept factor variables.
 ------------+-----------------------------------
       Total |     10,000      100.00
 
-
+```
 
 GMM version of aivreg.
+```stata
     . aivreg gmm log_price flood_factor10, aiv(log_income) control(elev_m distcoast) eststo(aiv_gmm)
-    
+```
+``` 
 
 Anti-IV GMM                                    Number of obs = 2216
                                           Number of anti-IVs = 1
@@ -362,11 +386,13 @@ log_price      |     Coef.  Std. Err.         t     P>|t|  [95% Conf.  Interval]
 flood_factor10 |  .0625603    .010713  5.839659  6.00e-09    .0415628   .0835578
 --------------------------------------------------------------------------------
 (result aiv_gmm is active now)
-
+```
 
 2SLS version for comparison.
+```stata
     . aivreg 2sls log_price flood_factor10, aiv(log_income) control(elev_m distcoast) eststo(aiv_2sls)
-    
+```
+```
 Anti-IV GMM                                    Number of obs = 2216
                                           Number of anti-IVs = 1
 
@@ -376,8 +402,13 @@ flood_factor10 |  -.0215269   .0155109  -1.387857  .1653205   -.0519284   .00887
 ----------------------------------------------------------------------------------
 (result aiv_2sls is active now)
 
+```
+
 Show results in esttab.
+```stata
     . esttab aiv_gmm aiv_2sls
+```
+```
 
 
 --------------------------------------------
@@ -398,11 +429,10 @@ N                    2216            2216
 t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 
+```
+## Saved results
 
-Saved results
--------------
-
-Scalars
+### Scalars
     e(Partial_F)       partial F-statistic from first stage  
     e(df_r)            residual degrees of freedom  
     e(N)               number of observations  
@@ -415,22 +445,20 @@ Scalars
     e(lb_vcevarname)   lower bound for coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
     e(ub_vcevarname)   upper bound for coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
 
-Macros
+### Macros
     e(cmd)         "aivreg"
 
-Matrices
+### Matrices
     e(b)           coefficient vector
     e(V)           variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero
     e(S)           covariance of moments (GMM only)
     e(weightmatrix) weight matrix (GMM only)
 
-Contact
--------
+### Contact
 
 Questions: aivregstata@gmail.com
 
-References
-----------
+## References
 
 - Bell, A. (2020). Job Amenities and Earnings Inequality. SSRN.  
 - Bell, A., Calder-Wang, S., & Zhong, S. (2023). Pricing Neighborhood Amenities: A Proxy-Based Approach. SSRN.  
