@@ -50,7 +50,7 @@
 {opt aiv(varlist)} specifies the anti-IV variables. OLS supports one anti-IV; GMM allows multiple. {cmd:aivreg} will automatically switch to GMM if multiple anti-IVs are specified. 
 
 {phang}
-{opt control(varlist)} specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the proxy and the outcome given the latent confounder holds.
+{opt control(varlist)} specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the anti-IV and the outcome given the latent confounder holds.
 
 {phang}
 {opt fe(varlist)} absorbs fixed effects using {help reghdfe} or {help ivreghdfe}. If unspecified, then {cmd:aivreg} calls {help reg} or {help ivreg2} instead. This is not available in GMM.
@@ -94,32 +94,17 @@
 
 {title:Examples}
 
-{pstd}Load the sample wages dataset.{p_end}
-{phang} {stata use safety_aivreg_example.dta, clear}
-
-{pstd}A naive hedonic regression can be misleading.{p_end}
-{phang} {stata reg wage safety}
-
-{pstd}Even adding a proxy for the confounder may not fix it.{p_end}
-{phang} {stata reg wage safety afqt_1_1981}
-
-{pstd}{cmd:aivreg} improves identification using a proxy (anti-IV).{p_end}
-{phang} {stata aivreg wage safety, aiv(afqt_1_1981) eststo(model1)}
-
-{pstd}Show results in {help esttab}.{p_end}
-{phang} {stata esttab model1}
-
 {pstd}
-The following examples use included simulated data (SSC release). All commands are clickable.
+The following examples use simulated or sampled data which are included in the aivreg package SSC release. All commands are clickable.
 
-{pstd}Load the simulated dataset.{p_end}
+{pstd}Load the simulated flood risk dataset. This is made in simulate_flood_risk_data.do, which is included in the aivreg package.{p_end}
 {phang} {stata use simulated_flood_risk.dta, clear}
 
-{pstd}Baseline OLS with a proxy for quality (buyer income).{p_end}
+{pstd}Baseline OLS with an anti-IV for quality (buyer income).{p_end}
 {phang} {stata reg log_price i.flood_factor log_income}
 
 {pstd}High-dimensional FE with clustering by block.{p_end}
-{phang} {stata reghdfe log_price i.flood_factor elev_m distcoast log_income, absorb(block_id) vce(cluster block_id)}
+{phang} {stata reghdfe log_price i.flood_factor log_income, absorb(block_id)}
 
 {phang} {stata estimates store hdfe1}
 
@@ -127,10 +112,10 @@ The following examples use included simulated data (SSC release). All commands a
 {phang} {stata aivreg log_price i.flood_factor, aiv(log_income) eststo(aiv1)}
 
 {pstd}{cmd:aivreg} with controls and block fixed effects; clustered SEs.{p_end}
-{phang} {stata aivreg log_price i.flood_factor, aiv(log_income) control(elev_m distcoast) fe(block_id) cluster(block_id) eststo(aiv2)}
+{phang} {stata aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) eststo(aiv2)}
 
 {pstd}Display or export results with {help esttab}.{p_end}
-{phang} {stata esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg+ctrl+FE" "aivreg GMM" "aivreg 2SLS", pattern(1 1 1)) modelwidth(20) varwidth(18) label}
+{phang} {stata esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg+FE", pattern(1 1 1)) modelwidth(20) varwidth(18) label}
 
 {pstd}Make singular dummy for flood factor 10 as GMM does not accept factor variables.{p_end}
 {phang} {stata tabulate flood_factor, generate(flood_factor)}
@@ -140,13 +125,28 @@ The following examples use included simulated data (SSC release). All commands a
 {phang} {stata drop if flood_factor != 1 & flood_factor != 10}
 
 {pstd}GMM version of {cmd:aivreg}.{p_end}
-{phang} {stata aivreg gmm log_price flood_factor10, aiv(log_income) control(elev_m distcoast) eststo(aiv_gmm)}
+{phang} {stata aivreg gmm log_price flood_factor10, aiv(log_income) eststo(aiv_gmm)}
 
 {pstd}2SLS version for comparison.{p_end}
-{phang} {stata aivreg 2sls log_price flood_factor10, aiv(log_income) control(elev_m distcoast) eststo(aiv_2sls)}
+{phang} {stata aivreg 2sls log_price flood_factor10, aiv(log_income) eststo(aiv_2sls)}
 
 {pstd}Show results in {help esttab}.{p_end}
 {phang} {stata esttab aiv_gmm aiv_2sls}
+
+{pstd}Load the sample wages dataset.{p_end}
+{phang} {stata use safety_aivreg_example.dta, clear}
+
+{pstd}A naive hedonic regression can be misleading.{p_end}
+{phang} {stata reg wage safety}
+
+{pstd}Even controling for the anti-IV in OLS may not fix it.{p_end}
+{phang} {stata reg wage safety afqt_1_1981}
+
+{pstd}{cmd:aivreg} improves identification using a anti-IV.{p_end}
+{phang} {stata aivreg wage safety, aiv(afqt_1_1981) eststo(model1)}
+
+{pstd}Show results in {help esttab}.{p_end}
+{phang} {stata esttab model1}
 
 {title:Saved results}
 
