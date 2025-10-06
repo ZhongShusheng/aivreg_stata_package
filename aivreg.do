@@ -1,7 +1,12 @@
 cap program drop aivreg
 program define aivreg, eclass
     version 17
-
+	
+	if c(version) < 17 {
+			dis as error "aivreg requires stata 17 or newer"
+			exit 9
+	}
+	
     /* 1.  Peek at first token ------------------------------------------ */
     gettoken maybe_est rest : 0          // maybe_est = first word
 

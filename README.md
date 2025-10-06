@@ -33,7 +33,7 @@
 
 aivreg implements the anti-IV estimator outlined in Bell et al. (2025). 
 The method allows consistent estimation of hedonic prices when an imperfectly 
-informative proxy (anti-IV) for a confounder exists. 
+informative variable (anti-IV) for a confounder exists. 
 Example: the cost of flood risk to home prices, where buyer income proxies for unobserved home quality.
 
 ## Details
@@ -93,7 +93,7 @@ A naive hedonic regression can be misleading.
 ------------------------------------------------------------------------------
 ```
 
-Even adding a proxy for the confounder may not fix it.
+Even adding a potential anti-IV into OLS may not fix it.
 ```stata
     . reg wage safety afqt_1_1981
 ```
@@ -115,7 +115,7 @@ Even adding a proxy for the confounder may not fix it.
 ------------------------------------------------------------------------------
 ```
 
-aivreg improves identification using a proxy (anti-IV).
+aivreg improves identification using an anti-IV.
 ```stata
     . aivreg wage safety, aiv(afqt_1_1981) eststo(model1)
 ```
@@ -150,11 +150,11 @@ t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 ```
 
-Load simulated dataset.
+Load simulated flood risk and home prices dataset.
 ```stata
     . use simulated_flood_risk.dta, clear
 ```
-Baseline OLS with a proxy for quality (buyer income).
+Baseline OLS with a potential anti_iv (buyer income) partially controlling for home quality.
 
 ```stata
     . reg log_price i.flood_factor log_income
@@ -461,6 +461,5 @@ Questions: aivregstata@gmail.com
 ## References
 
 - Bell, A. (2020). Job Amenities and Earnings Inequality. SSRN.  
-- Bell, A., Calder-Wang, S., & Zhong, S. (2023). Pricing Neighborhood Amenities: A Proxy-Based Approach. SSRN.  
 - Bell, A., Billings, S. B., Calder-Wang, S., & Zhong, S. (2024). An Anti-IV Approach for Pricing Residential Amenities: Applications to Flood Risk. SSRN.  
 - Correia, S. (2018). IVREGHDFE: Stata module for extended instrumental variable regressions.  
