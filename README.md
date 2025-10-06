@@ -308,7 +308,7 @@ flood_factor10 |  -.0349469    .015583  -2.242626  .0250223   -.0654895  -.00440
 
 2SLS version for comparison.
 ```stata
-    . aivreg 2sls log_price flood_factor10, aiv(log_income) control(elev_m distcoast) eststo(aiv_2sls)
+    . aivreg 2sls log_price flood_factor10, aiv(log_income) eststo(aiv_2sls)
 ```
 ```
 
