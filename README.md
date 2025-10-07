@@ -108,9 +108,9 @@ flood_factor |
 
 ```
 
-High-dimensional FE with clustering by block.
+High-dimensional FE by block.
 ```stata
-    . reghdfe log_price i.flood_factor elev_m distcoast log_income, absorb(block_id) vce(cluster block_id)
+    . reghdfe log_price i.flood_factor elev_m distcoast log_income, absorb(block_id)
     . estimates store hdfe1
 ```
 ```
@@ -154,34 +154,33 @@ Absorbed degrees of freedom:
 
 aivreg using income as anti-IV.
 ```stata
-    . aivreg log_price i.flood_factor, aiv(log_income) eststo(aiv1)
+    . aivreg log_price i.flood_factor, aiv(log_income) vce(asymp) eststo(aiv1)
 ```
 ```
-
-. aivreg log_price i.flood_factor, aiv(log_income) eststo(aiv1)
+ 
  
 Anti-IV Regression                             Number of obs = 10000
-Uses Anderson-Rubin CI                       Partial F-stat. = 1.42e+05
-SE inferred from radius closest to zero
+                                             Partial F-stat. = 1.42e+05
 
 log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ---------------+------------------------------------------------------------------
 flood_factor1  |          0          0          .         .           0          0
-flood_factor2  |   .0114884   .0115511   .9945732   .319968   -.0111517   .0340951
-flood_factor3  |  -.0017934   .0111506  -.1608296  .8722309   -.0236915   .0200619
-flood_factor4  |  -.0030903   .0112357   -.275041  .7832904   -.0251546   .0189318
-flood_factor5  |  -.0051555     .01116  -.4619628  .6441181   -.0270698   .0167182
-flood_factor6  |  -.0077301   .0112137  -.6893468   .490621   -.0297549   .0142487
-flood_factor7  |  -.0026147   .0112373  -.2326762  .8160176   -.0246847   .0194105
-flood_factor8  |  -.0007329   .0112182   -.065327  .9479149    -.022763   .0212548
-flood_factor9  |  -.0103114   .0113555  -.9080567  .3638702   -.0326196   .0119454
-flood_factor10 |  -.0392638   .0114954    -3.4156  .0006389   -.0618793  -.0167328
+flood_factor2  |   .0114884    .011536   .9958697  .3193376   -.0111222    .034099
+flood_factor3  |  -.0017934   .0111553  -.1607624  .8722838   -.0236577    .020071
+flood_factor4  |  -.0030903   .0112402  -.2749326  .7833737    -.025121   .0189404
+flood_factor5  |  -.0051555   .0111641  -.4617949  .6442384   -.0270372   .0167261
+flood_factor6  |  -.0077301   .0112191  -.6890161  .4908291   -.0297195   .0142593
+flood_factor7  |  -.0026147   .0112424  -.2325705  .8160997   -.0246498   .0194205
+flood_factor8  |  -.0007329   .0112227  -.0653008  .9479358   -.0227294   .0212636
+flood_factor9  |  -.0103114   .0113622  -.9075229  .3641522   -.0325813   .0119584
+flood_factor10 |  -.0392638   .0115105   -3.41114  .0006495   -.0618243  -.0167033
 ----------------------------------------------------------------------------------
 (result aiv1 is active now)
 
+
 ```
 
-aivreg with controls and block fixed effects; clustered SEs.
+aivreg with controls and block fixed effects; Anderson-Rubin confidence interval.
 ```stata
     . aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) eststo(aiv2)
 ```   
@@ -211,12 +210,12 @@ flood_factor10 |  -.0394751   .0114966  -3.433634   .000598   -.0620928  -.01694
 
 Display/export results with esttab.
 ```stata
-    . esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg+ctrl+FE" "aivreg GMM" "aivreg 2SLS", pattern(1 1 1)) modelwidth(20) varwidth(18) label
+    . esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg + FE + AR CI", pattern(1 1 1)) modelwidth(20) varwidth(18) label
 ```
 ```   
 
 ------------------------------------------------------------------------------------------
-                                reghdfe                  aivreg               aivreg+FE   
+                                reghdfe                  aivreg     aivreg + FE + AR CI   
                                     (1)                     (2)                     (3)   
                          Log sale price          Log sale price          Log sale price   
 ------------------------------------------------------------------------------------------
@@ -224,13 +223,13 @@ Flood risk facto~1                    0                       0                 
                                     (.)                     (.)                     (.)   
 
 Flood risk facto~2               0.0521***               0.0115                  0.0115   
-                                 (4.67)                  (0.99)                  (0.99)   
+                                 (4.67)                  (1.00)                  (0.99)   
 
 Flood risk facto~3               0.0505***             -0.00179                -0.00166   
                                  (4.68)                 (-0.16)                 (-0.15)   
 
 Flood risk facto~4               0.0483***             -0.00309                -0.00295   
-                                 (4.45)                 (-0.28)                 (-0.26)   
+                                 (4.45)                 (-0.27)                 (-0.26)   
 
 Flood risk facto~5               0.0444***             -0.00516                -0.00485   
                                  (4.12)                 (-0.46)                 (-0.43)   
@@ -248,7 +247,7 @@ Flood risk facto~9               0.0517***              -0.0103                 
                                  (4.72)                 (-0.91)                 (-0.93)   
 
 Flood risk fact~10               0.0630***              -0.0393***              -0.0395***
-                                 (5.69)                 (-3.42)                 (-3.43)   
+                                 (5.69)                 (-3.41)                 (-3.43)   
 
 Log income                        1.167***                                                
                                (376.91)                                                   

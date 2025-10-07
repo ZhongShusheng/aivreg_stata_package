@@ -103,19 +103,19 @@ The following examples use simulated or sampled data which are included in the a
 {pstd}Baseline OLS with an anti-IV for quality (buyer income).{p_end}
 {phang} {stata reg log_price i.flood_factor log_income}
 
-{pstd}High-dimensional FE with clustering by block.{p_end}
+{pstd}High-dimensional FE by block.{p_end}
 {phang} {stata reghdfe log_price i.flood_factor log_income, absorb(block_id)}
 
 {phang} {stata estimates store hdfe1}
 
 {pstd}{cmd:aivreg} using income as the anti-IV.{p_end}
-{phang} {stata aivreg log_price i.flood_factor, aiv(log_income) eststo(aiv1)}
+{phang} {stata aivreg log_price i.flood_factor, aiv(log_income) vce(asymp) eststo(aiv1)}
 
-{pstd}{cmd:aivreg} with controls and block fixed effects; clustered SEs.{p_end}
+{pstd}{cmd:aivreg} with controls and block fixed effects; Anderson-Rubin confidence interval.{p_end}
 {phang} {stata aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) eststo(aiv2)}
 
 {pstd}Display or export results with {help esttab}.{p_end}
-{phang} {stata esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg+FE", pattern(1 1 1)) modelwidth(20) varwidth(18) label}
+{phang} {stata esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg + FE + AR CI", pattern(1 1 1)) modelwidth(20) varwidth(18) label}
 
 {pstd}Make singular dummy for flood factor 10 as GMM does not accept factor variables.{p_end}
 {phang} {stata tabulate flood_factor, generate(flood_factor)}
