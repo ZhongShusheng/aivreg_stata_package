@@ -21,23 +21,23 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and pull the reposit
     estimator can be left blank, and aivreg will default to using OLS to estimate the relationships by calling ivreg2, reg, reghdfe, or ivreghdfe; this is equivalent to specifying ols. If it is set to gmm, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to 2sls, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as ols if there is only one anti-IV.
 
 ### Model specification
-    aiv(varlist)     specifies the anti-IV variables. OLS supports one anti-IV; GMM allows multiple. aivreg will automatically switch to GMM if multiple anti-IVs are specified.
-    control(varlist) specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the anti-IV and the outcome given the latent confounder holds.
-    fe(varlist)      absorbs fixed effects using reghdfe or ivreghdfe. If unspecified, then aivreg calls reg or ivreg2 instead. This is not available in GMM.
-    weight(...)      allows either probability/frequency/analytic weights for OLS or probability weights for GMM. For the OLS estimator, use brackets: for example, weight([aw=wt]) (see weight for guidence). For GMM, only place the variable to weigh by: for example, weight(varname). GMM uses probability weights.
-    weightmatrix()   is the moment weight matrix for GMM. Should be square with the number of rows equalling the number of amenities + number of controls + 2 X number of anti-IVs. Defaults to identity. (For GMM only.)
+    aiv(varlist)      specifies the anti-IV variables. OLS supports one anti-IV; GMM allows multiple. aivreg will automatically switch to GMM if multiple anti-IVs are specified.
+    control(varlist)  specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the anti-IV and the outcome given the latent confounder holds.
+    fe(varlist)       absorbs fixed effects using reghdfe or ivreghdfe. If unspecified, then aivreg calls reg or ivreg2 instead. This is not available in GMM.
+    weight(...)       allows either probability/frequency/analytic weights for OLS or probability weights for GMM. For the OLS estimator, use brackets: for example, weight([aw=wt]) (see weight for guidence). For GMM, only place the variable to weigh by: for example, weight(varname). GMM uses probability weights.
+    weightmatrix()    is the moment weight matrix for GMM. Should be square with the number of rows equalling the number of amenities + number of controls + 2 X number of anti-IVs. Defaults to identity. (For GMM only.)
 
 ### Estimation & storage
-    eststo(name)     stores the fitted model under name for later retrieval. aivreg is also compatible with the syntax eststo: aivreg.
-    savefirst        reports and stores the first-stage regression. If firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name.
-    firststo(name)   stores the first-stage estimates under name.
-    displayaiv       displays the coefficient on the predicted anti-IV (not available with Anderson–Rubin CIs).
+    eststo(name)      stores the fitted model under name for later retrieval. aivreg is also compatible with the syntax eststo: aivreg.
+    savefirst         reports and stores the first-stage regression. If firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name.
+    firststo(name)    stores the first-stage estimates under name.
+    displayaiv        displays the coefficient on the predicted anti-IV (not available with Anderson–Rubin CIs).
 
 ### Variance & inference
-    vce(type)      specifies the variance estimator:  ar for Anderson–Rubin (default), bootstrap for bootstrap SEs, asymptotic for asymptotic SEs via ivreg2 or ivreghdfe.
-    cluster()      provides cluster-robust SEs.
-    reps(#)        sets the number of bootstrap repetitions. Defaults to 50.
-    seed(#)        sets the random seed for bootstrap reproducibility. 
+    vce(type)         specifies the variance estimator:  ar for Anderson–Rubin (default), bootstrap for bootstrap SEs, asymptotic for asymptotic SEs via ivreg2 or ivreghdfe.
+    cluster()         provides cluster-robust SEs.
+    reps(#)           sets the number of bootstrap repetitions. Defaults to 50.
+    seed(#)           sets the random seed for bootstrap reproducibility. 
 
 ## Saved results
 
