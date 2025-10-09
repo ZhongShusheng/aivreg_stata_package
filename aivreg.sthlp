@@ -150,7 +150,7 @@ The following examples use simulated or sampled data which are included in the a
 {pstd}But when {cmd:aivreg} uses income as the anti-IV, it will correctly estimate the implicit price of flood risk.{p_end}
 {phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(asymp)"}
 
-{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg}; however, one can also call them using {it:vce(ar)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated by {help ivreghdfe} above.{p_end}
+{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg}; however, one can also call them using {it:vce(ar)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated above.{p_end}
 {phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar)"}
 
 {pstd}The option {cmd:savefirst} shows the first stage regression to help judge the strength on the anti-IV.{p_end}
