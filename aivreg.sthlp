@@ -42,7 +42,7 @@
 {dlgtab:Estimator}
 
 {phang}
-{it:estimator} if left blank, {cmd:aivreg} will default to using OLS to estimate the relationships by calling {help ivreg2}, {help reg}, {help reghdfe}, or {help ivreghdfe}; this is equivalent to specifying {it:ols}. If it is set to {it:gmm}, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to {it:2sls}, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as {it:ols} if there is only one anti-IV.
+{it:estimator} will default to using OLS to estimate the relationships by calling {help ivreg2}, {help reg}, {help reghdfe}, or {help ivreghdfe} if left blank; this is equivalent to specifying {it:ols}. If it is set to {it:gmm}, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to {it:2sls}, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as {it:ols} if there is only one anti-IV.
 
 {dlgtab:Model specification}
 
