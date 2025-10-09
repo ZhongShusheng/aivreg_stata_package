@@ -261,7 +261,6 @@ flood_factor9  |  -.0105926   .0113556  -.9328092   .350941   -.0329009   .01166
 flood_factor10 |  -.0394751   .0114966  -3.433634   .000598   -.0620928  -.0169418
 ----------------------------------------------------------------------------------
 (results _ivreg2_log_income  est5 are active now)
-(est5 stored)
 ```
 
     Display or export results with esttab.
