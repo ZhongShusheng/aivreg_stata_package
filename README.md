@@ -13,55 +13,61 @@ aivreg  implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang
 
 ## Download Instructions
 
-Go to https://github.com/ZhongShusheng/aivreg_stata_package and pull the repository. Place aivreg.ado and aivreg.sthlp into the same folder as the do-file in which you would like to use the command. Then stata will recognize the aivreg command. aivreg requires stata 17 or higher.
+Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the repository (alternatively, under "Code", click "Download ZIP") to locally store a copy of the package. Place aivreg.ado and aivreg.sthlp into the same folder as the do-file in which you would like to use the command. Then stata will recognize the aivreg command. aivreg requires stata 17 or higher.
 
 ## Options
 
 ### Estimator
-    estimator can be left blank, and aivreg will default to using OLS to estimate the relationships by calling ivreg2, reg, reghdfe, or ivreghdfe; this is equivalent to specifying ols. If it is set to gmm, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to 2sls, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as ols if there is only one anti-IV.
+
+- **estimator**         if left blank, aivreg will default to using OLS to estimate the relationships by calling ivreg2, reg, reghdfe, or ivreghdfe; this is equivalent to specifying ols. If it is set to gmm, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to 2sls, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as ols if there is only one anti-IV.
 
 ### Model specification
-    aiv(varlist)      specifies the anti-IV variables. OLS supports one anti-IV; GMM allows multiple. aivreg will automatically switch to GMM if multiple anti-IVs are specified.
-    control(varlist)  specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the anti-IV and the outcome given the latent confounder holds.
-    fe(varlist)       absorbs fixed effects using reghdfe or ivreghdfe. If unspecified, then aivreg calls reg or ivreg2 instead. This is not available in GMM.
-    weight(...)       allows either probability/frequency/analytic weights for OLS or probability weights for GMM. For the OLS estimator, use brackets: for example, weight([aw=wt]) (see weight for guidence). For GMM, only place the variable to weigh by: for example, weight(varname). GMM uses probability weights.
-    weightmatrix()    is the moment weight matrix for GMM. Should be square with the number of rows equalling the number of amenities + number of controls + 2 X number of anti-IVs. Defaults to identity. (For GMM only.)
+
+- **aiv(varlist)**      specifies the anti-IV variables. OLS supports one anti-IV; GMM allows multiple. aivreg will automatically switch to GMM if multiple anti-IVs are specified.
+- **control(varlist)**  specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the anti-IV and the outcome given the latent confounder holds.
+- **fe(varlist)**       absorbs fixed effects using reghdfe or ivreghdfe. If unspecified, then aivreg calls reg or ivreg2 instead. This is not available in GMM.
+- **weight(...)**       allows either probability/frequency/analytic weights for OLS or probability weights for GMM. For the OLS estimator, use brackets: for example, weight([aw=wt]) (see weight for guidence). For GMM, only place the variable to weigh by: for example, weight(varname). GMM uses probability weights.
+- **weightmatrix(matrix)**    is the moment weight matrix for GMM. Should be square with the number of rows equalling the number of amenities + number of controls + 2 X number of anti-IVs. Defaults to identity. (For GMM only.)
 
 ### Estimation & storage
-    eststo(name)      stores the fitted model under name for later retrieval. aivreg is also compatible with the syntax eststo: aivreg.
-    savefirst         reports and stores the first-stage regression. If firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name.
-    firststo(name)    stores the first-stage estimates under name.
-    displayaiv        displays the coefficient on the predicted anti-IV (not available with Anderson–Rubin CIs).
+
+- **eststo(name)**      stores the fitted model under name for later retrieval. aivreg is also compatible with the syntax eststo: aivreg.
+- **savefirst**         reports and stores the first-stage regression. If firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name.
+- **firststo(name)**    stores the first-stage estimates under name.
+- **displayaiv**        displays the coefficient on the predicted anti-IV (not available with Anderson–Rubin CIs).
 
 ### Variance & inference
-    vce(type)         specifies the variance estimator:  ar for Anderson–Rubin (default), bootstrap for bootstrap SEs, asymptotic for asymptotic SEs via ivreg2 or ivreghdfe.
-    cluster()         provides cluster-robust SEs.
-    reps(#)           sets the number of bootstrap repetitions. Defaults to 50.
-    seed(#)           sets the random seed for bootstrap reproducibility. 
+
+- **vce(type)**         specifies the variance estimator:  ar for Anderson–Rubin (default), bootstrap for bootstrap SEs, asymptotic for asymptotic SEs via ivreg2 or ivreghdfe.
+- **cluster()**         provides cluster-robust SEs.
+- **reps(#)**           sets the number of bootstrap repetitions. Defaults to 50.
+- **seed(#)**           sets the random seed for bootstrap reproducibility. 
 
 ## Saved results
 
 ### Scalars
-    e(Partial_F)       partial F-statistic from first stage  
-    e(df_r)            residual degrees of freedom  
-    e(N)               number of observations  
-    e(Jval)            J-test statistic (GMM only)  
-    e(pval_J)          p-value of J-test (GMM only)  
-    e(betavarname)     coefficient on variable varname  
-    e(SE_vcevarname)   standard error of the coefficient on varname, using vce (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero  
-    e(t_valvarname)    t-value for the coefficient on varname  
-    e(p_more_tvarname) t-test statistic for the coefficient on varname  
-    e(lb_vcevarname)   lower bound for the coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
-    e(ub_vcevarname)   upper bound for the coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
+- **e(Partial_F)**       partial F-statistic from first stage  
+- **e(df_r)**            residual degrees of freedom  
+- **e(N)**               number of observations  
+- **e(Jval)**            J-test statistic (GMM only)  
+- **e(pval_J)**          p-value of J-test (GMM only)  
+- **e(betavarname)**     coefficient on variable varname  
+- **e(SE_vcevarname)**   standard error of the coefficient on varname, using vce (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero  
+- **e(t_valvarname)**    t-value for the coefficient on varname  
+- **e(p_more_tvarname)** t-test statistic for the coefficient on varname  
+- **e(lb_vcevarname)**   lower bound for the coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
+- **e(ub_vcevarname)**   upper bound for the coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
 
 ### Macros
-    e(cmd)         "aivreg"
+
+- **e(cmd)**         "aivreg"
 
 ### Matrices
-    e(b)            coefficient vector
-    e(V)            variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero
-    e(S)            covariance of moments (GMM only)
-    e(weightmatrix) weight matrix (GMM only)
+
+- **e(b)**            coefficient vector
+- **e(V)**            variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero
+- **e(S)**            covariance of moments (GMM only)
+- **e(weightmatrix)** weight matrix (GMM only)
 
 
 ### Examples
@@ -256,9 +262,6 @@ flood_factor10 |  -.0394751   .0114966  -3.433634   .000598   -.0620928  -.01694
 ----------------------------------------------------------------------------------
 (results _ivreg2_log_income  est5 are active now)
 (est5 stored)
-```
-```stata
-    estimates drop _ivreg2_weak_aiv est5
 ```
 
     Display or export results with esttab.
@@ -516,6 +519,6 @@ Questions: aivregstata@gmail.com
 
 ## References
 
-- Bell, A. (2020). Job Amenities and Earnings Inequality. SSRN.  
-- Bell, A., Billings, S. B., Calder-Wang, S., & Zhong, S. (2024). An Anti-IV Approach for Pricing Residential Amenities: Applications to Flood Risk. SSRN.  
+- Bell, A. (2020). Job Amenities and Earnings Inequality. SSRN. https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522.  
+- Bell, A., Billings, S. B., Calder-Wang, S., & Zhong, S. (2024). An Anti-IV Approach for Pricing Residential Amenities: Applications to Flood Risk. SSRN. https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974.
 - Correia, S. (2018). IVREGHDFE: Stata module for extended instrumental variable regressions.  

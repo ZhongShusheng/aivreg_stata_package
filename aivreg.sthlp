@@ -42,7 +42,7 @@
 {dlgtab:Estimator}
 
 {phang}
-{it:estimator} can be left blank, and {cmd:aivreg} will default to using OLS to estimate the relationships by calling {help ivreg2}, {help reg}, {help reghdfe}, or {help ivreghdfe}; this is equivalent to specifying {it:ols}. If it is set to {it:gmm}, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to {it:2sls}, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as {it:ols} if there is only one anti-IV.
+{it:estimator} if left blank, {cmd:aivreg} will default to using OLS to estimate the relationships by calling {help ivreg2}, {help reg}, {help reghdfe}, or {help ivreghdfe}; this is equivalent to specifying {it:ols}. If it is set to {it:gmm}, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to {it:2sls}, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as {it:ols} if there is only one anti-IV.
 
 {dlgtab:Model specification}
 
@@ -154,9 +154,7 @@ The following examples use simulated or sampled data which are included in the a
 {phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar)"}
 
 {pstd}The option {cmd:savefirst} shows the first stage regression to help judge the strength on the anti-IV.{p_end}
-{phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst"}
-
-{phang} {stata estimates drop _ivreg2_log_income est5}
+{phang} {stata "aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst"}
 
 {pstd}Display or export results with {help esttab}.{p_end}
 {phang} {stata esttab est1 est2 est3 est4, mgroup("reghdfe" "reghdfe + anti-IV control" "aivreg" "aivreg + AR CI", pattern(1 1 1 1)) modelwidth(20) varwidth(18) label}
