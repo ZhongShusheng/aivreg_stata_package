@@ -203,8 +203,6 @@ Questions or concerns: {browse "mailto:aivregstata@gmail.com":aivregstata@gmail.
 
 {phang} - Bell, A. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":Job Amenities and Earnings Inequality} (2020). 
 
-{phang} - Bell, A., Calder-Wang, S., & Zhong, S. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4565093":Pricing Neighborhood Amenities: A Proxy-Based Approach} (2023). 
-
 {phang} - Bell, A, Billings, S. B., Calder-Wang, S., & Zhong, S. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":An Anti-IV Approach for Pricing Residential Amenities: Applications to Flood Risk} (2024)
 
 {phang} - Correia, S. {browse "https://ideas.repec.org/c/boc/bocode/s458530.html":IVREGHDFE: Stata module for extended instrumental variable regressions} (2018).
