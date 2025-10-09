@@ -221,7 +221,7 @@ flood_factor10 |  -.0394751   .0114966  -3.433634   .000598   -.0620928  -.01694
 
  The option savefirst shows the first stage regression, to help judge the strength on the anti-IV.
 ```stata
-    eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst
+    aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst
 ```
 ```
 First Stage:
