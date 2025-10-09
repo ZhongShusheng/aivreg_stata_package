@@ -13,6 +13,8 @@ aivreg  implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang
 
 ## Download Instructions
 
+Go to https://github.com/ZhongShusheng/aivreg_stata_package and pull the repository. Place aivreg.ado and aivreg.sthlp into the same folder as the do-file in which you would like to use the command. Then stata will recognize the aivreg command. aivreg requires stata 17 or higher.
+
 ## Options
 
 ### Estimator
