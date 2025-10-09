@@ -9,7 +9,7 @@
 
 ## Description
 
-aivreg  implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang, & Zhong (2024). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. Examples include the implicit price of flood risk to home prices, where buyer income is informative for unobserved home quality, or the implicit price of job safety to wages, where test scores are informative for worker skills.
+aivreg  implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang, & Zhong (2024). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. Examples include the implicit price of flood risk for home prices, where buyer income is informative for unobserved home quality, or the implicit price of job safety for wages, where test scores are informative for worker skills.
 
 ## Download Instructions
 
