@@ -1,19 +1,20 @@
 # aivreg — Anti-IV Regression
 
+## Description
+
+aivreg  implements the anti-IV estimator outlined in [Bell, Billings, Calder-Wang, & Zhong (2024)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. Examples include the implicit price of flood risk for home prices, where buyer income is informative for unobserved home quality, or the implicit price of job safety for wages, where test scores are informative for worker skills.
+
+## Download Instructions
+
+Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the repository (alternatively, under "Code", click "Download ZIP") to locally store a copy of the package. Place aivreg.ado and aivreg.sthlp into the same folder as the do-file in which you would like to use the command. Then stata will recognize the aivreg command. aivreg requires stata 17 or higher.
+
 ## Syntax
+
 ```stata
 
     aivreg [estimator] depvar varlist [if] [in], aiv(varlist) [options]
 
 ```
-
-## Description
-
-aivreg  implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang, & Zhong (2024). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. Examples include the implicit price of flood risk for home prices, where buyer income is informative for unobserved home quality, or the implicit price of job safety for wages, where test scores are informative for worker skills.
-
-## Download Instructions
-
-Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the repository (alternatively, under "Code", click "Download ZIP") to locally store a copy of the package. Place aivreg.ado and aivreg.sthlp into the same folder as the do-file in which you would like to use the command. Then stata will recognize the aivreg command. aivreg requires stata 17 or higher.
 
 ## Options
 
@@ -264,6 +265,7 @@ flood_factor10 |  -.0394751   .0114966  -3.433634   .000598   -.0620928  -.01694
 ```
 
     Display or export results with esttab.
+
 ```stata
     esttab est1 est2 est3 est4, mgroup("reghdfe" "reghdfe + anti-IV control" "aivreg" "aivreg + AR CI", pattern(1 1 1 1)) modelwidth(20) varwidth(18) label
 ```
@@ -316,6 +318,7 @@ t statistics in parentheses
 ```
 
     There is also a 2SLS version which allows for multiple anti_IV variables.
+
 ```stata
     aivreg 2sls log_price i.flood_factor10 i.block_id, aiv(log_income)
 ```
@@ -345,6 +348,7 @@ block_id5      |   -.003392   .0079341  -.4275205  .6690095   -.0189428   .01215
 ```
 
     And this is the more general GMM version of aivreg.
+
 ```stata
     aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income)
 ```
@@ -374,6 +378,7 @@ block_id5      |   -.003392   .0079341  -.4275206  .6690094   -.0189428   .01215
 ```
 
     Show results in esttab.
+
 ```stata
     esttab est1 est2, keep(flood_factor*) mgroup("2sls" "GMM", pattern(1 1)) label
 ```
@@ -422,6 +427,7 @@ t statistics in parentheses
     Safety and Wages Example
 
     Load the dataset of wages and job safety, which is sampled from the data used in Bell (2020).
+
 ```stata
     use safety_aivreg_example.dta, clear
 ```
@@ -450,6 +456,7 @@ t statistics in parentheses
 ```
 
     Even controlling for a measure of worker skill in OLS may not fix it.
+
 ```stata
     reg wage safety afqt_1_1981
 ```
@@ -472,6 +479,7 @@ t statistics in parentheses
 ```
 
     aivreg improves identification using the AFQT scores as an anti-IV.
+
 ```stata
     aivreg wage safety, aiv(afqt_1_1981)
 ```
@@ -488,6 +496,7 @@ safety |  -1.145084   .1010579  -11.33096  2.59e-29   -1.379237  -.9470102
 ```
 
     Show results in esttab.
+
 ```stata
     esttab est1 est2 est3
 ```
