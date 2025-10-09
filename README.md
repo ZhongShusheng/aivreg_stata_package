@@ -7,28 +7,6 @@
 
 ```
 
-## Options
-
-
-### Model specification
-    aiv(varlist)        anti-IV variables (one for OLS, multiple for GMM).
-    control(varlist)    control variables.
-    fe(varlist)         fixed effects to absorb (via reghdfe or ivreghdfe). Not available for GMM.
-    weight(...)         observation weights for estimation.
-    weightmatrix(matrix) estimation weight matrix for estimation (GMM only).
-
-### Estimation & storage
-    eststo(name)        store estimates under name.
-    savefirst           save first-stage regression results.
-    firststo(name)      store first-stage estimates under name.
-    displayaiv          display coefficient on predicted anti-IV.
-
-### Variance & inference
-    vce(type)           variance estimator: ar (default), boot, asymp.
-    cluster(varlist)    cluster-robust SEs.
-    reps(#)             number of bootstrap replications.
-    seed(#)             random seed for bootstrap.
-
 ## Description
 
 aivreg implements the anti-IV estimator outlined in Bell et al. (2025). 
@@ -36,8 +14,9 @@ The method allows consistent estimation of hedonic prices when an imperfectly
 informative variable (anti-IV) for a confounder exists. 
 Example: the cost of flood risk to home prices, where buyer income is informative for unobserved home quality.
 
-## Details
+## Download Instructions
 
+## Options
 
 ### Estimator
     If estimator is blank, aivreg defaults to OLS using ivreg2, reg, reghdfe, or ivreghdfe.
@@ -65,56 +44,92 @@ Example: the cost of flood risk to home prices, where buyer income is informativ
     reps(#)        Bootstrap replications.
     seed(#)        Bootstrap seed.
 
+## Saved results
+
+### Scalars
+    e(Partial_F)       partial F-statistic from first stage  
+    e(df_r)            residual degrees of freedom  
+    e(N)               number of observations  
+    e(Jval)            J-test statistic (GMM only)  
+    e(pval_J)          p-value of J-test (GMM only)  
+    e(betavarname)     coefficient on variable varname  
+    e(SE_vcevarname)   standard error of coefficient on varname, using vce (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero  
+    e(t_valvarname)    t-value for coefficient on varname  
+    e(p_more_tvarname) t-test statistic for coefficient on varname  
+    e(lb_vcevarname)   lower bound for coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
+    e(ub_vcevarname)   upper bound for coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
+
+### Macros
+    e(cmd)         "aivreg"
+
+### Matrices
+    e(b)           coefficient vector
+    e(V)           variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero
+    e(S)           covariance of moments (GMM only)
+    e(weightmatrix) weight matrix (GMM only)
+
+
 ### Examples
 
-The following examples use data which are included in the aivreg package.
+ Flood Risk Example
 
-Load simulated flood risk and home prices dataset. This is made with simulate_flood_risk_data.do, included in the aivreg package.
-```stata
-    . use simulated_flood_risk.dta, clear
-```
-Baseline OLS with a potential anti_iv (buyer income) partially controlling for home quality.
+ The underlying data in Bell, Billings, Calder-Wang and Zhong (2024) are from commercial providers; for illustrative purposes, we thus provided a small, simulated version of the data. For the underlying DGP, please see simulate_flood_risk_data.do.
+
+ Load the simulated flood risk dataset.
 
 ```stata
-    . reg log_price i.flood_factor log_income
-    
+    use simulated_flood_risk.dta, clear
 ```
+```stata
+    estimates clear
 ```
 
-      Source |       SS           df       MS      Number of obs   =    10,000
--------------+----------------------------------   F(10, 9989)     =  16437.26
-       Model |  9554.37344        10  955.437344   Prob > F        =    0.0000
-    Residual |  580.623646     9,989  .058126304   R-squared       =    0.9427
--------------+----------------------------------   Adj R-squared   =    0.9427
-       Total |  10134.9971     9,999  1.01360107   Root MSE        =    .24109
+ An OLS regression with block FE is not sufficient to retrieve the implicit price of flood risk.
+```stata
+    reghdfe log_price i.flood_factor, absorb(block_id)
+```
+```
+(MWFE estimator converged in 1 iterations)
+
+HDFE Linear regression                            Number of obs   =     10,000
+Absorbing 1 HDFE group                            F(   9,   9986) =     162.91
+                                                  Prob > F        =     0.0000
+                                                  R-squared       =     0.1281
+                                                  Adj R-squared   =     0.1270
+                                                  Within R-sq.    =     0.1280
+                                                  Root MSE        =     0.9407
 
 ------------------------------------------------------------------------------
    log_price | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
 -------------+----------------------------------------------------------------
 flood_factor |
-          2  |   .0521018   .0111494     4.67   0.000     .0302468    .0739568
-          3  |   .0503678   .0107759     4.67   0.000     .0292449    .0714908
-          4  |   .0482142   .0108585     4.44   0.000     .0269294     .069499
-          5  |   .0441611   .0107858     4.09   0.000     .0230188    .0653034
-          6  |   .0480572   .0108359     4.44   0.000     .0268168    .0692977
-          7  |   .0519298   .0108591     4.78   0.000     .0306438    .0732158
-          8  |   .0508874   .0108414     4.69   0.000      .029636    .0721388
-          9  |   .0520409   .0109709     4.74   0.000     .0305357    .0735461
-         10  |    .063299   .0110846     5.71   0.000     .0415709    .0850271
+          2  |   .6293552   .0431077    14.60   0.000     .5448553     .713855
+          3  |   .7919106   .0413423    19.15   0.000     .7108714    .8729498
+          4  |   .7777989   .0416928    18.66   0.000     .6960727    .8595251
+          5  |    .745061   .0414591    17.97   0.000     .6637927    .8263292
+          6  |   .8416348   .0414787    20.29   0.000     .7603282    .9229413
+          7  |   .8278283   .0416038    19.90   0.000     .7462764    .9093801
+          8  |   .7850859   .0416213    18.86   0.000     .7034997    .8666721
+          9  |   .9385813   .0418137    22.45   0.000     .8566181    1.020545
+         10  |   1.521647   .0405364    37.54   0.000     1.442188    1.601107
              |
-  log_income |   1.166645   .0030955   376.89   0.000     1.160578    1.172713
-       _cons |  -.9503204   .0324316   -29.30   0.000    -1.013893   -.8867479
+       _cons |   10.94794   .0289782   377.80   0.000     10.89113    11.00474
 ------------------------------------------------------------------------------
 
+Absorbed degrees of freedom:
+-----------------------------------------------------+
+ Absorbed FE | Categories  - Redundant  = Num. Coefs |
+-------------+---------------------------------------|
+    block_id |         5           0           5     |
+-----------------------------------------------------+
+(est1 stored)
 ```
 
-High-dimensional FE by block.
+ If we control for the log income of the home buyers, under the intuition that it is informative for the unobserved quality, the estimates are still biased.
 ```stata
-    . reghdfe log_price i.flood_factor elev_m distcoast log_income, absorb(block_id)
-    . estimates store hdfe1
+    reghdfe log_price i.flood_factor log_income, absorb(block_id)
 ```
 ```
-
 (MWFE estimator converged in 1 iterations)
 
 HDFE Linear regression                            Number of obs   =     10,000
@@ -149,43 +164,82 @@ Absorbed degrees of freedom:
 -------------+---------------------------------------|
     block_id |         5           0           5     |
 -----------------------------------------------------+
-
+(est2 stored)
 ```
 
-aivreg using income as anti-IV.
+ But when aivreg uses income as the anti-IV, it will correctly estimate the implicit price of flood risk.
 ```stata
-    . aivreg log_price i.flood_factor, aiv(log_income) vce(asymp) eststo(aiv1)
+    aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(asymp)
 ```
 ```
- 
- 
 Anti-IV Regression                             Number of obs = 10000
                                              Partial F-stat. = 1.42e+05
 
 log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ---------------+------------------------------------------------------------------
 flood_factor1  |          0          0          .         .           0          0
-flood_factor2  |   .0114884    .011536   .9958697  .3193376   -.0111222    .034099
-flood_factor3  |  -.0017934   .0111553  -.1607624  .8722838   -.0236577    .020071
-flood_factor4  |  -.0030903   .0112402  -.2749326  .7833737    -.025121   .0189404
-flood_factor5  |  -.0051555   .0111641  -.4617949  .6442384   -.0270372   .0167261
-flood_factor6  |  -.0077301   .0112191  -.6890161  .4908291   -.0297195   .0142593
-flood_factor7  |  -.0026147   .0112424  -.2325705  .8160997   -.0246498   .0194205
-flood_factor8  |  -.0007329   .0112227  -.0653008  .9479358   -.0227294   .0212636
-flood_factor9  |  -.0103114   .0113622  -.9075229  .3641522   -.0325813   .0119584
-flood_factor10 |  -.0392638   .0115105   -3.41114  .0006495   -.0618243  -.0167033
+flood_factor2  |   .0114959   .0115461   .9956479  .3194454   -.0111345   .0341263
+flood_factor3  |  -.0016645   .0111615  -.1491289  .8814549    -.023541    .020212
+flood_factor4  |  -.0029541   .0112464   -.262671  .7928096   -.0249971   .0190889
+flood_factor5  |  -.0048468   .0111707   -.433884  .6643821   -.0267414   .0170478
+flood_factor6  |  -.0077339   .0112258  -.6889433  .4908749   -.0297365   .0142686
+flood_factor7  |  -.0023638   .0112482  -.2101533  .8335523   -.0244104   .0196827
+flood_factor8  |  -.0006795   .0112303  -.0605042  .9517553   -.0226909   .0213319
+flood_factor9  |  -.0105926   .0113685  -.9317478  .3514894   -.0328749   .0116897
+flood_factor10 |  -.0394751    .011518  -3.427266  .0006122   -.0620503  -.0168999
 ----------------------------------------------------------------------------------
-(result aiv1 is active now)
-
-
+(est3 stored)
 ```
 
-aivreg with controls and block fixed effects; Anderson-Rubin confidence interval.
+ aivreg can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of aivreg;however, one can also call them using vce(ar). In this setting, log
+    income is a strong anti-IV, so the confidence interval is similar to those calculated by ivreghdfe above.
+
 ```stata
-    . aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) eststo(aiv2)
-```   
+    aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar)
 ```
+```
+Anti-IV Regression                             Number of obs = 10000
+                                             Partial F-stat. = 1.42e+05
+
+log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+---------------+------------------------------------------------------------------
+flood_factor1  |          0          0          .         .           0          0
+flood_factor2  |   .0114959   .0115461   .9956479  .3194454   -.0111345   .0341263
+flood_factor3  |  -.0016645   .0111615  -.1491289  .8814549    -.023541    .020212
+flood_factor4  |  -.0029541   .0112464   -.262671  .7928096   -.0249971   .0190889
+flood_factor5  |  -.0048468   .0111707   -.433884  .6643821   -.0267414   .0170478
+flood_factor6  |  -.0077339   .0112258  -.6889433  .4908749   -.0297365   .0142686
+flood_factor7  |  -.0023638   .0112482  -.2101533  .8335523   -.0244104   .0196827
+flood_factor8  |  -.0006795   .0112303  -.0605042  .9517553   -.0226909   .0213319
+flood_factor9  |  -.0105926   .0113685  -.9317478  .3514894   -.0328749   .0116897
+flood_factor10 |  -.0394751    .011518  -3.427266  .0006122   -.0620503  -.0168999
+----------------------------------------------------------------------------------
+(est3 stored)
+```
+
+ The option savefirst shows the first stage regression, to help judge the strength on the anti-IV.
+```stata
+    aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst
+```
+```
+First Stage:
+
+log_income     |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+---------------+------------------------------------------------------------------
+log_price      |   .8008521   .0021248   376.9084         0    .7966875   .8050167
+flood_factor1  |          0          0          .         .           0          0
+flood_factor2  |  -.0092065   .0092503  -.9952713  .3196285    -.027337    .008924
+flood_factor3  |    .001333    .008938     .14914  .8814462   -.0161855   .0188516
+flood_factor4  |   .0023658   .0090056   .2627046  .7927837   -.0152851   .0200168
+flood_factor5  |   .0038816   .0089443   .4339727  .6643176   -.0136492   .0214123
+flood_factor6  |   .0061937   .0089869   .6891951  .4907165   -.0114206   .0238081
+flood_factor7  |   .0018931   .0090072   .2101762  .8335345    -.015761   .0195472
+flood_factor8  |   .0005442   .0089935    .060506  .9517538   -.0170832   .0181715
+flood_factor9  |   .0084831   .0090995   .9322556   .351227    -.009352   .0263182
+flood_factor10 |   .0316137   .0091943   3.438385  .0005876    .0135928   .0496346
+----------------------------------------------------------------------------------
  
+Second Stage:
  
 Anti-IV Regression                             Number of obs = 10000
 Uses Anderson-Rubin CI                       Partial F-stat. = 1.42e+05
@@ -204,155 +258,154 @@ flood_factor8  |  -.0006795   .0112196  -.0605618  .9517094   -.0227124    .0213
 flood_factor9  |  -.0105926   .0113556  -.9328092   .350941   -.0329009   .0116644
 flood_factor10 |  -.0394751   .0114966  -3.433634   .000598   -.0620928  -.0169418
 ----------------------------------------------------------------------------------
-(result aiv2 is active now)
-
+(results _ivreg2_log_income  est4 are active now)
+(est4 stored)
 ```
-
-Display/export results with esttab.
 ```stata
-    . esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg + FE + AR CI", pattern(1 1 1)) modelwidth(20) varwidth(18) label
-```
-```   
-
-------------------------------------------------------------------------------------------
-                                reghdfe                  aivreg     aivreg + FE + AR CI   
-                                    (1)                     (2)                     (3)   
-                         Log sale price          Log sale price          Log sale price   
-------------------------------------------------------------------------------------------
-Flood risk facto~1                    0                       0                       0   
-                                    (.)                     (.)                     (.)   
-
-Flood risk facto~2               0.0521***               0.0115                  0.0115   
-                                 (4.67)                  (1.00)                  (0.99)   
-
-Flood risk facto~3               0.0505***             -0.00179                -0.00166   
-                                 (4.68)                 (-0.16)                 (-0.15)   
-
-Flood risk facto~4               0.0483***             -0.00309                -0.00295   
-                                 (4.45)                 (-0.27)                 (-0.26)   
-
-Flood risk facto~5               0.0444***             -0.00516                -0.00485   
-                                 (4.12)                 (-0.46)                 (-0.43)   
-
-Flood risk facto~6               0.0480***             -0.00773                -0.00773   
-                                 (4.43)                 (-0.69)                 (-0.69)   
-
-Flood risk facto~7               0.0522***             -0.00261                -0.00236   
-                                 (4.80)                 (-0.23)                 (-0.21)   
-
-Flood risk facto~8               0.0509***            -0.000733               -0.000679   
-                                 (4.70)                 (-0.07)                 (-0.06)   
-
-Flood risk facto~9               0.0517***              -0.0103                 -0.0106   
-                                 (4.72)                 (-0.91)                 (-0.93)   
-
-Flood risk fact~10               0.0630***              -0.0393***              -0.0395***
-                                 (5.69)                 (-3.41)                 (-3.43)   
-
-Log income                        1.167***                                                
-                               (376.91)                                                   
-
-Constant                         -0.951***                                                
-                               (-29.31)                                                   
-------------------------------------------------------------------------------------------
-Observations                      10000                   10000                   10000   
-------------------------------------------------------------------------------------------
-t statistics in parentheses
-* p<0.05, ** p<0.01, *** p<0.001
-
+    estimates drop _ivreg2_weak_aiv est5
 ```
 
-Make singular dummy for flood factor 10 as GMM does not accept factor variables.
+    Display or export results with esttab.
 ```stata
-    . tabulate flood_factor, generate(flood_factor)
-    . label var flood_factor10 "Flood risk factor=10"
-    . drop if flood_factor != 1 & flood_factor != 10
+    esttab est1 est2 est3 est4, mgroup("reghdfe" "reghdfe + anti-IV control" "aivreg" "aivreg + AR CI", pattern(1 1 1 1)) modelwidth(20) varwidth(18) label
 ```
-```	
+```
+Anti-IV Regression                             Number of obs = 10000
+                                             Partial F-stat. = 1.42e+05
 
- Flood risk |
-     factor |      Freq.     Percent        Cum.
-------------+-----------------------------------
-          1 |      1,054       10.54       10.54
-          2 |        870        8.70       19.24
-          3 |      1,018       10.18       29.42
-          4 |        985        9.85       39.27
-          5 |      1,007       10.07       49.34
-          6 |      1,005       10.05       59.39
-          7 |        993        9.93       69.32
-          8 |        992        9.92       79.24
-          9 |        974        9.74       88.98
-         10 |      1,102       11.02      100.00
-------------+-----------------------------------
-      Total |     10,000      100.00
-
+log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+---------------+------------------------------------------------------------------
+flood_factor1  |          0          0          .         .           0          0
+flood_factor2  |   .0114959   .0115461   .9956479  .3194454   -.0111345   .0341263
+flood_factor3  |  -.0016645   .0111615  -.1491289  .8814549    -.023541    .020212
+flood_factor4  |  -.0029541   .0112464   -.262671  .7928096   -.0249971   .0190889
+flood_factor5  |  -.0048468   .0111707   -.433884  .6643821   -.0267414   .0170478
+flood_factor6  |  -.0077339   .0112258  -.6889433  .4908749   -.0297365   .0142686
+flood_factor7  |  -.0023638   .0112482  -.2101533  .8335523   -.0244104   .0196827
+flood_factor8  |  -.0006795   .0112303  -.0605042  .9517553   -.0226909   .0213319
+flood_factor9  |  -.0105926   .0113685  -.9317478  .3514894   -.0328749   .0116897
+flood_factor10 |  -.0394751    .011518  -3.427266  .0006122   -.0620503  -.0168999
+----------------------------------------------------------------------------------
+(est3 stored)
 ```
 
-GMM version of aivreg.
+    There is also a 2SLS version which allows for multiple anti_IV variables.
 ```stata
-    . aivreg gmm log_price flood_factor10, aiv(log_income) eststo(aiv_gmm)
+    aivreg 2sls log_price i.flood_factor10 i.block_id, aiv(log_income)
 ```
-``` 
-
-Anti-IV GMM                                    Number of obs = 2156
+```
+Anti-IV GMM                                    Number of obs = 10000
                                           Number of anti-IVs = 1
 
 log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ---------------+------------------------------------------------------------------
-flood_factor10 |  -.0349469    .015583  -2.242626  .0250223   -.0654895  -.0044042
+flood_factor1  |          0          0          .         .           0          0
+flood_factor2  |   .0114959   .0115977   .9912254  .3215995   -.0112355   .0342273
+flood_factor3  |  -.0016645   .0110646   -.150435  .8804245   -.0233511   .0200221
+flood_factor4  |  -.0029541    .011381  -.2595648  .7952048   -.0252609   .0193527
+flood_factor5  |  -.0048468   .0110839  -.4372826  .6619159   -.0265712   .0168776
+flood_factor6  |  -.0077339   .0113206  -.6831731  .4945133   -.0299223   .0144545
+flood_factor7  |  -.0023638   .0112697  -.2097524  .8338652   -.0244525   .0197248
+flood_factor8  |  -.0006795   .0115935  -.0586088  .9532649   -.0234027   .0220437
+flood_factor9  |  -.0105926   .0112369  -.9426623  .3458765   -.0326169   .0114317
+flood_factor10 |  -.0394751   .0115892  -3.406192  .0006614   -.0621899  -.0167602
+block_id1      |          0          0          .         .           0          0
+block_id2      |  -.0005182   .0079797  -.0649368  .9482256   -.0161583    .015122
+block_id3      |   .0039769   .0077412   .5137346  .6074489   -.0111959   .0191498
+block_id4      |   .0135845   .0078902   1.721684  .0851578   -.0018804   .0290493
+block_id5      |   -.003392   .0079341  -.4275205  .6690095   -.0189428   .0121589
 ----------------------------------------------------------------------------------
-(result aiv_gmm is active now)
-
+(est1 stored)
 ```
 
-2SLS version for comparison.
+    And this is the more general GMM version of aivreg.
 ```stata
-    . aivreg 2sls log_price flood_factor10, aiv(log_income) eststo(aiv_2sls)
+    aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income)
 ```
 ```
-
-Anti-IV GMM                                    Number of obs = 2156
+Anti-IV GMM                                    Number of obs = 10000
                                           Number of anti-IVs = 1
 
 log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ---------------+------------------------------------------------------------------
-flood_factor10 |  -.0349469    .015583  -2.242626  .0250223   -.0654895  -.0044042
+flood_factor1  |          0          0          .         .           0          0
+flood_factor2  |   .0114959   .0115977   .9912254  .3215995   -.0112355   .0342273
+flood_factor3  |  -.0016645   .0110646   -.150435  .8804245   -.0233511   .0200221
+flood_factor4  |  -.0029541    .011381  -.2595648  .7952048   -.0252609   .0193527
+flood_factor5  |  -.0048468   .0110839  -.4372826  .6619159   -.0265712   .0168776
+flood_factor6  |  -.0077339   .0113206  -.6831731  .4945133   -.0299223   .0144545
+flood_factor7  |  -.0023638   .0112697  -.2097524  .8338652   -.0244525   .0197248
+flood_factor8  |  -.0006795   .0115935  -.0586088  .9532649   -.0234027   .0220437
+flood_factor9  |  -.0105926   .0112369  -.9426623  .3458765   -.0326169   .0114317
+flood_factor10 |  -.0394751   .0115892  -3.406191  .0006614   -.0621899  -.0167602
+block_id1      |          0          0          .         .           0          0
+block_id2      |  -.0005182   .0079797  -.0649368  .9482256   -.0161583    .015122
+block_id3      |   .0039769   .0077412   .5137345   .607449   -.0111959   .0191498
+block_id4      |   .0135845   .0078902   1.721684  .0851578   -.0018804   .0290493
+block_id5      |   -.003392   .0079341  -.4275206  .6690094   -.0189428   .0121589
 ----------------------------------------------------------------------------------
-(result aiv_2sls is active now)
-
-
+(est2 stored)
 ```
 
-Show results in esttab.
+    Show results in esttab.
 ```stata
-    . esttab aiv_gmm aiv_2sls
+    esttab est1 est2, keep(flood_factor*)
 ```
 ```
 --------------------------------------------
                       (1)             (2)   
                 log_price       log_price   
 --------------------------------------------
-flood_fac~10      -0.0349*        -0.0349*  
-                  (-2.24)         (-2.24)   
+flood_fact~1            0               0   
+                      (.)             (.)   
+
+flood_fact~2       0.0115          0.0115   
+                   (0.99)          (0.99)   
+
+flood_fact~3     -0.00166        -0.00166   
+                  (-0.15)         (-0.15)   
+
+flood_fact~4     -0.00295        -0.00295   
+                  (-0.26)         (-0.26)   
+
+flood_fact~5     -0.00485        -0.00485   
+                  (-0.44)         (-0.44)   
+
+flood_fact~6     -0.00773        -0.00773   
+                  (-0.68)         (-0.68)   
+
+flood_fact~7     -0.00236        -0.00236   
+                  (-0.21)         (-0.21)   
+
+flood_fact~8    -0.000679       -0.000679   
+                  (-0.06)         (-0.06)   
+
+flood_fact~9      -0.0106         -0.0106   
+                  (-0.94)         (-0.94)   
+
+flood_fac~10      -0.0395***      -0.0395***
+                  (-3.41)         (-3.41)   
 --------------------------------------------
-N                    2156            2156   
+N                   10000           10000   
 --------------------------------------------
 t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
-
 ```
 
+    Safety and Wages Example
 
-Load the sample wagesdatasets.
+    Load the sample dataset of wages and job safety, which is sampled from the data used in Bell (2020).
 ```stata
-    . use safety_aivreg_example.dta, clear
+    use safety_aivreg_example.dta, clear
 ```
-A naive hedonic regression can be misleading.
 ```stata
-    . reg wage safety
+    estimates clear
+```
+    A naive hedonic regression can be misleading.
+```stata
+    reg wage safety
 ```
 ```
-
       Source |       SS           df       MS      Number of obs   =     3,971
 -------------+----------------------------------   F(1, 3969)      =     38.01
        Model |   58.098609         1   58.098609   Prob > F        =    0.0000
@@ -366,14 +419,14 @@ A naive hedonic regression can be misleading.
       safety |   .1257863    .020403     6.17   0.000     .0857849    .1657877
        _cons |   .1858175   .0196564     9.45   0.000     .1472798    .2243552
 ------------------------------------------------------------------------------
+(est1 stored)
 ```
 
-Even adding a potential anti-IV into OLS may not fix it.
+    Even controlling for a measure of worker skill in OLS may not fix it.
 ```stata
-    . reg wage safety afqt_1_1981
+    reg wage safety afqt_1_1981
 ```
 ```
-
       Source |       SS           df       MS      Number of obs   =     3,971
 -------------+----------------------------------   F(2, 3968)      =    157.55
        Model |  450.608187         2  225.304094   Prob > F        =    0.0000
@@ -388,14 +441,14 @@ Even adding a potential anti-IV into OLS may not fix it.
  afqt_1_1981 |   .0114346   .0006902    16.57   0.000     .0100814    .0127877
        _cons |  -.3182425    .035877    -8.87   0.000    -.3885815   -.2479035
 ------------------------------------------------------------------------------
+(est2 stored)
 ```
 
-aivreg improves identification using an anti-IV.
+    aivreg improves identification using the AFQT scores as an anti-IV.
 ```stata
-    . aivreg wage safety, aiv(afqt_1_1981) eststo(model1)
+    aivreg wage safety, aiv(afqt_1_1981)
 ```
 ```
-
 Anti-IV Regression                             Number of obs = 3971
 Uses Anderson-Rubin CI                       Partial F-stat. =  274.474
 SE inferred from radius closest to zero
@@ -404,50 +457,33 @@ wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 -------+------------------------------------------------------------------
 safety |  -1.145084   .1010579  -11.33096  2.59e-29   -1.379237  -.9470102
 --------------------------------------------------------------------------
-(result model1 is active now)
+(est3 stored)
 ```
 
-Show results in esttab
+    Show results in esttab.
 ```stata
-   . esttab model1
+    esttab est1 est2 est3
 ```
 ```
-----------------------------
-                      (1)   
-                     wage   
-----------------------------
-safety             -1.145***
-                 (-11.33)   
-----------------------------
-N                    3971   
-----------------------------
+------------------------------------------------------------
+                      (1)             (2)             (3)   
+                     wage            wage            wage   
+------------------------------------------------------------
+safety              0.126***       0.0436*         -1.145***
+                   (6.17)          (2.14)        (-11.33)   
+
+afqt_1_1981                        0.0114***                
+                                  (16.57)                   
+
+_cons               0.186***       -0.318***                
+                   (9.45)         (-8.87)                   
+------------------------------------------------------------
+N                    3971            3971            3971   
+------------------------------------------------------------
 t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
+
 ```
-
-## Saved results
-
-### Scalars
-    e(Partial_F)       partial F-statistic from first stage  
-    e(df_r)            residual degrees of freedom  
-    e(N)               number of observations  
-    e(Jval)            J-test statistic (GMM only)  
-    e(pval_J)          p-value of J-test (GMM only)  
-    e(betavarname)     coefficient on variable varname  
-    e(SE_vcevarname)   standard error of coefficient on varname, using vce (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero  
-    e(t_valvarname)    t-value for coefficient on varname  
-    e(p_more_tvarname) t-test statistic for coefficient on varname  
-    e(lb_vcevarname)   lower bound for coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
-    e(ub_vcevarname)   upper bound for coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
-
-### Macros
-    e(cmd)         "aivreg"
-
-### Matrices
-    e(b)           coefficient vector
-    e(V)           variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero
-    e(S)           covariance of moments (GMM only)
-    e(weightmatrix) weight matrix (GMM only)
 
 ### Contact
 

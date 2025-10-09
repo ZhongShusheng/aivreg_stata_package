@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0 25 Apr 2025}{...}
+{* *! version 1.0 9 Oct 2025}{...}
 {title:aivreg — Anti-IV Regression}
 
 {title:Syntax}
@@ -35,7 +35,7 @@
 {title:Description}
 
 {pstd}
-{cmd:aivreg} implements the anti-IV estimator outlined in Bell et al. (2025). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. An example includes the cost of flood risk to home prices, where buyer income is informative for unobserved home quality.
+{cmd:aivreg} implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang, & Zhong (2024). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. An example includes the cost of flood risk to home prices, where buyer income is informative for unobserved home quality.
 
 {title:Details}
 
@@ -92,62 +92,6 @@
 {phang}
 {opt seed(#)} sets the random seed for bootstrap reproducibility. Defaults to 50.
 
-{title:Examples}
-
-{pstd}
-The following examples use simulated or sampled data which are included in the aivreg package SSC release. All commands are clickable.
-
-{pstd}Load the simulated flood risk dataset. This is made in simulate_flood_risk_data.do, which is included in the aivreg package.{p_end}
-{phang} {stata use simulated_flood_risk.dta, clear}
-
-{pstd}Baseline OLS with an anti-IV for quality (buyer income).{p_end}
-{phang} {stata reg log_price i.flood_factor log_income}
-
-{pstd}High-dimensional FE by block.{p_end}
-{phang} {stata reghdfe log_price i.flood_factor log_income, absorb(block_id)}
-
-{phang} {stata estimates store hdfe1}
-
-{pstd}{cmd:aivreg} using income as the anti-IV.{p_end}
-{phang} {stata aivreg log_price i.flood_factor, aiv(log_income) vce(asymp) eststo(aiv1)}
-
-{pstd}{cmd:aivreg} with controls and block fixed effects; Anderson-Rubin confidence interval.{p_end}
-{phang} {stata aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) eststo(aiv2)}
-
-{pstd}Display or export results with {help esttab}.{p_end}
-{phang} {stata esttab hdfe1 aiv1 aiv2, mgroup("reghdfe" "aivreg" "aivreg + FE + AR CI", pattern(1 1 1)) modelwidth(20) varwidth(18) label}
-
-{pstd}Make singular dummy for flood factor 10 as GMM does not accept factor variables.{p_end}
-{phang} {stata tabulate flood_factor, generate(flood_factor)}
-
-{phang} {stata label var flood_factor10 "Flood risk factor=10"}
-
-{phang} {stata drop if flood_factor != 1 & flood_factor != 10}
-
-{pstd}GMM version of {cmd:aivreg}.{p_end}
-{phang} {stata aivreg gmm log_price flood_factor10, aiv(log_income) eststo(aiv_gmm)}
-
-{pstd}2SLS version for comparison.{p_end}
-{phang} {stata aivreg 2sls log_price flood_factor10, aiv(log_income) eststo(aiv_2sls)}
-
-{pstd}Show results in {help esttab}.{p_end}
-{phang} {stata esttab aiv_gmm aiv_2sls}
-
-{pstd}Load the sample wages dataset.{p_end}
-{phang} {stata use safety_aivreg_example.dta, clear}
-
-{pstd}A naive hedonic regression can be misleading.{p_end}
-{phang} {stata reg wage safety}
-
-{pstd}Even controling for the anti-IV in OLS may not fix it.{p_end}
-{phang} {stata reg wage safety afqt_1_1981}
-
-{pstd}{cmd:aivreg} improves identification using a anti-IV.{p_end}
-{phang} {stata aivreg wage safety, aiv(afqt_1_1981) eststo(model1)}
-
-{pstd}Show results in {help esttab}.{p_end}
-{phang} {stata esttab model1}
-
 {title:Saved results}
 
 {pstd}
@@ -181,6 +125,74 @@ The following examples use simulated or sampled data which are included in the a
 {synopt:{cmd:e(S)}}estimated covariance matrix of moments (GMM only){p_end}
 {synopt:{cmd:e(weightmatrix)}}weight matrix (GMM only){p_end}
 {synoptline}
+
+{title:Examples}
+
+{pstd}
+The following examples use simulated or sampled data which are included in the aivreg package SSC release. All commands are clickable.
+
+{pstd}
+{bf:Flood Risk Example}
+
+{pstd}The underlying data in Bell, Billings, Calder-Wang and Zhong (2024) are from commercial providers; for illustrative purposes, we thus provided a small, simulated version of the data. For the underlying DGP, please see simulate_flood_risk_data.do. 
+
+{pstd}Load the simulated flood risk dataset.{p_end}
+{phang} {stata use simulated_flood_risk.dta, clear}
+
+{phang} {stata estimates clear}
+
+{pstd}An OLS regression with block FE is not sufficient to retrieve the implicit price of flood risk.{p_end}
+{phang} {stata "eststo: reghdfe log_price i.flood_factor, absorb(block_id)"}
+
+{pstd}If we control for the log income of the home buyers, under the intuition that it is informative for the unobserved quality, the estimates are still biased.{p_end}
+{phang} {stata "eststo: reghdfe log_price i.flood_factor log_income, absorb(block_id)"}
+
+{pstd}But when {cmd:aivreg} uses income as the anti-IV, it will correctly estimate the implicit price of flood risk.{p_end}
+{phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(asymp)"}
+
+{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg};however, one can also call them using {it:vce(ar)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated by {help ivreghdfe} above.{p_end}
+{phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst"}
+
+{pstd}The option {cmd:savefirst} shows the first stage regression to help judge the strength on the anti-IV.{p_end}
+{phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst"}
+
+{phang} {stata estimates drop _ivreg2_log_income est5}
+
+{pstd}Display or export results with {help esttab}.{p_end}
+{phang} {stata esttab est1 est2 est3 est4, mgroup("reghdfe" "reghdfe + anti-IV control" "aivreg" "aivreg + AR CI", pattern(1 1 1 1)) modelwidth(20) varwidth(18) label}
+
+{phang} {stata estimates clear}
+
+{pstd}There is also a 2SLS version which allows for multiple anti_IV variables.{p_end}
+{phang} {stata "eststo: aivreg 2sls log_price i.flood_factor i.block_id, aiv(log_income)"}
+
+{pstd}And this is the more general GMM version {cmd:aivreg}.{p_end}
+{phang} {stata "eststo: aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income)"}
+
+{pstd}Show results in {help esttab}.{p_end}
+{phang} {stata esttab est1 est2, keep(flood_factor*)}
+
+{pstd}
+{bf:Safety and Wages Example}
+
+{pstd}Load the sample dataset of wages and job safety, which is sampled from the data used in Bell (2020).{p_end}
+{phang} {stata use safety_aivreg_example.dta, clear}
+
+{phang} {estimates clear}
+
+{pstd}A naive hedonic regression can be misleading.{p_end}
+{phang} {stata "eststo: reg wage safety"}
+
+{pstd}Even controlling for the anti-IV in OLS may not fix it.{p_end}
+{phang} {stata "eststo: reg wage safety afqt_1_1981"}
+
+{pstd}{cmd:aivreg} improves identification using a anti-IV.{p_end}
+{phang} {stata "eststo: aivreg wage safety, aiv(afqt_1_1981)"}
+
+{pstd}Show results in {help esttab}.{p_end}
+{phang} {stata esttab est1 est2 est3}
+
+
 
 {title:Contact}
 

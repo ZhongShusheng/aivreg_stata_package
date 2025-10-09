@@ -3,12 +3,12 @@
 cap program drop aivreg
 program define aivreg, eclass
     version 17
-
+	
 	if c(version) < 17 {
-		dis as error "aivreg requires stata 17 or newer"
-		exit 9
+			dis as error "aivreg requires stata 17 or newer"
+			exit 9
 	}
-
+	
     /* 1.  Peek at first token ------------------------------------------ */
     gettoken maybe_est rest : 0          // maybe_est = first word
 
@@ -1230,7 +1230,7 @@ program define aivgmm, eclass
     version 17
 
     // Accept full varlist and separate out the depvar
-    syntax varlist [if], ///
+    syntax varlist(fv) [if], ///
         aiv(varlist numeric) ///
 		[control(varlist)] ///
 		[eststo(string)] ///
@@ -1242,6 +1242,113 @@ program define aivgmm, eclass
 
 	preserve	
 
+		
+	****************************************************************************
+	* Sort factor and continuous variables
+	****************************************************************************
+	
+	* Convert factor variables to dummies
+	* remove i. and c.
+	local varlist2 ""
+	local varlist "`varlist'"
+	local categ ""
+	
+	foreach v of local varlist {
+		
+		local lead = substr("`v'",1,1)
+		local dot2 = substr("`v'",2,1)
+		local dot4 = substr("`v'",4,1)
+		
+		if "`dot2'" == "." {
+			local u = substr("`v'",3,.)
+		}
+		if "`dot4'" == "." {
+			local u = substr("`v'",5,.)
+		}
+
+		if "`lead'" == "i"{
+			
+			local num3`u' = substr("`v'",3,1)
+			
+			if "`dot4'" != "." {
+				local num3`u' = 1
+			}
+			
+			if "`dot2'" != "." & "`dot4'" != "." {
+				local u "`v'"
+			}
+			
+			if "`dot2'" == "." | "`dot4'" == "." {
+				local categ = "`categ' `u'"
+			}
+			
+		}
+		else {
+			local u "`v'"
+
+			local typ: type `u'
+			local typ = substr("`typ'", 1, 3)
+			if "`typ'" == "str" {
+				dis as error "`u': string variables may not be used as continuous variables"
+				exit
+			}
+		}
+
+		local varlist2 = "`varlist2' `u'"
+	}
+	
+	local varlist `varlist2'
+	
+	* throw an error if a variable is a string
+	
+	* if the explanatory variable is categorical
+
+	local varlist2 `varlist'
+	local varlist_rows `varlist'
+	local categ `categ'
+	if "`categ'" != ""{
+			foreach v of varlist `categ' {
+
+		quiet distinct `v'
+		
+		quiet levelsof `v', local(levels)
+
+		local llist 
+		local llist_rows
+			foreach l of local levels {
+				*gen `v'`l' = (`v' == `l')
+				
+				capture confirm variable `v'`l'
+				if _rc {
+					quiet gen `v'`l' = (`v' == `l')
+				}
+				else {
+					quiet replace `v'`l' = (`v' == `l')
+				}
+
+				
+				*label variable `v'`l' "`l'.`v'"
+				local base_label : variable label `v'
+				label variable `v'`l' "`base_label'=`l'"
+
+				local llist "`llist' `v'`l'"
+				local llist_rows "`llist_rows' `l'.`v'"
+
+		}
+			quiet replace `v'`num3`v'' = 0
+			local varlist2 `varlist2'
+			local varlist_rows `varlist_rows'
+			local v `v'
+			local varlist2 : list varlist2 - v
+			local varlist_rows : list varlist_rows - v
+			local varlist2 "`varlist2' `llist'"
+			local varlist_rows "`varlist_rows' `llist_rows'"
+	}
+	
+	}
+	
+	local varlist `varlist2'
+	
 	****************************************************************************
 	* Clean data for estimation
 	****************************************************************************
