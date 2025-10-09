@@ -35,7 +35,7 @@
 {title:Description}
 
 {pstd}
-{cmd:aivreg} implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang, & Zhong (2024). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. An example includes the cost of flood risk to home prices, where buyer income is informative for unobserved home quality.
+{cmd:aivreg} implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang, & Zhong (2024). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. Examples include the implicit price of flood risk to home prices, where buyer income is informative for unobserved home quality, or the implicit price of job safety to wages, where test scores are informative for worker skills.
 
 {title:Details}
 
@@ -59,7 +59,7 @@
 {opt weight(...)} allows either probability/frequency/analytic weights for OLS or probability weights for GMM. For the OLS estimator, use brackets: for example, {it:weight([aw=wt])} (see {help weight} for guidence). For GMM, only place the variable to weigh by: for example, {it:weight(varname)}. GMM uses probability weights.
 
 {phang}
-{opt weightmatrix(matrix)} weight matrix for GMM. Should be square with the number of rows equalling the number of amenities + number of controls + 2 X number of anti-IVs. Defaults to identity. (For GMM only.)
+{opt weightmatrix(matrix)} is the moment weight matrix for GMM. Should be square with the number of rows equalling the number of amenities + number of controls + 2 X number of anti-IVs. Defaults to identity. (For GMM only.)
 
 {dlgtab:Estimation & storage}
 
@@ -87,10 +87,10 @@
 {opt cluster(varlist)} provides cluster-robust SEs.
 
 {phang}
-{opt reps(#)} sets the number of bootstrap repetitions.
+{opt reps(#)} sets the number of bootstrap repetitions. Defaults to 50.
 
 {phang}
-{opt seed(#)} sets the random seed for bootstrap reproducibility. Defaults to 50.
+{opt seed(#)} sets the random seed for bootstrap reproducibility.
 
 {title:Saved results}
 
@@ -106,11 +106,11 @@
 {synopt:{cmd:e(Jval)}}J-test statistic (GMM only){p_end}
 {synopt:{cmd:e(pval_J)}}p-value of J-test (GMM only){p_end}
 {synopt:{cmd:e(betavarname)}}coefficient on variable {it:varname}{p_end}
-{synopt:{cmd:e(SE_vcevarname)}}standard error of coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero{p_end}
-{synopt:{cmd:e(t_valvarname)}}t-value for coefficient on variable {it:varname}{p_end}
-{synopt:{cmd:e(p_more_tvarname)}}t-test statistic for coefficient on variable {it:varname}{p_end}
-{synopt:{cmd:e(lb_vcevarname)}}lower bound for coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot){p_end}
-{synopt:{cmd:e(lb_vcevarname)}}upper bound for coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot){p_end}
+{synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero{p_end}
+{synopt:{cmd:e(t_valvarname)}}t-value for the coefficient on variable {it:varname}{p_end}
+{synopt:{cmd:e(p_more_tvarname)}}t-test statistic for the coefficient on variable {it:varname}{p_end}
+{synopt:{cmd:e(lb_vcevarname)}}lower bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot){p_end}
+{synopt:{cmd:e(lb_vcevarname)}}upper bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot){p_end}
 {synoptline}
 
 {synopthdr:Macros}
@@ -150,8 +150,8 @@ The following examples use simulated or sampled data which are included in the a
 {pstd}But when {cmd:aivreg} uses income as the anti-IV, it will correctly estimate the implicit price of flood risk.{p_end}
 {phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(asymp)"}
 
-{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg};however, one can also call them using {it:vce(ar)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated by {help ivreghdfe} above.{p_end}
-{phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst"}
+{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg}; however, one can also call them using {it:vce(ar)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated by {help ivreghdfe} above.{p_end}
+{phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar)"}
 
 {pstd}The option {cmd:savefirst} shows the first stage regression to help judge the strength on the anti-IV.{p_end}
 {phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst"}
@@ -166,19 +166,19 @@ The following examples use simulated or sampled data which are included in the a
 {pstd}There is also a 2SLS version which allows for multiple anti_IV variables.{p_end}
 {phang} {stata "eststo: aivreg 2sls log_price i.flood_factor i.block_id, aiv(log_income)"}
 
-{pstd}And this is the more general GMM version {cmd:aivreg}.{p_end}
+{pstd}And this is the more general GMM version of {cmd:aivreg}.{p_end}
 {phang} {stata "eststo: aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income)"}
 
 {pstd}Show results in {help esttab}.{p_end}
-{phang} {stata esttab est1 est2, keep(flood_factor*)}
+{phang} {stata esttab est1 est2, keep(flood_factor*) mgroup("2sls" "GMM", pattern(1 1)) label}
 
 {pstd}
 {bf:Safety and Wages Example}
 
-{pstd}Load the sample dataset of wages and job safety, which is sampled from the data used in Bell (2020).{p_end}
+{pstd}Load the dataset of wages and job safety, which is sampled from the data used in Bell (2020).{p_end}
 {phang} {stata use safety_aivreg_example.dta, clear}
 
-{phang} {estimates clear}
+{phang} {stata estimates clear}
 
 {pstd}A naive hedonic regression can be misleading.{p_end}
 {phang} {stata "eststo: reg wage safety"}
