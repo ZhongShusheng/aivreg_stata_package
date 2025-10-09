@@ -264,7 +264,7 @@ flood_factor10 |  -.0394751   .0114966  -3.433634   .000598   -.0620928  -.01694
 (results _ivreg2_log_income  est5 are active now)
 ```
 
-    Display or export results with esttab.
+Display or export results with esttab.
 
 ```stata
     esttab est1 est2 est3 est4, mgroup("reghdfe" "reghdfe + anti-IV control" "aivreg" "aivreg + AR CI", pattern(1 1 1 1)) modelwidth(20) varwidth(18) label
@@ -317,7 +317,7 @@ t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 ```
 
-    There is also a 2SLS version which allows for multiple anti_IV variables.
+There is also a 2SLS version which allows for multiple anti_IV variables.
 
 ```stata
     aivreg 2sls log_price i.flood_factor10 i.block_id, aiv(log_income)
@@ -347,7 +347,7 @@ block_id5      |   -.003392   .0079341  -.4275205  .6690095   -.0189428   .01215
 (est1 stored)
 ```
 
-    And this is the more general GMM version of aivreg.
+And this is the more general GMM version of aivreg.
 
 ```stata
     aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income)
@@ -377,7 +377,7 @@ block_id5      |   -.003392   .0079341  -.4275206  .6690094   -.0189428   .01215
 (est2 stored)
 ```
 
-    Show results in esttab.
+Show results in esttab.
 
 ```stata
     esttab est1 est2, keep(flood_factor*) mgroup("2sls" "GMM", pattern(1 1)) label
@@ -424,9 +424,9 @@ t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 ```
 
-    Safety and Wages Example
+Safety and Wages Example
 
-    Load the dataset of wages and job safety, which is sampled from the data used in Bell (2020).
+Load the dataset of wages and job safety, which is sampled from the data used in Bell (2020).
 
 ```stata
     use safety_aivreg_example.dta, clear
@@ -455,7 +455,7 @@ t statistics in parentheses
 (est1 stored)
 ```
 
-    Even controlling for a measure of worker skill in OLS may not fix it.
+Even controlling for a measure of worker skill in OLS may not fix it.
 
 ```stata
     reg wage safety afqt_1_1981
@@ -478,7 +478,7 @@ t statistics in parentheses
 (est2 stored)
 ```
 
-    aivreg improves identification using the AFQT scores as an anti-IV.
+aivreg improves identification using the AFQT scores as an anti-IV.
 
 ```stata
     aivreg wage safety, aiv(afqt_1_1981)
@@ -495,7 +495,7 @@ safety |  -1.145084   .1010579  -11.33096  2.59e-29   -1.379237  -.9470102
 (est3 stored)
 ```
 
-    Show results in esttab.
+Show results in esttab.
 
 ```stata
     esttab est1 est2 est3
