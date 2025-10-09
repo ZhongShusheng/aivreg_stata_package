@@ -19,7 +19,7 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 
 ### Estimator
 
-- **estimator**         if left blank, aivreg will default to using OLS to estimate the relationships by calling ivreg2, reg, reghdfe, or ivreghdfe; this is equivalent to specifying ols. If it is set to gmm, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to 2sls, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as ols if there is only one anti-IV.
+- **estimator**         will default to using OLS to estimate the relationships by calling ivreg2, reg, reghdfe, or ivreghdfe if left blank; this is equivalent to specifying ols. If it is set to gmm, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to 2sls, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as ols if there is only one anti-IV.
 
 ### Model specification
 
