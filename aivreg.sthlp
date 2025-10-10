@@ -58,7 +58,7 @@
 {opt weight(...)} allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2sls. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]) (see {help weight} for guidance). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname).
 
 {phang}
-{opt weightmatrix(matrix)}  estimation weight matrix for estimation (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
+{opt weightmatrix(matrix)}  estimation weight matrix (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
 
 {dlgtab:Estimation & storage}
 
@@ -71,16 +71,13 @@
 {phang}
 {opt firststo(name)} stores the first-stage estimates under {it:name}.
 
-{phang}
-{opt displayaiv} displays the coefficient on the predicted anti-IV (not available with Anderson–Rubin CIs).
-
 {dlgtab:Variance & inference}
 
 {phang}
 {opt vce(type)} specifies the variance estimator:  
   {it:AR} for Anderson–Rubin (default),  
   {it:{ul:b}ootstrap} for bootstrap SEs,  
-  {it:{ul:as}ymptotic} for asymptotic SEs via {help ivreg2} or {help ivreghdfe}.
+  {it:{ul:as}ymptotic} for asymptotic SEs.
 
 {phang}
 {opt cluster(varlist)} provides cluster-robust SEs.
@@ -102,7 +99,7 @@
 {synopt:{cmd:e(Partial_F)}}partial F-statistic from first stage (Not in 2SLS or GMM){p_end}
 {synopt:{cmd:e(df_r)}}residual degrees of freedom{p_end}
 {synopt:{cmd:e(N)}}number of observations{p_end}
-{synopt:{cmd:e(Jval)}}J-test statistic (2SLS and GMM only)  
+{synopt:{cmd:e(Jval)}}J-test statistic (2SLS and GMM only){p_end}
 {synopt:{cmd:e(pval_J)}}p-value of J-test (2SLS and GMM only){p_end}
 {synopt:{cmd:e(betavarname)}}coefficient on variable {it:varname}{p_end}
 {synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero{p_end}
@@ -120,7 +117,7 @@
 {synopthdr:Matrices}
 {synoptline}
 {synopt:{cmd:e(b)}}coefficient vector{p_end}
-{synopt:{cmd:e(V)}}variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero{p_end}
+{synopt:{cmd:e(V)}}estimated covariance matrix of coefficients; in AR, diagonal matrix with values approximated from AR CI closest to zero{p_end}
 {synopt:{cmd:e(S)}}estimated covariance matrix of moments (2SLS and GMM only){p_end}
 {synopt:{cmd:e(weightmatrix)}}weight matrix (2SLS and GMM only){p_end}
 {synoptline}
@@ -160,7 +157,7 @@ The following examples use simulated or sampled data which are included in the a
 
 {phang} {stata estimates clear}
 
-{pstd}There is also a 2SLS version which allows for multiple anti_IV variables.{p_end}
+{pstd}There is also a 2SLS version which allows for multiple anti-IV variables.{p_end}
 {phang} {stata "eststo: aivreg 2sls log_price i.flood_factor i.block_id, aiv(log_income)"}
 
 {pstd}And this is the more general GMM version of {cmd:aivreg}.{p_end}
@@ -183,7 +180,7 @@ The following examples use simulated or sampled data which are included in the a
 {pstd}Even controlling for the anti-IV in OLS may not fix it.{p_end}
 {phang} {stata "eststo: reg wage safety afqt_1_1981"}
 
-{pstd}{cmd:aivreg} improves identification using a anti-IV.{p_end}
+{pstd}{cmd:aivreg} improves identification using AFQT scores as an anti-IV.{p_end}
 {phang} {stata "eststo: aivreg wage safety, aiv(afqt_1_1981)"}
 
 {pstd}Show results in {help esttab}.{p_end}

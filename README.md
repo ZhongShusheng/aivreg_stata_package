@@ -28,7 +28,7 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 - **control(varlist)**  specifies exogenous control variables included in both stages. These represent additional controls on which conditional orthogonality of the anti-IV and the outcome given the latent confounder holds.
 - **fe(varlist)**      absorbs fixed effects. This is currently not available in GMM; however, GMM can take factor variables (use i.varname).
 - **weight(...)**       allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2sls. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname). 
-- **weightmatrix(matrix)**    estimation weight matrix for estimation (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
+- **weightmatrix(matrix)**    estimation weight matrix (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
 
 ### Estimation & storage
 
@@ -65,12 +65,14 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 ### Matrices
 
 - **e(b)**            coefficient vector
-- **e(V)**            variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero
+- **e(V)**            estimated covariance matrix of coefficients; in AR, diagonal matrix with values approximated from AR CI closest to zero
 - **e(S)**            covariance of moments (2SLS and GMM only)
 - **e(weightmatrix)** weight matrix (2SLS and GMM only)
 
 
 ### Examples
+
+The following examples use simulated or sampled data which are included with the aivreg package on github.
 
 ##### Flood Risk Example
 
@@ -316,7 +318,7 @@ t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 ```
 
-There is also a 2SLS version which allows for multiple anti_IV variables.
+There is also a 2SLS version which allows for multiple anti-IV variables.
 
 ```stata
     aivreg 2sls log_price i.flood_factor10 i.block_id, aiv(log_income)
@@ -478,7 +480,7 @@ Even controlling for a measure of worker skill in OLS may not fix it.
 (est2 stored)
 ```
 
-aivreg improves identification using the AFQT scores as an anti-IV.
+aivreg improves identification using AFQT scores as an anti-IV.
 
 ```stata
     aivreg wage safety, aiv(afqt_1_1981)
@@ -523,7 +525,7 @@ t statistics in parentheses
 
 ### Contact
 
-Questions: aivregstata@gmail.com
+Questions or concerns: aivregstata@gmail.com
 
 ## References
 
