@@ -52,7 +52,7 @@
 {opt control(varlist)} specifies exogenous control variables included in both stages. These represent additional controls on which conditional orthogonality of the anti-IV and the outcome given the latent confounder holds.
 
 {phang}
-{opt fe(varlist)} absorbs fixed effects. This is currently not available in GMM; however, GMM can take factor variables (use i.varname).
+{opt fe(varlist)} absorbs fixed effects. This is currently not available in 2SLS or GMM; however, 2SLS and GMM can take factor variables (use i.varname).
 
 {phang}
 {opt weight(...)} allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2sls. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]) (see {help weight} for guidance). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname).
@@ -66,10 +66,10 @@
 {opt eststo(name)} stores the fitted model under {it:name} for later retrieval. {cmd:aivreg} is also compatible with the syntax {help eststo}: {cmd:aivreg}. 
 
 {phang}
-{opt savefirst} reports and stores the first-stage regression. If {opt firststo(name)} is unspecified, then the first stage is named {it: _ivreg2_varname}, where {it:varname} is the anti_IV's variable name.
+{opt savefirst} reports and stores the first-stage regression. If {opt firststo(name)} is unspecified, then the first stage is named {it: _ivreg2_varname}, where {it:varname} is the anti_IV's variable name. (Not available in 2SLS or GMM.)
 
 {phang}
-{opt firststo(name)} stores the first-stage estimates under {it:name}.
+{opt firststo(name)} stores the first-stage estimates under {it:name}. (Not available in 2SLS or GMM.)
 
 {dlgtab:Variance & inference}
 
@@ -101,12 +101,12 @@
 {synopt:{cmd:e(N)}}number of observations{p_end}
 {synopt:{cmd:e(Jval)}}J-test statistic (2SLS and GMM only){p_end}
 {synopt:{cmd:e(pval_J)}}p-value of J-test (2SLS and GMM only){p_end}
-{synopt:{cmd:e(betavarname)}}coefficient on variable {it:varname}{p_end}
-{synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero{p_end}
-{synopt:{cmd:e(t_valvarname)}}t-value for the coefficient on variable {it:varname}{p_end}
-{synopt:{cmd:e(p_more_tvarname)}}t-test statistic for the coefficient on variable {it:varname}{p_end}
-{synopt:{cmd:e(lb_vcevarname)}}lower bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot){p_end}
-{synopt:{cmd:e(lb_vcevarname)}}upper bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot){p_end}
+{synopt:{cmd:e(betavarname)}}coefficient on variable {it:varname} (Not in 2SLS or GMM){p_end}
+{synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero (Not in 2SLS or GMM){p_end}
+{synopt:{cmd:e(t_valvarname)}}t-value for the coefficient on variable {it:varname} (Not in 2SLS or GMM){p_end}
+{synopt:{cmd:e(p_more_tvarname)}}t-test statistic for the coefficient on variable {it:varname} (Not in 2SLS or GMM){p_end}
+{synopt:{cmd:e(lb_vcevarname)}}lower bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot) (Not in 2SLS or GMM){p_end}
+{synopt:{cmd:e(lb_vcevarname)}}upper bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot) (Not in 2SLS or GMM){p_end} 
 {synoptline}
 
 {synopthdr:Macros}

@@ -26,15 +26,15 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 
 - **aiv(varlist)**       anti-IV variables (one for the default ratio-of-coefficient estimator, one or more for 2SLS and GMM estimators).
 - **control(varlist)**  specifies exogenous control variables included in both stages. These represent additional controls on which conditional orthogonality of the anti-IV and the outcome given the latent confounder holds.
-- **fe(varlist)**      absorbs fixed effects. This is currently not available in GMM; however, GMM can take factor variables (use i.varname).
+- **fe(varlist)**      absorbs fixed effects. This is currently not available in 2SLS or GMM; however, 2SLS and GMM can take factor variables (use i.varname).
 - **weight(...)**       allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2sls. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname). 
 - **weightmatrix(matrix)**    estimation weight matrix (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
 
 ### Estimation & storage
 
 - **eststo(name)**      stores the fitted model under name for later retrieval. aivreg is also compatible with the syntax eststo: aivreg.
-- **savefirst**         reports and stores the first-stage regression. If firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name.
-- **firststo(name)**    stores the first-stage estimates under name.
+- **savefirst**         reports and stores the first-stage regression. If firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name. (Not available in 2SLS or GMM.)
+- **firststo(name)**    stores the first-stage estimates under name. (Not available in 2SLS or GMM.)
 
 ### Variance & inference
 
@@ -51,12 +51,12 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 - **e(N)**               number of observations  
 - **e(Jval)**            J-test statistic (2SLS and GMM only)  
 - **e(pval_J)**          p-value of J-test (2SLS and GMM only)  
-- **e(betavarname)**     coefficient on variable varname  
-- **e(SE_vcevarname)**   standard error of the coefficient on varname, using vce (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero  
-- **e(t_valvarname)**    t-value for the coefficient on varname  
-- **e(p_more_tvarname)** t-test statistic for the coefficient on varname  
-- **e(lb_vcevarname)**   lower bound for the coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
-- **e(ub_vcevarname)**   upper bound for the coefficient on varname (95% confidence), using vce (AR, asymp, or boot)  
+- **e(betavarname)**     coefficient on variable varname (Not in 2SLS or GMM) 
+- **e(SE_vcevarname)**   standard error of the coefficient on varname, using vce (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero (Not in 2SLS or GMM) 
+- **e(t_valvarname)**    t-value for the coefficient on varname (Not in 2SLS or GMM) 
+- **e(p_more_tvarname)** t-test statistic for the coefficient on varname (Not in 2SLS or GMM) 
+- **e(lb_vcevarname)**   lower bound for the coefficient on varname (95% confidence), using vce (AR, asymp, or boot) (Not in 2SLS or GMM) 
+- **e(ub_vcevarname)**   upper bound for the coefficient on varname (95% confidence), using vce (AR, asymp, or boot) (Not in 2SLS or GMM) 
 
 ### Macros
 
