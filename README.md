@@ -20,26 +20,25 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 
 ### Estimator
 
-- **estimator**         will default to using OLS to estimate the relationships by calling ivreg2, reg, reghdfe, or ivreghdfe if left blank; this is equivalent to specifying ols. If it is set to gmm, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to 2sls, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as ols if there is only one anti-IV.
+- **estimator**         defaults to the ratio-of-coefficient estimator, which allows for one anti-instrument. Other options include 2sls (two-stage least squares) and gmm (generalized method of moments), which allow for one or more anti-instruments.
 
 ### Model specification
 
-- **aiv(varlist)**      specifies the anti-IV variables. OLS supports one anti-IV; GMM allows multiple. aivreg will automatically switch to GMM if multiple anti-IVs are specified.
-- **control(varlist)**  specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the anti-IV and the outcome given the latent confounder holds.
-- **fe(varlist)**       absorbs fixed effects using reghdfe or ivreghdfe. If unspecified, then aivreg calls reg or ivreg2 instead. This is not available in GMM.
-- **weight(...)**       allows either probability/frequency/analytic weights for OLS or probability weights for GMM. For the OLS estimator, use brackets: for example, weight([aw=wt]) (see weight for guidence). For GMM, only place the variable to weigh by: for example, weight(varname). GMM uses probability weights.
-- **weightmatrix(matrix)**    is the moment weight matrix for GMM. Should be square with the number of rows equalling (the number of amenities + number of controls + 2) X  number of anti-IVs. Defaults to identity. (For GMM only.)
+- **aiv(varlist)**       anti-IV variables (one for the default ratio-of-coefficient estimator, one or more for 2SLS and GMM estimators).
+- **control(varlist)**  specifies exogenous control variables included in both stages. These represent additional controls on which conditional orthogonality of the anti-IV and the outcome given the latent confounder holds.
+- **fe(varlist)**      absorbs fixed effects. This is currently not available in GMM; however, GMM can take factor variables (use i.varname).
+- **weight(...)**       allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2sls. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname). 
+- **weightmatrix(matrix)**    estimation weight matrix for estimation (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
 
 ### Estimation & storage
 
 - **eststo(name)**      stores the fitted model under name for later retrieval. aivreg is also compatible with the syntax eststo: aivreg.
 - **savefirst**         reports and stores the first-stage regression. If firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name.
 - **firststo(name)**    stores the first-stage estimates under name.
-- **displayaiv**        displays the coefficient on the predicted anti-IV (not available with Anderson–Rubin CIs).
 
 ### Variance & inference
 
-- **vce(type)**         specifies the variance estimator:  ar for Anderson–Rubin (default), bootstrap for bootstrap SEs, asymptotic for asymptotic SEs via ivreg2 or ivreghdfe.
+- **vce(type)**         specifies the variance estimator:  AR for Anderson–Rubin (default), bootstrap for bootstrap SEs, asymptotic for asymptotic SE.
 - **cluster()**         provides cluster-robust SEs.
 - **reps(#)**           sets the number of bootstrap repetitions. Defaults to 50.
 - **seed(#)**           sets the random seed for bootstrap reproducibility. 
@@ -47,11 +46,11 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 ## Saved results
 
 ### Scalars
-- **e(Partial_F)**       partial F-statistic from first stage  
+- **e(Partial_F)**       partial F-statistic from first stage (Not in 2SLS or GMM)
 - **e(df_r)**            residual degrees of freedom  
 - **e(N)**               number of observations  
-- **e(Jval)**            J-test statistic (GMM only)  
-- **e(pval_J)**          p-value of J-test (GMM only)  
+- **e(Jval)**            J-test statistic (2SLS and GMM only)  
+- **e(pval_J)**          p-value of J-test (2SLS and GMM only)  
 - **e(betavarname)**     coefficient on variable varname  
 - **e(SE_vcevarname)**   standard error of the coefficient on varname, using vce (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero  
 - **e(t_valvarname)**    t-value for the coefficient on varname  
@@ -67,8 +66,8 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 
 - **e(b)**            coefficient vector
 - **e(V)**            variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero
-- **e(S)**            covariance of moments (GMM only)
-- **e(weightmatrix)** weight matrix (GMM only)
+- **e(S)**            covariance of moments (2SLS and GMM only)
+- **e(weightmatrix)** weight matrix (2SLS and GMM only)
 
 
 ### Examples
@@ -193,11 +192,11 @@ flood_factor10 |  -.0394751    .011518  -3.427266  .0006122   -.0620503  -.01689
 (est3 stored)
 ```
 
- aivreg can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of aivreg; however, one can also call them using vce(ar). In this setting, log
+ aivreg can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of aivreg; however, one can also call them using vce(AR). In this setting, log
     income is a strong anti-IV, so the confidence interval is similar to those calculated above.
 
 ```stata
-    eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar)
+    eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(AR)
 ```
 ```
 Anti-IV Regression                             Number of obs = 10000
@@ -222,7 +221,7 @@ flood_factor10 |  -.0394751   .0114966  -3.433634   .000598   -.0620928  -.01694
 
  The option savefirst shows the first stage regression, to help judge the strength on the anti-IV.
 ```stata
-    aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst
+    aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(AR) savefirst
 ```
 ```
 First Stage:
@@ -424,7 +423,7 @@ t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 ```
 
-Safety and Wages Example
+##### Safety and Wages Example
 
 Load the dataset of wages and job safety, which is sampled from the data used in Bell (2020).
 

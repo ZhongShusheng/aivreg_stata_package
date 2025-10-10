@@ -23,7 +23,6 @@
 {synopt:{opt eststo(name)}}store estimates under {it:name}.{p_end}
 {synopt:{opt savefirst}}save first-stage regression results.{p_end}
 {synopt:{opt firststo(name)}}store first-stage estimates under {it:name}.{p_end}
-{synopt:{opt displayaiv}}display coefficient on predicted anti-IV.{p_end}
 
 {syntab:Variance & inference}
 {synopt:{opt vce(type)}}variance estimator: {it:ar} (default), {it:{ul:b}oot}, {it:{ul:as}ymp}.{p_end}
@@ -35,31 +34,31 @@
 {title:Description}
 
 {pstd}
-{cmd:aivreg} implements the anti-IV estimator outlined in Bell, Billings, Calder-Wang, & Zhong (2024). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. Examples include the implicit price of flood risk for home prices, where buyer income is informative for unobserved home quality, or the implicit price of job safety for wages, where test scores are informative for worker skills.
+{cmd:aivreg} implements the anti-IV estimator outlined in {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":Bell, Billings, Calder-Wang, & Zhong (2024)}. The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. Examples include the implicit price of flood risk for home prices, where buyer income is informative for unobserved home quality, or the implicit price of job safety for wages, where test scores are informative for worker skills.
 
 {title:Details}
 
 {dlgtab:Estimator}
 
 {phang}
-{it:estimator} will default to using OLS to estimate the relationships by calling {help ivreg2}, {help reg}, {help reghdfe}, or {help ivreghdfe} if left blank; this is equivalent to specifying {it:ols}. If it is set to {it:gmm}, instead the GMM estimator is used, defaulting to the identity weight matrix. And if set to {it:2sls}, aivreg uses GMM but sets the weight matrix to the optimal weight matrix under homoskedasticity, which yields equivalent point estimates as {it:ols} if there is only one anti-IV.
+{it:estimator} defaults to the ratio-of-coefficient estimator, which allows for one anti-instrument. Other options include {it:2sls} (two-stage least squares) and {it:gmm} (generalized method of moments), which allow for one or more anti-instruments.
 
 {dlgtab:Model specification}
 
 {phang}
-{opt aiv(varlist)} specifies the anti-IV variables. OLS supports one anti-IV; GMM allows multiple. {cmd:aivreg} will automatically switch to GMM if multiple anti-IVs are specified. 
+{opt aiv(varlist)} anti-IV variables (one for the default ratio-of-coefficient estimator, one or more for 2SLS and GMM estimators).
 
 {phang}
-{opt control(varlist)} specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the anti-IV and the outcome given the latent confounder holds.
+{opt control(varlist)} specifies exogenous control variables included in both stages. These represent additional controls on which conditional orthogonality of the anti-IV and the outcome given the latent confounder holds.
 
 {phang}
-{opt fe(varlist)} absorbs fixed effects using {help reghdfe} or {help ivreghdfe}. If unspecified, then {cmd:aivreg} calls {help reg} or {help ivreg2} instead. This is not available in GMM.
+{opt fe(varlist)} absorbs fixed effects. This is currently not available in GMM; however, GMM can take factor variables (use i.varname).
 
 {phang}
-{opt weight(...)} allows either probability/frequency/analytic weights for OLS or probability weights for GMM. For the OLS estimator, use brackets: for example, {it:weight([aw=wt])} (see {help weight} for guidence). For GMM, only place the variable to weigh by: for example, {it:weight(varname)}. GMM uses probability weights.
+{opt weight(...)} allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2sls. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]) (see {help weight} for guidance). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname).
 
 {phang}
-{opt weightmatrix(matrix)} is the moment weight matrix for GMM. Should be square with the number of rows equalling the number of amenities + number of controls + 2 X number of anti-IVs. Defaults to identity. (For GMM only.)
+{opt weightmatrix(matrix)}  estimation weight matrix for estimation (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
 
 {dlgtab:Estimation & storage}
 
@@ -79,7 +78,7 @@
 
 {phang}
 {opt vce(type)} specifies the variance estimator:  
-  {it:ar} for Anderson–Rubin (default),  
+  {it:AR} for Anderson–Rubin (default),  
   {it:{ul:b}ootstrap} for bootstrap SEs,  
   {it:{ul:as}ymptotic} for asymptotic SEs via {help ivreg2} or {help ivreghdfe}.
 
@@ -100,11 +99,11 @@
 {synoptset 22 tabbed}
 {synopthdr:Scalars}
 {synoptline}
-{synopt:{cmd:e(Partial_F)}}partial F-statistic from first stage{p_end}
+{synopt:{cmd:e(Partial_F)}}partial F-statistic from first stage (Not in 2SLS or GMM){p_end}
 {synopt:{cmd:e(df_r)}}residual degrees of freedom{p_end}
 {synopt:{cmd:e(N)}}number of observations{p_end}
-{synopt:{cmd:e(Jval)}}J-test statistic (GMM only){p_end}
-{synopt:{cmd:e(pval_J)}}p-value of J-test (GMM only){p_end}
+{synopt:{cmd:e(Jval)}}J-test statistic (2SLS and GMM only)  
+{synopt:{cmd:e(pval_J)}}p-value of J-test (2SLS and GMM only){p_end}
 {synopt:{cmd:e(betavarname)}}coefficient on variable {it:varname}{p_end}
 {synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero{p_end}
 {synopt:{cmd:e(t_valvarname)}}t-value for the coefficient on variable {it:varname}{p_end}
@@ -122,8 +121,8 @@
 {synoptline}
 {synopt:{cmd:e(b)}}coefficient vector{p_end}
 {synopt:{cmd:e(V)}}variance–covariance matrix; in AR, diagonal matrix with values approximated from AR CI closest to zero{p_end}
-{synopt:{cmd:e(S)}}estimated covariance matrix of moments (GMM only){p_end}
-{synopt:{cmd:e(weightmatrix)}}weight matrix (GMM only){p_end}
+{synopt:{cmd:e(S)}}estimated covariance matrix of moments (2SLS and GMM only){p_end}
+{synopt:{cmd:e(weightmatrix)}}weight matrix (2SLS and GMM only){p_end}
 {synoptline}
 
 {title:Examples}
@@ -150,11 +149,11 @@ The following examples use simulated or sampled data which are included in the a
 {pstd}But when {cmd:aivreg} uses income as the anti-IV, it will correctly estimate the implicit price of flood risk.{p_end}
 {phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(asymp)"}
 
-{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg}; however, one can also call them using {it:vce(ar)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated above.{p_end}
-{phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar)"}
+{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg}; however, one can also call them using {it:vce(AR)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated above.{p_end}
+{phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(AR)"}
 
 {pstd}The option {cmd:savefirst} shows the first stage regression to help judge the strength on the anti-IV.{p_end}
-{phang} {stata "aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(ar) savefirst"}
+{phang} {stata "aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(AR) savefirst"}
 
 {pstd}Display or export results with {help esttab}.{p_end}
 {phang} {stata esttab est1 est2 est3 est4, mgroup("reghdfe" "reghdfe + anti-IV control" "aivreg" "aivreg + AR CI", pattern(1 1 1 1)) modelwidth(20) varwidth(18) label}
