@@ -1886,29 +1886,6 @@ program define aivgmm, eclass
 		local amenities `amenities' `aiv'
 	}
 	
-	foreach var of local amenities {
-		local coef = b[1, "`var'"]
-		local se = sqrt(V["`var'", "`var'"])
-		local tstat = `coef' / `se'
-		local pval = 2 * ttail(`dof', abs(`tstat'))
-		local lb = `coef' - 1.96 * `se'
-		local ub = `coef' + 1.96 * `se'
-
-		collect get `var' = `coef', tags(Col[Coef])
-		collect get `var' = `se', tags(Col[SE])
-		collect get `var' = `tstat', tags(Col[t])
-		collect get `var' = `pval', tags(Col[p])
-		collect get `var' = `lb', tags(Col[CI_L])
-		collect get `var' = `ub', tags(Col[CI_U])
-	}
-
-	collect style header Col, level(hide)
-	collect style cell result[`depvar'], border(bottom) border(top, pattern(nil))
-	collect style cell, sformat(" %s")
-	quiet collect layout (result) (Col)
-	collect preview
-
-	
 	****************************************************************************
 	* Ereturn results
 	****************************************************************************
@@ -1926,6 +1903,51 @@ program define aivgmm, eclass
 		eststo `eststo'
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"
 	}
+	
+	matrix b = e(b)
+	matrix V = e(V)
+	
+	foreach var of local amenities {
+		local coef = b[1, "`var'"]
+		local se = sqrt(V["`var'", "`var'"])
+		local tstat = `coef' / `se'
+		local pval = 2 * ttail(`dof', abs(`tstat'))
+		local lb = `coef' - 1.96 * `se'
+		local ub = `coef' + 1.96 * `se'
+
+		collect get `var' = `coef', tags(Col[Coef])
+		collect get `var' = `se', tags(Col[SE])
+		collect get `var' = `tstat', tags(Col[t])
+		collect get `var' = `pval', tags(Col[p])
+		collect get `var' = `lb', tags(Col[CI_L])
+		collect get `var' = `ub', tags(Col[CI_U])
+		
+		if "`2sls'" == "2sls" {
+			ereturn scalar beta`var' = `coef'
+			ereturn scalar SE_2sls`var' = `se'
+			ereturn scalar t_val`var' = `tstat'
+			ereturn scalar p_more_t`var' = `pval' 
+			ereturn scalar lb_2sls`var' = `lb'
+			ereturn scalar ub_2sls`var' = `ub'
+		}
+		else {
+			ereturn scalar beta`var' = `coef'
+			ereturn scalar SE_gmm`var' = `se'
+			ereturn scalar t_val`var' = `tstat'
+			ereturn scalar p_more_t`var' = `pval' 
+			ereturn scalar lb_gmm`var' = `lb'
+			ereturn scalar ub_gmm`var' = `ub'			
+		}
+	}
+
+	collect style header Col, level(hide)
+	collect style cell result[`depvar'], border(bottom) border(top, pattern(nil))
+	collect style cell, sformat(" %s")
+	quiet collect layout (result) (Col)
+	collect preview
+
+	
+
 	
 	restore
 end

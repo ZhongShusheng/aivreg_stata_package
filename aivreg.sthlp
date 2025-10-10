@@ -34,7 +34,7 @@
 {title:Description}
 
 {pstd}
-{cmd:aivreg} implements the anti-IV estimator outlined in {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":Bell, Billings, Calder-Wang, & Zhong (2024)}. The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. Examples include the implicit price of flood risk for home prices, where buyer income is informative for unobserved home quality, or the implicit price of job safety for wages, where test scores are informative for worker skills.
+{cmd:aivreg} implements the anti-IV estimator outlined in {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":Bell, Billings, Calder-Wang, & Zhong (2024)}. The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. 
 
 {title:Details}
 
@@ -55,7 +55,7 @@
 {opt fe(varlist)} absorbs fixed effects. This is currently not available in 2SLS or GMM; however, 2SLS and GMM can take factor variables (use i.varname).
 
 {phang}
-{opt weight(...)} allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2sls. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]) (see {help weight} for guidance). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname).
+{opt weight(...)} allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2SLS. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]) (see {help weight} for guidance). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname).
 
 {phang}
 {opt weightmatrix(matrix)}  estimation weight matrix (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
@@ -101,12 +101,12 @@
 {synopt:{cmd:e(N)}}number of observations{p_end}
 {synopt:{cmd:e(Jval)}}J-test statistic (2SLS and GMM only){p_end}
 {synopt:{cmd:e(pval_J)}}p-value of J-test (2SLS and GMM only){p_end}
-{synopt:{cmd:e(betavarname)}}coefficient on variable {it:varname} (Not in 2SLS or GMM){p_end}
-{synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, or boot); if AR, SE approximated using CI closest to zero (Not in 2SLS or GMM){p_end}
-{synopt:{cmd:e(t_valvarname)}}t-value for the coefficient on variable {it:varname} (Not in 2SLS or GMM){p_end}
-{synopt:{cmd:e(p_more_tvarname)}}t-test statistic for the coefficient on variable {it:varname} (Not in 2SLS or GMM){p_end}
-{synopt:{cmd:e(lb_vcevarname)}}lower bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot) (Not in 2SLS or GMM){p_end}
-{synopt:{cmd:e(lb_vcevarname)}}upper bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, or boot) (Not in 2SLS or GMM){p_end} 
+{synopt:{cmd:e(betavarname)}}coefficient on variable {it:varname}{p_end}
+{synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, boot, 2sls, or gmm); if AR, SE approximated using CI closest to zero{p_end}
+{synopt:{cmd:e(t_valvarname)}}t-value for the coefficient on variable {it:varname}{p_end}
+{synopt:{cmd:e(p_more_tvarname)}}t-test statistic for the coefficient on variable {it:varname}{p_end}
+{synopt:{cmd:e(lb_vcevarname)}}lower bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, boot, 2sls, or gmm){p_end}
+{synopt:{cmd:e(lb_vcevarname)}}upper bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, boot, 2sls, or gmm){p_end} 
 {synoptline}
 
 {synopthdr:Macros}
