@@ -28,7 +28,7 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 - **control(varlist)**  specifies exogenous control variables included in both stages. These represent additional controls on which conditional independence of the anti-IV and the outcome given the latent confounder holds.
 - **fe(varlist)**       absorbs fixed effects using reghdfe or ivreghdfe. If unspecified, then aivreg calls reg or ivreg2 instead. This is not available in GMM.
 - **weight(...)**       allows either probability/frequency/analytic weights for OLS or probability weights for GMM. For the OLS estimator, use brackets: for example, weight([aw=wt]) (see weight for guidence). For GMM, only place the variable to weigh by: for example, weight(varname). GMM uses probability weights.
-- **weightmatrix(matrix)**    is the moment weight matrix for GMM. Should be square with the number of rows equalling the number of amenities + number of controls + 2 X number of anti-IVs. Defaults to identity. (For GMM only.)
+- **weightmatrix(matrix)**    is the moment weight matrix for GMM. Should be square with the number of rows equalling (the number of amenities + number of controls + 2) X  number of anti-IVs. Defaults to identity. (For GMM only.)
 
 ### Estimation & storage
 
@@ -434,7 +434,8 @@ Load the dataset of wages and job safety, which is sampled from the data used in
 ```stata
     estimates clear
 ```
-    A naive hedonic regression can be misleading.
+A naive hedonic regression can be misleading.
+
 ```stata
     reg wage safety
 ```
