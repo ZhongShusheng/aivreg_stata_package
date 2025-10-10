@@ -2,7 +2,7 @@
 
 ## Description
 
-aivreg  implements the anti-IV estimator outlined in [Bell, Billings, Calder-Wang, & Zhong (2024)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974). The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. 
+aivreg  implements the anti-IV estimator outlined in [Bell, Billings, Calder-Wang, & Zhong (2024)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974). The method allows the user to estimate implicit amenity prices in the presence of an unobservable confounder. 
 
 ## Download Instructions
 
@@ -321,7 +321,10 @@ t statistics in parentheses
 There is also a 2SLS version which allows for multiple anti-IV variables.
 
 ```stata
-    aivreg 2sls log_price i.flood_factor10 i.block_id, aiv(log_income)
+    estimates clear
+```
+```stata
+    eststo: aivreg 2sls log_price i.flood_factor10 i.block_id, aiv(log_income)
 ```
 ```
 Anti-IV GMM                                    Number of obs = 10000
@@ -351,7 +354,7 @@ block_id5      |   -.003392   .0079341  -.4275205  .6690095   -.0189428   .01215
 And this is the more general GMM version of aivreg.
 
 ```stata
-    aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income)
+    eststo: aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income)
 ```
 ```
 Anti-IV GMM                                    Number of obs = 10000

@@ -34,7 +34,7 @@
 {title:Description}
 
 {pstd}
-{cmd:aivreg} implements the anti-IV estimator outlined in {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":Bell, Billings, Calder-Wang, & Zhong (2024)}. The method allows the user to estimate consistent, unbiased hedonic prices when the error term is caused by an imperfectly informative variable (anti-IV) for a confounding variable. 
+{cmd:aivreg} implements the anti-IV estimator outlined in {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":Bell, Billings, Calder-Wang, & Zhong (2024)}. The method allows the user to estimate implicit amenity prices in the presence of an unobservable confounder.
 
 {title:Details}
 
