@@ -10,15 +10,26 @@
 [{it:options}]
 
 {synoptset 22 tabbed}{...}
+{synopthdr:estimators}
+{synoptline}
+{synopt:{opt ratio}} default estimator; ratio-of-coefficients. Allows a single Anti-IV.{p_end}
+{synopt:{opt 2sls}} two-stage least squares Anti-IV estimator. Allows multiple Anti-IVs.{p_end}
+{synopt:{opt gmm}} generalized method of moments Anti-IV estimator. Allows multiple Anti-IVs.{p_end}
+{synoptline}
+
+{synoptset 22 tabbed}{...}
 {synopthdr:options}
 {synoptline}
 {syntab:Model specification}
-{synopt:{opt aiv(varlist)}}anti-IV variables (one for OLS, multiple for GMM).{p_end}
+{synopt:{opt aiv(varlist)}}anti-IV variables.{p_end}
 {synopt:{opt control(varlist)}}control variables.{p_end}
-{synopt:{opt fe(varlist)}}fixed effects to absorb (via {help reghdfe} or {help ivreghdfe}). Not available for GMM.{p_end}
+{synopt:{opt fe(varlist)}}fixed effects to absorb.{p_end}
 {synopt:{opt weight(...)}}observation weights for estimation.{p_end}
-{synopt:{opt weightmatrix(matrix)}}estimation weight matrix for estimation (GMM only).{p_end}
-
+{synopt:{opt twostep}}default for GMM; run twostep GMM.{p_end}
+{synopt:{opt initialweightmatrix(matrix)}}initial estimation weight matrix for two-step GMM.{p_end}
+{synopt:{opt onestep}}run onestep GMM.{p_end}
+{synopt:{opt weightingmatrix(matrix)}}estimation weight matrix for one-step GMM.{p_end}
+{synopt:{opt ignoresingularity}}if a (nearly) singular matrix is detected, continue without an error.{p_end}
 {syntab:Estimation & storage}
 {synopt:{opt eststo(name)}}store estimates under {it:name}.{p_end}
 {synopt:{opt savefirst}}save first-stage regression results.{p_end}
@@ -39,56 +50,43 @@
 {title:Details}
 
 {dlgtab:Estimator}
-
-{phang}
-{it:estimator} defaults to the ratio-of-coefficient estimator, which allows for one anti-instrument. Other options include {it:2sls} (two-stage least squares) and {it:gmm} (generalized method of moments), which allow for one or more anti-instruments.
+{phang}- {bf:ratio}    default estimator; ratio-of-coefficients. Allows a single Anti-IV.{p_end}
+{phang}- {bf:2sls}     two-stage least squares Anti-IV estimator. Allows multiple Anti-IVs.{p_end}
+{phang}- {bf:gmm}      generalized method of moments Anti-IV estimator. Allows multiple Anti-IVs.{p_end}
 
 {dlgtab:Model specification}
+{phang}- {bf:aiv(}{it:varlist}{bf:)}    Anti-IV variables (one for {it:ratio}, one or more for {it:2sls} and {it:gmm}).{p_end}
+{phang}- {bf:control(}{it:varlist}{bf:)}  Exogenous controls included in both stages; assumed conditionally orthogonal with the Anti-IV and outcome given the latent confounder.{p_end}
+{phang}- {bf:fe(}{it:varlist}{bf:)}      Absorb fixed effects.{p_end}
+{phang}- {bf:weight(...)}   For {it:ratio}: probability/frequency/analytic weights using brackets, e.g., {cmd:weight([aw=wt])}. For {it:gmm} and {it:2sls}: probability weights only, e.g., {cmd:weight(wvar)}.{p_end}
 
-{phang}
-{opt aiv(varlist)} anti-IV variables (one for the default ratio-of-coefficient estimator, one or more for 2SLS and GMM estimators).
+{dlgtab:ratio}
+{phang}- {bf:vce(}{it:type}{bf:)}  Variance estimator: {it:AR} (default, Anderson–Rubin), {it:bootstrap}, or {it:asymptotic}.{p_end}
+{phang}- {bf:cluster(}{it:varlist}{bf:)}  Cluster-robust SEs.{p_end}
+{phang}- {bf:reps(}{it:#}{bf:)}  Bootstrap repetitions (default 50).{p_end}
+{phang}- {bf:seed(}{it:#}{bf:)}  Random seed for bootstrap reproducibility.{p_end}
 
-{phang}
-{opt control(varlist)} specifies exogenous control variables included in both stages. These represent additional controls on which conditional orthogonality of the anti-IV and the outcome given the latent confounder holds.
+{dlgtab:2sls}
+{phang}- {bf:cluster(}{it:varlist}{bf:)}  Cluster-robust SEs.{p_end}
+{phang}- {bf:onestep}  Default, runs one-step GMM with 2SLS-equivalent weight matrix.{p_end}
+{phang}- {bf:twostep}  Runs two-step GMM with 2SLS in step one.{p_end}
+{phang}- {bf:ignoresingularity} If a (nearly) singular matrix is detected, continue without an error.{p_end}
 
-{phang}
-{opt fe(varlist)} absorbs fixed effects. This is currently not available in 2SLS or GMM; however, 2SLS and GMM can take factor variables (use i.varname).
-
-{phang}
-{opt weight(...)} allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2SLS. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]) (see {help weight} for guidance). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname).
-
-{phang}
-{opt weightmatrix(matrix)}  estimation weight matrix (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
+{dlgtab:gmm}
+{phang}- {bf:cluster(}{it:varlist}{bf:)}  Cluster-robust SEs.{p_end}
+{phang}- {bf:twostep}  Default; runs two-step GMM.{p_end}
+{phang}- {bf:initweightmatrix(}{it:matrix}{bf:)}  Initial weighting matrix for two-step GMM. Defaults to identity. Accepts {it:identity}, {it:unadjusted}, or a matrix name. {it:initialweightmatrix(unadjusted)} requests a weight matrix that is suitable when the errors are homoskedastic.  The GMM estimator with this weight matrix is equivalent to the 2SLS estimator.{p_end}
+{phang}- {bf:onestep}  Runs one-step GMM.{p_end}
+{phang}- {bf:weightingmatrix(}{it:matrix}{bf:)}  Weight matrix for one-step GMM. Defaults to identity. Accepts {it:identity}, {it:unadjusted}, or a matrix name. {it:weightingmatrix(unadjusted)} requests a weight matrix that is suitable when the errors are homoskedastic.  The GMM estimator with this weight matrix is equivalent to the 2SLS estimator.{p_end}
+{phang}- {bf:ignoresingularity} If a (nearly) singular matrix is detected, continue without an error.{p_end}
 
 {dlgtab:Estimation & storage}
+{phang}- {bf:eststo(}{it:name}{bf:)}  Store fitted model under {it:name}. Also compatible with {cmd:eststo: aivreg ...}.{p_end}
+{phang}- {bf:savefirst}  Report and store first-stage regression. For {it:ratio}, if {bf:firststo()} is unspecified, first stage is named {it:_ivreg2_varname} where {it:varname} is the Anti-IV. For {it:gmm} and {it:2sls}, defaults to saving as {it:aivgmm_h} for each Anti-IV {it:h}.{p_end}
+{phang}- {bf:firststo(}{it:name}{bf:)}  Store first-stage estimates under {it:name} for {it:ratio}; for {it:gmm} and {it:2sls}, first stages are stored as {it:name}{it:h} for each Anti-IV {it:h}.{p_end}
 
-{phang}
-{opt eststo(name)} stores the fitted model under {it:name} for later retrieval. {cmd:aivreg} is also compatible with the syntax {help eststo}: {cmd:aivreg}. 
 
-{phang}
-{opt savefirst} reports and stores the first-stage regression. If {opt firststo(name)} is unspecified, then the first stage is named {it: _ivreg2_varname}, where {it:varname} is the anti_IV's variable name. (Not available in 2SLS or GMM.)
-
-{phang}
-{opt firststo(name)} stores the first-stage estimates under {it:name}. (Not available in 2SLS or GMM.)
-
-{dlgtab:Variance & inference}
-
-{phang}
-{opt vce(type)} specifies the variance estimator:  
-  {it:AR} for Anderson–Rubin (default),  
-  {it:{ul:b}ootstrap} for bootstrap SEs,  
-  {it:{ul:as}ymptotic} for asymptotic SEs.
-
-{phang}
-{opt cluster(varlist)} provides cluster-robust SEs.
-
-{phang}
-{opt reps(#)} sets the number of bootstrap repetitions. Defaults to 50.
-
-{phang}
-{opt seed(#)} sets the random seed for bootstrap reproducibility.
-
-{title:Saved results}
+{dlgtab:Saved results}
 
 {pstd}
 {cmd:aivreg} saves results in {cmd:e()}.
@@ -99,14 +97,15 @@
 {synopt:{cmd:e(Partial_F)}}partial F-statistic from first stage (Not in 2SLS or GMM){p_end}
 {synopt:{cmd:e(df_r)}}residual degrees of freedom{p_end}
 {synopt:{cmd:e(N)}}number of observations{p_end}
-{synopt:{cmd:e(Jval)}}J-test statistic (2SLS and GMM only){p_end}
-{synopt:{cmd:e(pval_J)}}p-value of J-test (2SLS and GMM only){p_end}
+{synopt:{cmd:e(Jval)}}J-test statistic (2SLS and GMM only, and only when there are multiple Anti-IVs){p_end}
+{synopt:{cmd:e(pval_J)}}p-value of J-test (2SLS and GMM only, and only when there are multiple Anti-IVs){p_end}
 {synopt:{cmd:e(betavarname)}}coefficient on variable {it:varname}{p_end}
-{synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {it:vce} (either AR, asymp, boot, 2sls, or gmm); if AR, SE approximated using CI closest to zero{p_end}
+{synopt:{cmd:e(SE_vcevarname)}}standard error of the coefficient on variable {it:varname}, using {opt vce} (either AR, asymp, boot, 2sls, or gmm); if AR, SE approximated using CI closest to zero{p_end}
 {synopt:{cmd:e(t_valvarname)}}t-value for the coefficient on variable {it:varname}{p_end}
 {synopt:{cmd:e(p_more_tvarname)}}t-test statistic for the coefficient on variable {it:varname}{p_end}
-{synopt:{cmd:e(lb_vcevarname)}}lower bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, boot, 2sls, or gmm){p_end}
-{synopt:{cmd:e(lb_vcevarname)}}upper bound for the coefficient on variable {it:varname} (95% confidence), using {it:vce} (either AR, asymp, boot, 2sls, or gmm){p_end} 
+{synopt:{cmd:e(lb_vcevarname)}}lower bound for the coefficient on variable {it:varname} (95% confidence), using {opt vce} (either AR, asymp, boot, 2sls, or gmm){p_end}
+{synopt:{cmd:e(lb_vcevarname)}}upper bound for the coefficient on variable {it:varname} (95% confidence), using {opt vce} (either AR, asymp, boot, 2sls, or gmm){p_end} 
+{synopt:{cmd:e(kappa)}}condition number for inverted matrix in 2SLS and GMM formulas. Warning message appears when it is > 10^12. (2SLS and GMM only)[p_end}
 {synoptline}
 
 {synopthdr:Macros}
@@ -119,7 +118,7 @@
 {synopt:{cmd:e(b)}}coefficient vector{p_end}
 {synopt:{cmd:e(V)}}estimated covariance matrix of coefficients; in AR, diagonal matrix with values approximated from AR CI closest to zero{p_end}
 {synopt:{cmd:e(S)}}estimated covariance matrix of moments (2SLS and GMM only){p_end}
-{synopt:{cmd:e(weightmatrix)}}weight matrix (2SLS and GMM only){p_end}
+{synopt:{cmd:e(weightingmatrix)}}weight matrix (2SLS and GMM only; last weight matrix used for twostep){p_end}
 {synoptline}
 
 {title:Examples}
@@ -146,7 +145,7 @@ The following examples use simulated or sampled data which are included in the a
 {pstd}But when {cmd:aivreg} uses income as the anti-IV, it will correctly estimate the implicit price of flood risk.{p_end}
 {phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(asymp)"}
 
-{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg}; however, one can also call them using {it:vce(AR)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated above.{p_end}
+{pstd}{cmd:aivreg} can also use Anderson-Rubin confidence intervals. This is particularly helpful when there is a weak anti-IV. Anderson-Rubin confidence intervals are the default of {cmd:aivreg}; however, one can also call them using {opt vce(AR)}. In this setting, log income is a strong anti-IV, so the confidence interval is similar to those calculated above.{p_end}
 {phang} {stata "eststo: aivreg log_price i.flood_factor, aiv(log_income) fe(block_id) vce(AR)"}
 
 {pstd}The option {cmd:savefirst} shows the first stage regression to help judge the strength on the anti-IV.{p_end}
@@ -162,6 +161,9 @@ The following examples use simulated or sampled data which are included in the a
 
 {pstd}And this is the more general GMM version of {cmd:aivreg}.{p_end}
 {phang} {stata "eststo: aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income)"}
+
+{pstd}GMM and 2SLS estimators also offer a {opt savefirst} option.{p_end}
+{phang} {stata "aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income) savefirst"}
 
 {pstd}Show results in {help esttab}.{p_end}
 {phang} {stata esttab est1 est2, keep(flood_factor*) mgroup("2sls" "GMM", pattern(1 1)) label}
@@ -186,18 +188,57 @@ The following examples use simulated or sampled data which are included in the a
 {pstd}Show results in {help esttab}.{p_end}
 {phang} {stata esttab est1 est2 est3}
 
+{pstd}{cmd:aivreg} GMM and 2SLS versions can use multiple anti-IVs. And {opt savefirst} shows the first stages. Here are the results using test scores again.{p_end}
+{phang} {stata "eststo: aivreg 2sls wage safety, aiv(afqt_1_1981)"}
 
+{pstd}Next, here is using height after controlling for sex.{p_end}
+{phang} {stata "eststo: aivreg 2sls wage safety, aiv(height_res_sex)"}
+
+{pstd}And now we use both anti-IVs. In the top right, {cmd:aivreg} shows the J-Test statistic and the corresponding p-value.{p_end}
+{phang} {stata "eststo: aivreg 2sls wage safety, aiv(afqt_1_1981 height_res_sex) savefirst"}
+
+{pstd}The results can be compared using {help esttab}.{p_end}
+{phang} {stata esttab est4 est5 est6}
+
+{title:Dependencies}
+
+{pstd}
+{cmd:aivreg} requires stata 17 or higher. It also requires {help ivreg2}, {help ranktest}, {help distinct}, {help reghdfe}, and {help ivreghdfe}. 
 
 {title:Contact}
 
 {pstd}
 Questions or concerns: {browse "mailto:aivregstata@gmail.com":aivregstata@gmail.com}
 
+{title:If you encounter "option requirements not allowed r(198)"}
+
+{pstd}This is a rather common issue that stems from {help ivreghdfe} not having been properly installed. Try reinstalling required packages through the following commands:
+
+{pstd}Install ftools{p_end}
+{phang} {stata "cap ado uninstall ftools"}
+
+{phang} {stata `"net install ftools, from("https://raw.githubusercontent.com/sergiocorreia/ftools/master/src/") replace"'}
+
+{pstd}Install reghdfe{p_end}
+{phang} {stata "cap ado uninstall reghdfe"}
+
+{phang} {stata `"net install reghdfe, from("https://raw.githubusercontent.com/sergiocorreia/reghdfe/master/src/") replace"'}
+
+{pstd}Install ivreg2{p_end}
+{phang} {stata "cap ado uninstall ivreg2"}
+
+{phang} {stata "ssc install ivreg2, replace"}
+
+{pstd}Install ivreghdfe{p_end}
+{phang} {stata "cap ado uninstall ivreghdfe"}
+
+{phang} {stata `"net install ivreghdfe, from("https://raw.githubusercontent.com/sergiocorreia/ivreghdfe/master/src/") replace"'}
+
 {title:References}
 
-{phang} - Bell, A. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":Job Amenities and Earnings Inequality} (2020). 
+{phang} - Bell, A. (2020) {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4173522":Job Amenities and Earnings Inequality}. 
 
-{phang} - Bell, A, Billings, S. B., Calder-Wang, S., & Zhong, S. {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":An Anti-IV Approach for Pricing Residential Amenities: Applications to Flood Risk} (2024)
+{phang} - Bell, A, Billings, S. B., Calder-Wang, S., & Zhong, S. (2024) {browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4899974":An Anti-IV Approach for Pricing Residential Amenities: Applications to Flood Risk}
 
-{phang} - Correia, S. {browse "https://ideas.repec.org/c/boc/bocode/s458530.html":IVREGHDFE: Stata module for extended instrumental variable regressions} (2018).
+{phang} - Correia, S. (2018) {browse "https://ideas.repec.org/c/boc/bocode/s458530.html":IVREGHDFE: Stata module for extended instrumental variable regressions}.
 

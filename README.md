@@ -26,15 +26,17 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 
 - **aiv(varlist)**       anti-IV variables (one for the default ratio-of-coefficient estimator, one or more for 2SLS and GMM estimators).
 - **control(varlist)**  specifies exogenous control variables included in both stages. These represent additional controls on which conditional orthogonality of the anti-IV and the outcome given the latent confounder holds.
-- **fe(varlist)**      absorbs fixed effects. This is currently not available in 2SLS or GMM; however, 2SLS and GMM can take factor variables (use i.varname).
+- **fe(varlist)**      absorbs fixed effects.
 - **weight(...)**       allows either probability/frequency/analytic weights for the ratio-of-coefficient estimator or probability weights for GMM and 2SLS. For the ratio-of-coefficient estimator, use brackets: for example, weight([aw=wt]). For GMM and 2SLS, only place the variable to weigh by: for example, weight(varname). 
-- **weightmatrix(matrix)**    estimation weight matrix (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L.
+- **weightmatrix(matrix)**    estimation weight matrix (GMM only), defaults to identity matrix. Should be square and will have the same dimensions as e(S): If there are A amenities, C controls, and L anti-IVs, the number of rows = (A + C + 2)*L. Can set weightmatrix(efficient) for efficient estimation matrix under homoscedasticity. 
+- **onestep**     runs onestep GMM. 
+- **twostep**     runs twostep GMM. The first stage estimates the efficient weight matrix, which is then used in the second stage. This is compatible with a user specified weightmatrix, including {it:efficient}, which is used as the initial matrix at step one.
 
 ### Estimation & storage
 
 - **eststo(name)**      stores the fitted model under name for later retrieval. aivreg is also compatible with the syntax eststo: aivreg.
-- **savefirst**         reports and stores the first-stage regression. If firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name. (Not available in 2SLS or GMM.)
-- **firststo(name)**    stores the first-stage estimates under name. (Not available in 2SLS or GMM.)
+- **savefirst**         reports and stores the first-stage regression. In the ratio-of-coefficient estimator, if firststo(name) is unspecified, then the first stage is named _ivreg2_varname, where varname is the anti_IV's variable name. In GMM and 2SLS, it defaults to saving first stage results as aivgmm_h for each anti-IV variable h.
+- **firststo(name)**    stores the first-stage estimates under name in the ratio-of-coefficents estimator; in GMM and 2SLS, first stages are stored as nameh} for each anti-IV variable h.
 
 ### Variance & inference
 
@@ -333,20 +335,20 @@ Anti-IV GMM                                    Number of obs = 10000
 log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ---------------+------------------------------------------------------------------
 flood_factor1  |          0          0          .         .           0          0
-flood_factor2  |   .0114959   .0115977   .9912254  .3215995   -.0112355   .0342273
-flood_factor3  |  -.0016645   .0110646   -.150435  .8804245   -.0233511   .0200221
-flood_factor4  |  -.0029541    .011381  -.2595648  .7952048   -.0252609   .0193527
-flood_factor5  |  -.0048468   .0110839  -.4372826  .6619159   -.0265712   .0168776
-flood_factor6  |  -.0077339   .0113206  -.6831731  .4945133   -.0299223   .0144545
-flood_factor7  |  -.0023638   .0112697  -.2097524  .8338652   -.0244525   .0197248
-flood_factor8  |  -.0006795   .0115935  -.0586088  .9532649   -.0234027   .0220437
-flood_factor9  |  -.0105926   .0112369  -.9426623  .3458765   -.0326169   .0114317
-flood_factor10 |  -.0394751   .0115892  -3.406192  .0006614   -.0621899  -.0167602
+flood_factor2  |   .0114959   .0116075   .9903825  .3220112   -.0112549   .0342466
+flood_factor3  |  -.0016645    .011074  -.1503071  .8805254   -.0233695   .0200405
+flood_factor4  |  -.0029541   .0113907  -.2593441  .7953751   -.0252799   .0193717
+flood_factor5  |  -.0048468   .0110933  -.4369107  .6621856   -.0265897   .0168961
+flood_factor6  |  -.0077339   .0113302  -.6825921  .4948804   -.0299412   .0144733
+flood_factor7  |  -.0023638   .0112793   -.209574  .8340044   -.0244713   .0197436
+flood_factor8  |  -.0006795   .0116033   -.058559  .9533046    -.023422   .0220631
+flood_factor9  |  -.0105926   .0112465  -.9418607  .3462867   -.0326356   .0114505
+flood_factor10 |  -.0394751   .0115991  -3.403295  .0006684   -.0622093  -.0167409
 block_id1      |          0          0          .         .           0          0
-block_id2      |  -.0005182   .0079797  -.0649368  .9482256   -.0161583    .015122
-block_id3      |   .0039769   .0077412   .5137346  .6074489   -.0111959   .0191498
-block_id4      |   .0135845   .0078902   1.721684  .0851578   -.0018804   .0290493
-block_id5      |   -.003392   .0079341  -.4275205  .6690095   -.0189428   .0121589
+block_id2      |  -.0005182   .0079865  -.0648815  .9482696   -.0161717   .0151353
+block_id3      |   .0039769   .0077478   .5132977  .6077544   -.0112088   .0191627
+block_id4      |   .0135845   .0078969    1.72022  .0854235   -.0018935   .0290624
+block_id5      |   -.003392   .0079409  -.4271569  .6692742   -.0189561   .0121721
 ----------------------------------------------------------------------------------
 (est1 stored)
 ```
@@ -363,22 +365,78 @@ Anti-IV GMM                                    Number of obs = 10000
 log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
 ---------------+------------------------------------------------------------------
 flood_factor1  |          0          0          .         .           0          0
-flood_factor2  |   .0114959   .0115977   .9912254  .3215995   -.0112355   .0342273
-flood_factor3  |  -.0016645   .0110646   -.150435  .8804245   -.0233511   .0200221
-flood_factor4  |  -.0029541    .011381  -.2595648  .7952048   -.0252609   .0193527
-flood_factor5  |  -.0048468   .0110839  -.4372826  .6619159   -.0265712   .0168776
-flood_factor6  |  -.0077339   .0113206  -.6831731  .4945133   -.0299223   .0144545
-flood_factor7  |  -.0023638   .0112697  -.2097524  .8338652   -.0244525   .0197248
-flood_factor8  |  -.0006795   .0115935  -.0586088  .9532649   -.0234027   .0220437
-flood_factor9  |  -.0105926   .0112369  -.9426623  .3458765   -.0326169   .0114317
-flood_factor10 |  -.0394751   .0115892  -3.406191  .0006614   -.0621899  -.0167602
+flood_factor2  |   .0114959   .0116075   .9903825  .3220112   -.0112549   .0342466
+flood_factor3  |  -.0016645    .011074  -.1503071  .8805254   -.0233695   .0200405
+flood_factor4  |  -.0029541   .0113907  -.2593441  .7953751   -.0252799   .0193717
+flood_factor5  |  -.0048468   .0110933  -.4369108  .6621855   -.0265897   .0168961
+flood_factor6  |  -.0077339   .0113302  -.6825921  .4948805   -.0299412   .0144733
+flood_factor7  |  -.0023638   .0112793   -.209574  .8340044   -.0244713   .0197436
+flood_factor8  |  -.0006795   .0116033   -.058559  .9533046    -.023422   .0220631
+flood_factor9  |  -.0105926   .0112465  -.9418606  .3462868   -.0326356   .0114505
+flood_factor10 |  -.0394751   .0115991  -3.403295  .0006684   -.0622093  -.0167409
 block_id1      |          0          0          .         .           0          0
-block_id2      |  -.0005182   .0079797  -.0649368  .9482256   -.0161583    .015122
-block_id3      |   .0039769   .0077412   .5137345   .607449   -.0111959   .0191498
-block_id4      |   .0135845   .0078902   1.721684  .0851578   -.0018804   .0290493
-block_id5      |   -.003392   .0079341  -.4275206  .6690094   -.0189428   .0121589
+block_id2      |  -.0005182   .0079865  -.0648816  .9482696   -.0161717   .0151353
+block_id3      |   .0039769   .0077478   .5132977  .6077545   -.0112088   .0191627
+block_id4      |   .0135845   .0078969    1.72022  .0854235   -.0018935   .0290624
+block_id5      |   -.003392   .0079409   -.427157  .6692742   -.0189561   .0121721
 ----------------------------------------------------------------------------------
 (est2 stored)
+```
+
+GMM and 2SLS estimators also offer a savefirst option.
+
+```stata
+aivreg gmm log_price i.flood_factor i.block_id, aiv(log_income) savefirst
+```
+
+```
+First Stage log_income:
+ 
+
+log_income     |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+---------------+------------------------------------------------------------------
+log_price      |   .8008521   .0021134   378.9399         0    .7967099   .8049944
+flood_factor1  |          0          0          .         .           0          0
+flood_factor2  |  -.0092065   .0092987  -.9900817  .3221582    -.027432    .009019
+flood_factor3  |    .001333    .008867   .1503341  .8805041   -.0160464   .0187124
+flood_factor4  |   .0023658     .00912   .2594079  .7953259   -.0155095   .0202411
+flood_factor5  |   .0038816   .0088812   .4370529  .6620824   -.0135256   .0212887
+flood_factor6  |   .0061937   .0090694   .6829295  .4946672   -.0115822   .0239697
+flood_factor7  |   .0018931   .0090311   .2096192  .8339691   -.0158079   .0195941
+flood_factor8  |   .0005442   .0092914   .0585665  .9532986   -.0176669   .0187553
+flood_factor9  |   .0084831   .0090007   .9424971   .345961   -.0091582   .0261244
+flood_factor10 |   .0316137   .0092566   3.415263  .0006397    .0134708   .0497566
+block_id1      |          0          0          .         .           0          0
+block_id2      |    .000415   .0063953   .0648881  .9482644   -.0121199   .0129498
+block_id3      |  -.0031849   .0062044  -.5133374  .6077267   -.0153455   .0089757
+block_id4      |  -.0108791   .0063241  -1.720269  .0854146   -.0232744   .0015161
+block_id5      |   .0027165   .0063587   .4272109   .669235   -.0097465   .0151794
+----------------------------------------------------------------------------------
+ 
+Second Stage:
+
+Anti-IV GMM                                    Number of obs = 10000
+                                          Number of anti-IVs = 1
+
+log_price      |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+---------------+------------------------------------------------------------------
+flood_factor1  |          0          0          .         .           0          0
+flood_factor2  |   .0114959   .0116075   .9903825  .3220112   -.0112549   .0342466
+flood_factor3  |  -.0016645    .011074  -.1503071  .8805254   -.0233695   .0200405
+flood_factor4  |  -.0029541   .0113907  -.2593441  .7953751   -.0252799   .0193717
+flood_factor5  |  -.0048468   .0110933  -.4369108  .6621855   -.0265897   .0168961
+flood_factor6  |  -.0077339   .0113302  -.6825921  .4948805   -.0299412   .0144733
+flood_factor7  |  -.0023638   .0112793   -.209574  .8340044   -.0244713   .0197436
+flood_factor8  |  -.0006795   .0116033   -.058559  .9533046    -.023422   .0220631
+flood_factor9  |  -.0105926   .0112465  -.9418606  .3462868   -.0326356   .0114505
+flood_factor10 |  -.0394751   .0115991  -3.403295  .0006684   -.0622093  -.0167409
+block_id1      |          0          0          .         .           0          0
+block_id2      |  -.0005182   .0079865  -.0648816  .9482696   -.0161717   .0151353
+block_id3      |   .0039769   .0077478   .5132977  .6077545   -.0112088   .0191627
+block_id4      |   .0135845   .0078969    1.72022  .0854235   -.0018935   .0290624
+block_id5      |   -.003392   .0079409   -.427157  .6692742   -.0189561   .0121721
+----------------------------------------------------------------------------------
+(results est3 aivgmm_log_income are active now)
 ```
 
 Show results in esttab.
@@ -420,7 +478,7 @@ flood_factor9             -0.0106         -0.0106
                           (-0.94)         (-0.94)   
 
 flood_factor10            -0.0395***      -0.0395***
-                          (-3.41)         (-3.41)   
+                          (-3.40)         (-3.40)   
 ----------------------------------------------------
 Observations                10000           10000   
 ----------------------------------------------------
@@ -525,6 +583,84 @@ t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 
 ```
+
+aivreg GMM and 2SLS versions can use multiple anti-IVs. And savefirst shows the first stages. Here are the results using test scores again.
+
+```stata
+    eststo: aivreg gmm wage safety, aiv(afqt_1_1981)
+```
+
+```
+Anti-IV GMM                                    Number of obs = 3971
+                                          Number of anti-IVs = 1
+
+wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-------+------------------------------------------------------------------
+safety |  -1.145084   .1176477  -9.733161  3.84e-22   -1.375673  -.9144943
+--------------------------------------------------------------------------
+(est4 stored)
+```
+
+Next, here is using height after controlling for sex.
+
+```stata
+    eststo: aivreg gmm wage safety, aiv(height_res_sex)
+```
+
+```
+Anti-IV GMM                                    Number of obs = 3577
+                                          Number of anti-IVs = 1
+
+wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-------+------------------------------------------------------------------
+safety |  -1.525356   .7244995  -2.105393  .0353267   -2.945375  -.1053374
+--------------------------------------------------------------------------
+(est5 stored)
+```
+
+And we can use both anti-IVs. In the top right, aivreg shows the J-Test statistic and the corresponding p-value.
+
+```stata
+    eststo: aivreg gmm wage safety, aiv(afqt_1_1981 height_res_sex)
+```
+
+```
+Anti-IV GMM                                    Number of obs = 3577
+                                          Number of anti-IVs = 2
+                                                      J-stat = 0.0005
+                                              J-stat p value = 0.9828
+
+wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-------+------------------------------------------------------------------
+safety |  -1.343938   .3310318  -4.059845  .0000502    -1.99276  -.6951153
+--------------------------------------------------------------------------
+(est6 stored)
+```
+
+The results can be compared using esttab.
+
+```stata
+    esttab est4 est5 est6, mgroup("AFQT" "Height" "AFQT + Height", pattern(1 1 1))
+```
+
+```
+------------------------------------------------------------
+                     AFQT          Height    AFQT + Hei~t   
+                      (1)             (2)             (3)   
+                     wage            wage            wage   
+------------------------------------------------------------
+safety             -1.145***       -1.525*         -1.344***
+                  (-9.73)         (-2.11)         (-4.06)   
+------------------------------------------------------------
+N                    3971            3577            3577   
+------------------------------------------------------------
+t statistics in parentheses
+* p<0.05, ** p<0.01, *** p<0.001
+```
+
+### Dependencies
+
+aivreg requires stata version 17 or higher. It also requires packages ivreg2, reghdfe, and ivreghdfe.
 
 ### Contact
 

@@ -4,9 +4,32 @@ cap program drop aivreg
 program define aivreg, eclass
     version 17
 	
-	if c(version) < 17 {
-			dis as error "aivreg requires stata 17 or newer"
-			exit 9
+	* Check required packages locally and report all missing ones at once
+
+	local missing ""
+
+	capture which ivreg2
+	if (_rc) local missing "`missing' ivreg2"
+
+	capture which ranktest
+	if (_rc) local missing "`missing' ranktest"
+
+	capture which reghdfe
+	if (_rc) local missing "`missing' reghdfe"
+
+	capture which ivreghdfe
+	if (_rc) local missing "`missing' ivreghdfe"
+
+	capture which distinct
+	if (_rc) local missing "`missing' distinct"
+
+	if ("`missing'" != "") {
+		di as error "The following required packages are not installed:"
+		foreach pkg of local missing {
+			di as error "  - `pkg'"
+		}
+		di as error "Install missing packages using: ssc install <package>"
+		exit 198
 	}
 	
     /* 1.  Peek at first token ------------------------------------------ */
@@ -18,46 +41,90 @@ program define aivreg, eclass
         local 0 "`rest'"                 // put the remainder back for parsing
     }
     else {                               // first word IS a variable
-        local estimator "lin"            // default estimator
+        local estimator "ratio"            // default estimator
         local 0 "`maybe_est' `rest'"     // put *all* words back for parsing
     }
 
+	local estimator = subinstr(strtrim("`estimator'"), " ", "", .)
+	
     /* 2.  Now parse the standard pieces (including the varlist!) -------- */
     syntax varlist(fv) [if] [in], aiv(varlist) ///
-        [control(string) fe(varlist) weight(string) weightmatrix(string) eststo(string) ///
-         vce(string) reps(string) seed(string) cluster(varlist)   ///
-         savefirst firststo(string) displayaiv]
+        [control(string) fe(varlist) weight(string) eststo(string) ///
+         vce(string) reps(string) seed(string) cluster(varlist)  ///
+         savefirst firststo(string) displayaiv onestep twostep /// 
+		 initialweightmatrix(string) weightingmatrix(string) ignoresingularity]
 
     /* 3.  How many anti-IVs?  Decide which engine to call --------------- */
 
-	
+	if "`initialweightmatrix'" != "" {
+		local weightmatrix "`initialweightmatrix'"
+	}
+	if "`weightingmatrix'" != "" {
+		local weightmatrix "`weightingmatrix'"
+	}
+
     local nvars = wordcount("`aiv'")
 	
     if "`estimator'" == "gmm" | "`estimator'" == "2sls" | `nvars' > 1 {
+		
+		if "`onestep'" == "" & "`estimator'" == "gmm" {
+			local twostep "twostep"
+		}
+		else {
+			local onestep "onestep"
+		}
+		
+		if "`estimator'" == "gmm" | `nvars' > 1 {
+			local estimatordisp "GMM_`onestep'`twostep'"	
+			local estimatordisp = subinstr(strtrim("`estimatordisp'"), " ", "", .)
+						local estimatordisp = subinstr(strtrim("`estimatordisp'"), "_", " ", .)
+		}
+		if "`estimator'" == "2sls" {
+			local estimatordisp "2SLS_`onestep'`twostep'"	
+			local estimatordisp = subinstr(strtrim("`estimatordisp'"), " ", "", .)
+			local estimatordisp = subinstr(strtrim("`estimatordisp'"), "_", " ", .)			
+		}
+		
 		if "`estimator'" != "gmm" & "`estimator'" != "2sls" {
 			dis as text "Warning: Multiple anti-IVs inputted, switching to GMM"			
 		}
 		
-		if "`fe'" != "" {
-			dis "Warning: Fixed effects not available for GMM estimation"
-		}
 
 		if "`estimator'" == "2sls" {
+
 			local 2sls = "2sls"
 		}
-			
+		
+		if "`twostep'" == "twostep" & `nvars' > 1 {
+
+			quietly {
+			aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
+				cluster(`cluster') weight(`weight') fe(`fe') /// 
+				weightmatrix(`weightmatrix') `2sls' estimatordisp(`estimatordisp') ///
+				ignoresingularity
+				
+			local 2sls = ""
+			matrix weightmatrix = e(S)
+			matrix weightmatrix = invsym(weightmatrix)
+			local weightmatrix = "weightmatrix"
+			}
+		}
+		
+
 		aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			eststo(`eststo') cluster(`cluster') weight(`weight') weightmatrix(`weightmatrix') `2sls'
+			eststo(`eststo') cluster(`cluster') weight(`weight') fe(`fe') /// 
+			weightmatrix(`weightmatrix') `2sls' `savefirst' /// 
+			firststo(`firststo') estimatordisp(`estimatordisp') `ignoresingularity'
 			
     }
-    else if inlist("`estimator'", "lin", "ols") {
+    else if inlist("`estimator'", "ratio", "lin", "ols") {
         aivreglinear `varlist' `if' `in', aiv(`aiv') ///
             control(`control') fe(`fe') weight(`weight') eststo(`eststo') ///
             vce(`vce') reps(`reps') seed(`seed') cluster(`cluster')       ///
             `savefirst' firststo(`firststo') `displayaiv'
     }
     else {
-        di as error "Invalid estimator `estimator'.  Use ols (default), gmm, or 2sls."
+        di as error "Invalid estimator `estimator'.  Use ratio (default), gmm, or 2sls."
         exit 198
     }
 end
@@ -80,50 +147,52 @@ preserve
 	local varlist "`varlist'"
 	local categ ""
 	
-	foreach v of local varlist {
-		
-		local lead = substr("`v'",1,1)
-		local dot2 = substr("`v'",2,1)
-		local dot4 = substr("`v'",4,1)
-		
-		if "`dot2'" == "." {
-			local u = substr("`v'",3,.)
-		}
-		if "`dot4'" == "." {
-			local u = substr("`v'",5,.)
-		}
+foreach v of local varlist {
 
-		if "`lead'" == "i"{
-			
-			local num3`u' = substr("`v'",3,1)
-			
-			if "`dot4'" != "." {
-				local num3`u' = 1
-			}
-			
-			if "`dot2'" != "." & "`dot4'" != "." {
-				local u "`v'"
-			}
-			
-			if "`dot2'" == "." | "`dot4'" == "." {
-				local categ = "`categ' `u'"
-			}
-			
-		}
-		else {
-			local u "`v'"
+    local u ""
+    local iscat 0
+    local base ""
 
-			local typ: type `u'
-			local typ = substr("`typ'", 1, 3)
-			if "`typ'" == "str" {
-				dis as error "`u': string variables may not be used as continuous variables"
-				exit
-			}
-		}
+    * --- factor-variable patterns ---
+    * ib#.var   (explicit base)
+    if regexm("`v'", "^ib([0-9]+)\.(.+)$") {
+        local base = regexs(1)
+        local u    = regexs(2)
+        local iscat 1
+    }
+    * i.var     (no explicit base)
+    else if regexm("`v'", "^i\.(.+)$") {
+        local u = regexs(1)
+        local iscat 1
+    }
+    * c.var     (continuous)
+    else if regexm("`v'", "^c\.(.+)$") {
+        local u = regexs(1)
+        local iscat 0
+    }
+    * plain variable name
+    else {
+        local u "`v'"
+        local iscat 0
+    }
 
-		local varlist2 = "`varlist2' `u'"
-	}
-	
+    * record categorical vars and (optional) requested base
+    if `iscat' {
+        local categ "`categ' `u'"
+        if "`base'" != "" local base_`u' "`base'"
+    }
+    else {
+        * reject string continuous vars
+        local typ: type `u'
+        local typ = substr("`typ'", 1, 3)
+        if "`typ'" == "str" {
+            di as error "`u': string variables may not be used as continuous variables"
+            exit 198
+        }
+    }
+
+    local varlist2 "`varlist2' `u'"
+}
 	local varlist `varlist2'
 	
 	* throw an error if a variable is a string
@@ -162,7 +231,26 @@ preserve
 				local llist_rows "`llist_rows' `l'.`v'"
 
 		}
-			quiet replace `v'`num3`v'' = 0
+		
+		* pick base: user-specified (ib#.) if provided; otherwise lowest level
+		local base = "`base_`v''"
+		if "`base'" == "" {
+			local base : word 1 of `levels'   // lowest integer level
+		}
+		else {
+			* enforce that requested base exists in sample
+			local ok = 0
+			foreach l of local levels {
+				if "`l'" == "`base'" local ok = 1
+			}
+			if `ok' == 0 {
+				di as error "Base level ib`base'.`v' not present in estimation sample"
+				exit 198
+			}
+		}
+
+		quietly replace `v'`base' = 0
+			
 			local varlist2 `varlist2'
 			local varlist_rows `varlist_rows'
 			local v `v'
@@ -440,13 +528,15 @@ preserve
 	local align_col 60  // Desired column for the "=" alignment
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
+	local Fstr : display %9.3f `partial_F'
+	local Fstr = trim("`Fstr'")
 	if "`cluster'" != ""{
 		local padding = `align_col' - length("SE clustered by ") - length("`cluster'") - length("Partial F-stat.")
-		display "SE clustered by " "`cluster'" _dup(`padding') " " "Partial F-stat." " =" %9.3f `partial_F'
+		display "SE clustered by " "`cluster'" _dup(`padding') " " "Partial F-stat." " = `Fstr'" 
 	}
 	else {
 		local padding = `align_col'  - length("Partial F-stat.")
-		display _dup(`padding') " " "Partial F-stat." " =" %9.3f `partial_F'		
+		display _dup(`padding') " " "Partial F-stat." " = `Fstr'"		
 	}
 	
 	* This makes the column names for the stats
@@ -656,8 +746,10 @@ preserve
 		display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
 		local padding = `align_col' - length("Uses bootstrapped SE") - length("number of reps")	
 		display "Uses bootstrapped SE" _dup(`padding') " " "number of reps" " = " "`reps'"
+		local Fstr : display %9.3f `partial_F'
+		local Fstr = trim("`Fstr'")
 		local padding = `align_col' - length("Partial F-stat.")
-		display _dup(`padding') " " "Partial F-stat." " =" %9.3f `partial_F'
+		display _dup(`padding') " " "Partial F-stat." " = `Fstr'"
 		if length("`seed'") > 0 & "`cluster'" == "" {
 				local padding = `align_col' - length("seed")	
 				display  _dup(`padding') " " "seed" " = " "`seed'"
@@ -872,8 +964,10 @@ preserve
 	local align_col 60  // Desired column for the "=" alignment
 	local padding = `align_col' - length("Number of obs") - length("Anti-IV Regression")
 	display "Anti-IV Regression" _dup(`padding') " " "Number of obs" " = " `n'
+	local Fstr : display %9.3f `partial_F'
+	local Fstr = trim("`Fstr'")
 	local padding = `align_col' - length("Partial F-stat.") - length("Uses Anderson-Rubin CI")
-	display "Uses Anderson-Rubin CI" _dup(`padding') " " "Partial F-stat." " =" %9.3f `partial_F'
+	display "Uses Anderson-Rubin CI" _dup(`padding') " " "Partial F-stat." " = `Fstr'"
 	display "SE inferred from radius closest to zero"
 	if "`cluster'" != "" {
 		display "SE clustered by `cluster'"
@@ -1202,7 +1296,7 @@ estimates restore `eststo'
 	
 	if "`savefirst'" == "savefirst" {
 		if "`undef'" != "undef"{
-			display as text "(results" as result "{stata `firststo': `firststo' }" as result "{stata `eststo': `eststo' }" as text "are active now)"	
+			display as text "(results" as result "{stata `firststo': `firststo' }" as result "{stata `eststo':`eststo' }" as text "are active now)"	
 		}
 		else {
 			display as text "(result" as result "{stata `firststo': `firststo' }" as text "is active now)"
@@ -1238,7 +1332,14 @@ program define aivgmm, eclass
 		[weight(string)] ///
 		[weightmatrix(string)] ///
 		[displayaiv] ///
-		[2sls]
+		[fe(string)] ///
+		[2sls] ///
+		[twostep] ///
+		[onestep] ///
+		[firststo(string)] ///
+		[savefirst] ///
+		[estimatordisp(string)] ///
+		[ignoresingularity]
 
 	preserve	
 
@@ -1253,50 +1354,52 @@ program define aivgmm, eclass
 	local varlist "`varlist'"
 	local categ ""
 	
-	foreach v of local varlist {
-		
-		local lead = substr("`v'",1,1)
-		local dot2 = substr("`v'",2,1)
-		local dot4 = substr("`v'",4,1)
-		
-		if "`dot2'" == "." {
-			local u = substr("`v'",3,.)
-		}
-		if "`dot4'" == "." {
-			local u = substr("`v'",5,.)
-		}
+foreach v of local varlist {
 
-		if "`lead'" == "i"{
-			
-			local num3`u' = substr("`v'",3,1)
-			
-			if "`dot4'" != "." {
-				local num3`u' = 1
-			}
-			
-			if "`dot2'" != "." & "`dot4'" != "." {
-				local u "`v'"
-			}
-			
-			if "`dot2'" == "." | "`dot4'" == "." {
-				local categ = "`categ' `u'"
-			}
-			
-		}
-		else {
-			local u "`v'"
+    local u ""
+    local iscat 0
+    local base ""
 
-			local typ: type `u'
-			local typ = substr("`typ'", 1, 3)
-			if "`typ'" == "str" {
-				dis as error "`u': string variables may not be used as continuous variables"
-				exit
-			}
-		}
+    * --- factor-variable patterns ---
+    * ib#.var   (explicit base)
+    if regexm("`v'", "^ib([0-9]+)\.(.+)$") {
+        local base = regexs(1)
+        local u    = regexs(2)
+        local iscat 1
+    }
+    * i.var     (no explicit base)
+    else if regexm("`v'", "^i\.(.+)$") {
+        local u = regexs(1)
+        local iscat 1
+    }
+    * c.var     (continuous)
+    else if regexm("`v'", "^c\.(.+)$") {
+        local u = regexs(1)
+        local iscat 0
+    }
+    * plain variable name
+    else {
+        local u "`v'"
+        local iscat 0
+    }
 
-		local varlist2 = "`varlist2' `u'"
-	}
-	
+    * record categorical vars and (optional) requested base
+    if `iscat' {
+        local categ "`categ' `u'"
+        if "`base'" != "" local base_`u' "`base'"
+    }
+    else {
+        * reject string continuous vars
+        local typ: type `u'
+        local typ = substr("`typ'", 1, 3)
+        if "`typ'" == "str" {
+            di as error "`u': string variables may not be used as continuous variables"
+            exit 198
+        }
+    }
+
+    local varlist2 "`varlist2' `u'"
+}
 	local varlist `varlist2'
 	
 	* throw an error if a variable is a string
@@ -1335,7 +1438,25 @@ program define aivgmm, eclass
 				local llist_rows "`llist_rows' `l'.`v'"
 
 		}
-			quiet replace `v'`num3`v'' = 0
+			* pick base: user-specified (ib#.) if provided; otherwise lowest level
+		local base = "`base_`v''"
+		if "`base'" == "" {
+			local base : word 1 of `levels'   // lowest integer level
+		}
+		else {
+			* enforce that requested base exists in sample
+			local ok = 0
+			foreach l of local levels {
+				if "`l'" == "`base'" local ok = 1
+			}
+			if `ok' == 0 {
+				di as error "Base level ib`base'.`v' not present in estimation sample"
+				exit 198
+			}
+		}
+
+		quietly replace `v'`base' = 0
+			
 			local varlist2 `varlist2'
 			local varlist_rows `varlist_rows'
 			local v `v'
@@ -1366,6 +1487,9 @@ program define aivgmm, eclass
 
 		local keeplist `varlist' `aiv' 
 		
+		if "`fe'" != "" {
+			local keeplist `keeplist' `fe'
+		}
 			
 		if "`weight'" != "" {
 			local keeplist `keeplist' `weight'
@@ -1379,8 +1503,6 @@ program define aivgmm, eclass
 			local keeplist `keeplist' `cluster'
 		}
 		
-		keep `keeplist'
-		
 		* Create a count of missing values per row
 		egen nmiss = rowmiss(`keeplist')
 
@@ -1389,18 +1511,31 @@ program define aivgmm, eclass
 		drop nmiss
 	}
 	
+	
 	****************************************************************************
 	* Weight matrix for gmm moments
 	****************************************************************************
 	
-	if "`weightmatrix'" != "" {
+	if "`weightmatrix'" == "identity" {
+		local weightmatrix ""
+	}
+			
+	if "`weightmatrix'" == "unadjusted" {
+		local weightmatrix ""
+		local 2sls "2sls"
+	}
+	
+	if "`weightmatrix'" != "" & "`weightmatrix'" != "unadjusted" {
 		// validate user-supplied weight matrix size vs effw
 		capture confirm matrix `weightmatrix'
 		if _rc {
 			di as err "weight matrix: specify the name of an existing matrix"
 			exit 198
 		}
-		matrix weightmatrix = `weightmatrix'
+		else {
+			matrix weightmatrix = `weightmatrix'			
+		}
+
 		}
 	
 	****************************************************************************
@@ -1417,11 +1552,133 @@ program define aivgmm, eclass
 	else {
 		gen double `w' = 1
 	}
-	summ `w', meanonly
-	scalar W = r(sum)
 	}
 	
+	
+	****************************************************************************
+	* Savefirst
+	****************************************************************************
+	
+	
+	if "`savefirst'" != "" & "`firststo'" == "" {
+		local firststo "aivgmm_"
+	}
+	
+	if "`firststo'" != "" & "`savefirst'" == "" {
+		local savefirst "savefirst"
+	}
+	
+	if "`savefirst'" != "" & "`eststo'" == "" {
+
+		quietly {
+			estimates dir
+			local models " `r(names)' "   // pad with spaces
+
+			local check_est_num = 1
+			while strpos("`models'", " est`check_est_num' ") {
+				local ++check_est_num
+			}
+			local eststo est`check_est_num'
+		}
+
+	}
+	
+	local firststolist ""
+
+	if "`savefirst'" == "savefirst" {
+		foreach h of local aiv {
+			
+		dis  " "
+		dis "{bf:First Stage `h':}"
+		dis " "
 		
+		quietly reghdfe `h' `varlist' `control' [pw=`w'], absorb(`fe') cluster(`cluster')			
+		eststo `firststo'`h'
+		local firststolist "`firststolist' `firststo'`h'"
+		
+		matrix b = e(b)
+		matrix V = e(V)
+		local dof = e(df_r)
+
+		collect clear 
+		collect get `h' = "Coef.", tags(Col[Coef])
+		collect get `h' = "Std. Err.", tags(Col[SE])
+		collect get `h' = "t", tags(Col[t])
+		collect get `h' = "P>|t|", tags(Col[p])
+		collect get `h' = "[95% Conf.", tags(Col[CI_L])
+		collect get `h' = "Interval]", tags(Col[CI_U])
+
+		foreach var of local varlist {
+
+			local coef = b[1, "`var'"]
+			local se = sqrt(V["`var'", "`var'"])
+			local tstat = `coef' / `se'
+			local pval = 2 * ttail(`dof', abs(`tstat'))
+			local lb = `coef' - 1.96 * `se'
+			local ub = `coef' + 1.96 * `se'
+
+			collect get `var' = `coef', tags(Col[Coef])
+			collect get `var' = `se', tags(Col[SE])
+			collect get `var' = `tstat', tags(Col[t])
+			collect get `var' = `pval', tags(Col[p])
+			collect get `var' = `lb', tags(Col[CI_L])
+			collect get `var' = `ub', tags(Col[CI_U])
+		}
+	
+		collect style header Col, level(hide)
+		collect style cell result[`h'], border(bottom) border(top, pattern(nil))
+		collect style cell, sformat(" %s")
+		quiet collect layout (result) (Col)
+		collect preview
+			
+			
+		}
+		dis " "
+		dis "{bf:Second Stage:}"
+	}
+	
+	
+	****************************************************************************
+	* remove FE
+	****************************************************************************
+	
+	quietly {
+	
+	* 1) drop singleton groups per FE
+	foreach fevar of local fe {
+		tempvar gsz
+		bysort `fevar': gen long `gsz' = _N
+		drop if `gsz' == 1
+		drop `gsz'
+	}
+
+	* 2) FE df on the remaining sample (joint FE)
+	tempvar df_var
+	quietly egen double `df_var' = group(`fe')
+	quietly summarize `df_var'
+	local fe_df = r(max) - 1
+	drop `df_var'
+
+	* 3) build list to residualize
+	local to_resid `varlist' `aiv'
+	if "`control'" != "" local to_resid `to_resid' `control'
+
+	* 4) residualize by each FE using egen totals with weights
+	foreach v of local to_resid {
+		foreach fevar of local fe {
+			tempvar sumv sumw mu
+			bysort `fevar': egen double `sumv' = total(`v' * `w')
+			bysort `fevar': egen double `sumw' = total(`w')
+			gen double `mu' = cond(`sumw'>0, `sumv'/`sumw', 0)
+			replace `v' = `v' - `mu'
+			drop `sumv' `sumw' `mu'
+		}
+	}
+
+	summ `w', meanonly
+	scalar W = r(sum)
+
+	}
 	
 	****************************************************************************
 	* Generate objects that will be used for indexing
@@ -1762,8 +2019,12 @@ program define aivgmm, eclass
 
 
 	if "`cluster'" == "" {
+		
+		scalar K = `nX' + `fe_df'
+		scalar c = (W/(W-K))
+		
 		matrix Moments_all = Moments
-		matrix S        = (Moments_all * Moments_all')
+		matrix S        = c*(Moments_all * Moments_all')
 		
 		// build a vector of sqrt weights
 		tempname v ones
@@ -1777,7 +2038,12 @@ program define aivgmm, eclass
 	
 	}
 	else {
-		matrix S = (Moments_by_cluster * Moments_by_cluster')
+		
+		scalar G = `G'
+		scalar K = `nX' + `fe_df'
+		scalar c = (G/(G-1))*((W-1)/(W-K))
+		
+		matrix S = c*(Moments_by_cluster * Moments_by_cluster')
 		
 		tempname wcl
 		matrix `wcl' = J(`G',1,.)
@@ -1794,8 +2060,8 @@ program define aivgmm, eclass
 
 	}
 
-	local Ndisp = round(W)
-	local dof   = `Ndisp' - `namen' - 2*`L'
+	local Ndisp = `=_N'
+	local dof   = `Ndisp' - `namen' - 2*`L' - `fe_df'
 
 	matrix Vtheta = invsym(XT' * weightmatrix *  XT) * XT' * weightmatrix *  S * weightmatrix *  XT * invsym(XT' * weightmatrix * XT)
 	matrix Vtheta = Vtheta / `Ndisp'
@@ -1843,13 +2109,67 @@ program define aivgmm, eclass
 
 
 	****************************************************************************
+	*
+	****************************************************************************
+
+	quietly {
+		
+	matrix test_mat = XT' * weightmatrix * XT
+
+	* Identify non-zero rows/columns (check if entire row is non-zero)
+	local k = colsof(test_mat)
+	mata {
+		M = st_matrix("test_mat")
+		keep = J(1, cols(M), 0)
+		for (i=1; i<=cols(M); i++) {
+			if (sum(abs(M[i,.])) > 0) keep[i] = 1
+		}
+		st_matrix("keep_mask", keep)
+	}
+	matrix keep_mask = keep_mask
+
+	* Build index of columns to keep
+	local keep_list ""
+	forvalues i = 1/`k' {
+		if keep_mask[1, `i'] != 0 {
+			local keep_list "`keep_list' `i'"
+		}
+	}
+
+	* Extract non-zero rows and columns
+	local n_keep : word count `keep_list'
+	if `n_keep' < `k' {
+		matrix test_mat_clean = J(`n_keep', `n_keep', .)
+		local row = 1
+		foreach i of local keep_list {
+			local col = 1
+			foreach j of local keep_list {
+				matrix test_mat_clean[`row', `col'] = test_mat[`i', `j']
+				local col = `col' + 1
+			}
+			local row = `row' + 1
+		}
+		matrix test_mat = test_mat_clean
+	}
+
+	matrix symeigen evec eval = test_mat
+	scalar lambda_max = eval[1,1]
+	scalar lambda_min = eval[1,colsof(eval)]
+	scalar kappa  = lambda_max / lambda_min
+	local kappa_str = string(kappa, "%12.1f")
+	
+	}
+	
+	
+	****************************************************************************
 	* Display clean output table like aivreglinear
 	****************************************************************************
-	
+
 	display ""
 	local align_col 60
-	local pad1 = `align_col' - length("Number of obs") - length("Anti-IV GMM")
-	display "Anti-IV GMM" _dup(`pad1') " " "Number of obs = " "`Ndisp'"
+	local pad1 = `align_col' - length("Number of obs") - length("Anti-IV `estimatordisp'")
+
+	display "Anti-IV `estimatordisp'" _dup(`pad1') " " "Number of obs = " "`Ndisp'"
 
 	if "`cluster'" == "" {
 		local pad2 = `align_col' - length("Number of anti-IVs")
@@ -1898,13 +2218,9 @@ program define aivgmm, eclass
 		ereturn scalar Jval = Jval
 		ereturn scalar pval_J = pval_J
 	}
-	ereturn matrix weightmatrix = weightmatrix
+	matrix weightingmatrix = weightmatrix
+	ereturn matrix weightingmatrix = weightingmatrix
 	ereturn matrix S = S
-	
-	if "`eststo'" != "" {
-		eststo `eststo'
-		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"
-	}
 	
 	matrix b = e(b)
 	matrix V = e(V)
@@ -1948,8 +2264,58 @@ program define aivgmm, eclass
 	quiet collect layout (result) (Col)
 	collect preview
 
-	
+	* ---- Condition-number warning --------------------------------------------
+	if "`ignoresingularity'" != "" {
+		if (lambda_min <= 0) {
+			display "Warning: anti-IV system is numerically singular. First stage is not identified." 
+			display "Point estimates and standard errors are untrustworthy."
+		}
+		else if (kappa > 1e12) {
+			display "Warning: anti-IV system is numerically unstable. First stage may not be identified." 
+			display "Point estimates and standard errors are untrustworthy. (kappa = `kappa_str')"
+		}
+	}
+	else {
+		if (lambda_min <= 0) {
+			display as error "Error: anti-IV system is numerically singular. First stage is not identified." 
+			display as error "Point estimates and standard errors are untrustworthy. If you wish to proceed"
+			display as error "anyway, use the ignoresingularity option."
+			
+			exit 430
+		}
+		else if (kappa > 1e12) {
+			display as error "Error: anti-IV system is numerically unstable. First stage may not be identified." 
+			display as error "Point estimates and standard errors are untrustworthy. (kappa = `kappa_str')"
+			display as error "If you wish to proceed anyway, use the ignoresingularity option."
+			
+			exit 430
+		}
+	}
 
+	ereturn scalar kappa = kappa
+	
+	****************************************************************************
+	* Notify that results are active
+	****************************************************************************
+	
+	if "`eststo'" != "" & "`savefirst'" == "" {
+		eststo `eststo'
+		di as text "(result " as result "{stata `eststo':`eststo' }" as text "is active now)"
+	}
+
+	if "`eststo'" != "" & "`savefirst'" != "" {
+		eststo `eststo'
+		di as text "(results " as result "{stata `eststo':`eststo' }" _continue
+		foreach fs of local firststolist {
+			di as result "{stata `fs':`fs' }" _continue
+		}
+		di as text "are active now)"
+	}
+	
+	if "`eststo'" != "" {
+		quietly estimates restore `eststo'
+	}
 	
 	restore
 end
+
