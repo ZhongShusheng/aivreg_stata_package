@@ -455,7 +455,7 @@ foreach v of local varlist {
 	local sew = e(V)["`w'","`w'"]
 	local sew = sqrt(`sew')
 	local tsw = `betaw' / `sew'
-	local partial_F = `tsw'^2
+	local partial_F = (`tsw')^2
 
 	
 	* Create the table to display
@@ -675,7 +675,7 @@ foreach v of local varlist {
 		local sew = e(V)["`w'","`w'"]
 		local sew = sqrt(`sew')
 		local tsw = `betaw' / `sew'
-		local partial_F = `tsw'^2
+		local partial_F = (`tsw')^2
 
 		* First Stage output option
 		if "`savefirst'" == "savefirst" {
@@ -881,7 +881,7 @@ foreach v of local varlist {
 		local sew = e(V)["`w'","`w'"]
 		local sew = sqrt(`sew')
 		local tsw = `betaw' / `sew'
-		local partial_F = `tsw'^2
+		local partial_F = (`tsw')^2
 	}
 	else {
 		tempname RSS_full n k partial_F
@@ -892,7 +892,7 @@ foreach v of local varlist {
 		local sew = e(V)["`w'","`w'"]
 		local sew = sqrt(`sew')
 		local tsw = `betaw' / `sew'
-		local partial_F = `tsw'^2
+		local partial_F = (`tsw')^2
 	}
 			
 	* eststo first stage
