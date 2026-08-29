@@ -71,6 +71,9 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 - **e(S)**            covariance of moments (2SLS and GMM only)
 - **e(weightmatrix)** weight matrix (2SLS and GMM only)
 
+### Functions
+
+- **e(sample)**       Retrieve estimation sample.
 
 ### Examples
 

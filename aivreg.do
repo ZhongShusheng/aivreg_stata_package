@@ -132,6 +132,45 @@ prog def aivreglinear, eclass
 	version 17
 	
 	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
+	local aivreg_orig_varlist "`varlist'"
+
+	tempvar aivreg_sample
+	tempvar aivreg_sort
+	quietly gen long `aivreg_sort' = _n
+	capture drop `aivreg_sample'
+	quietly gen byte `aivreg_sample' = 0
+	local aivreg_weightopt "`weight'"
+	local weight ""
+	quietly replace `aivreg_sample' = 1 `if' `in'
+	local weight "`aivreg_weightopt'"
+	fvrevar `aivreg_orig_varlist' if `aivreg_sample'
+	markout `aivreg_sample' `r(varlist)'
+	markout `aivreg_sample' `aiv' `fe' `cluster'
+	if "`control'" != "" {
+		fvrevar `control' if `aivreg_sample'
+		markout `aivreg_sample' `r(varlist)'
+	}
+	if "`weight'" != "" {
+		local aivreg_weightvar "`weight'"
+		local aivreg_weightvar = subinstr("`aivreg_weightvar'", "[", "", .)
+		local aivreg_weightvar = subinstr("`aivreg_weightvar'", "]", "", .)
+		local aivreg_weightvar = subinstr("`aivreg_weightvar'", " ", "", .)
+		if strpos("`aivreg_weightvar'", "=") {
+			local aivreg_weightvar = substr("`aivreg_weightvar'", strpos("`aivreg_weightvar'", "=") + 1, .)
+		}
+		markout `aivreg_sample' `aivreg_weightvar'
+		quietly replace `aivreg_sample' = 0 if `aivreg_weightvar' < 0
+	}
+	if "`fe'" != "" {
+		quietly {
+			foreach fevar of local fe {
+				tempvar aivreg_gsz
+				bysort `fevar': egen long `aivreg_gsz' = total(`aivreg_sample') if `aivreg_sample'
+				quietly replace `aivreg_sample' = 0 if `aivreg_sample' & `aivreg_gsz' == 1
+			}
+			sort `aivreg_sort'
+		}
+	}
 
 preserve
 	
@@ -872,7 +911,7 @@ foreach v of local varlist {
 
 	if `k'==0 {
 		tempname RSS_full n k partial_F
-		qui reg `h' `w' `zlist' `control' `weight' `if' `in', cluster(`cluster')
+		qui reg `h' `w' `zlist' `control' `if' `in' `weight', cluster(`cluster')
 		local n = `=e(N)'
 		local k = `=e(df_m)'
 		local betaw = e(b)[1, "`w'"]
@@ -883,7 +922,7 @@ foreach v of local varlist {
 	}
 	else {
 		tempname RSS_full n k partial_F
-		qui reghdfe `h' `w' `zlist' `control' `weight' `if' `in', absorb(`fe') cluster(`cluster')
+		qui reghdfe `h' `w' `zlist' `control' `if' `in' `weight', absorb(`fe') cluster(`cluster')
 		local n = `=e(N)'
 		local k = `=e(df_m)'
 		local betaw = e(b)[1, "`w'"]
@@ -1312,8 +1351,48 @@ estimates restore `eststo'
 		ereturn scalar `s' = `savedscalars'_`s'
 	}
 
-	
-restore
+	matrix b = e(b)
+	matrix V = e(V)
+	local N = e(N)
+	local df_r = e(df_r)
+	tempname finalscalars
+	local finalscalarnames : e(scalars)
+	foreach s of local finalscalarnames {
+		scalar `finalscalars'_`s' = e(`s')
+	}
+	restore
+	capture drop `aivreg_sample'
+	quietly gen byte `aivreg_sample' = 0
+	quietly replace `aivreg_sample' = 1 `if' `in'
+	fvrevar `aivreg_orig_varlist' if `aivreg_sample'
+	markout `aivreg_sample' `r(varlist)'
+	markout `aivreg_sample' `aiv' `fe' `cluster'
+	if "`control'" != "" {
+		fvrevar `control' if `aivreg_sample'
+		markout `aivreg_sample' `r(varlist)'
+	}
+	if "`weight'" != "" {
+		markout `aivreg_sample' `aivreg_weightvar'
+		quietly replace `aivreg_sample' = 0 if `aivreg_weightvar' < 0
+	}
+	if "`fe'" != "" {
+		quietly {
+			foreach fevar of local fe {
+				tempvar aivreg_gsz_final
+				bysort `fevar': egen long `aivreg_gsz_final' = total(`aivreg_sample') if `aivreg_sample'
+				quietly replace `aivreg_sample' = 0 if `aivreg_sample' & `aivreg_gsz_final' == 1
+			}
+			sort `aivreg_sort'
+		}
+	}
+	ereturn post b V, depname("`w'") obs(`N') dof(`df_r') esample(`aivreg_sample')
+	ereturn local cmd "aivreg"
+	foreach s of local finalscalarnames {
+		ereturn scalar `s' = `finalscalars'_`s'
+	}
+	if "`est_opt'" == "1" {
+		eststo `eststo', noesample
+	}
 
 end
 	
@@ -1322,7 +1401,7 @@ program define aivgmm, eclass
     version 17
 
     // Accept full varlist and separate out the depvar
-    syntax varlist(fv) [if], ///
+	    syntax varlist(fv) [if] [in], ///
         aiv(varlist numeric) ///
 		[control(varlist)] ///
 		[eststo(string)] ///
@@ -1338,6 +1417,41 @@ program define aivgmm, eclass
 		[savefirst] ///
 		[estimatordisp(string)] ///
 		[ignoresingularity]
+	local aivreg_orig_varlist "`varlist'"
+
+	tempvar aivreg_sample
+	tempvar aivreg_sort
+	quietly gen long `aivreg_sort' = _n
+	capture drop `aivreg_sample'
+	quietly gen byte `aivreg_sample' = 0
+	local aivreg_weightopt "`weight'"
+	local weight ""
+	quietly replace `aivreg_sample' = 1 `if' `in'
+	local weight "`aivreg_weightopt'"
+	fvrevar `aivreg_orig_varlist' if `aivreg_sample'
+	markout `aivreg_sample' `r(varlist)'
+	markout `aivreg_sample' `aiv' `control' `fe' `cluster'
+	if "`weight'" != "" {
+		local aivreg_weightvar "`weight'"
+		local aivreg_weightvar = subinstr("`aivreg_weightvar'", "[", "", .)
+		local aivreg_weightvar = subinstr("`aivreg_weightvar'", "]", "", .)
+		local aivreg_weightvar = subinstr("`aivreg_weightvar'", " ", "", .)
+		if strpos("`aivreg_weightvar'", "=") {
+			local aivreg_weightvar = substr("`aivreg_weightvar'", strpos("`aivreg_weightvar'", "=") + 1, .)
+		}
+		markout `aivreg_sample' `aivreg_weightvar'
+		quietly replace `aivreg_sample' = 0 if `aivreg_weightvar' < 0
+	}
+	if "`fe'" != "" {
+		quietly {
+			foreach fevar of local fe {
+				tempvar aivreg_gsz
+				bysort `fevar': egen long `aivreg_gsz' = total(`aivreg_sample') if `aivreg_sample'
+				quietly replace `aivreg_sample' = 0 if `aivreg_sample' & `aivreg_gsz' == 1
+			}
+			sort `aivreg_sort'
+		}
+	}
 
 	preserve	
 
@@ -1473,13 +1587,7 @@ foreach v of local varlist {
 	****************************************************************************
 	
 	quietly {
-		if "`if'" != "" {
-			keep `if'
-		}
-		
-		if "`in'" != "" {
-			keep `in'
-		}
+		keep if `aivreg_sample'
 		
 		// Get depvar variable from varlist
 
@@ -1490,7 +1598,7 @@ foreach v of local varlist {
 		}
 			
 		if "`weight'" != "" {
-			local keeplist `keeplist' `weight'
+			local keeplist `keeplist' `aivreg_weightvar'
 		}	
 		
 		if "`control'" != "" {
@@ -2314,7 +2422,46 @@ foreach v of local varlist {
 		quietly estimates restore `eststo'
 	}
 	
+	matrix b = e(b)
+	matrix V = e(V)
+	local N = e(N)
+	local df_r = e(df_r)
+	tempname finalscalars
+	local finalscalarnames : e(scalars)
+	foreach s of local finalscalarnames {
+		scalar `finalscalars'_`s' = e(`s')
+	}
+	capture matrix final_weightingmatrix = e(weightingmatrix)
+	capture matrix final_S = e(S)
 	restore
+	capture drop `aivreg_sample'
+	quietly gen byte `aivreg_sample' = 0
+	quietly replace `aivreg_sample' = 1 `if' `in'
+	fvrevar `aivreg_orig_varlist' if `aivreg_sample'
+	markout `aivreg_sample' `r(varlist)'
+	markout `aivreg_sample' `aiv' `control' `fe' `cluster'
+	if "`weight'" != "" {
+		markout `aivreg_sample' `aivreg_weightvar'
+		quietly replace `aivreg_sample' = 0 if `aivreg_weightvar' < 0
+	}
+	if "`fe'" != "" {
+		quietly {
+			foreach fevar of local fe {
+				tempvar aivreg_gsz_final
+				bysort `fevar': egen long `aivreg_gsz_final' = total(`aivreg_sample') if `aivreg_sample'
+				quietly replace `aivreg_sample' = 0 if `aivreg_sample' & `aivreg_gsz_final' == 1
+			}
+			sort `aivreg_sort'
+		}
+	}
+	ereturn post b V, dof(`df_r') obs(`N') depname("`depvar'") esample(`aivreg_sample')
+	ereturn local cmd "aivreg"
+	capture ereturn matrix weightingmatrix = final_weightingmatrix
+	capture ereturn matrix S = final_S
+	foreach s of local finalscalarnames {
+		ereturn scalar `s' = `finalscalars'_`s'
+	}
+	if "`eststo'" != "" {
+		eststo `eststo', noesample
+	}
 end
-
-

@@ -105,7 +105,7 @@
 {synopt:{cmd:e(p_more_tvarname)}}t-test statistic for the coefficient on variable {it:varname}{p_end}
 {synopt:{cmd:e(lb_vcevarname)}}lower bound for the coefficient on variable {it:varname} (95% confidence), using {opt vce} (either AR, asymp, boot, 2sls, or gmm){p_end}
 {synopt:{cmd:e(lb_vcevarname)}}upper bound for the coefficient on variable {it:varname} (95% confidence), using {opt vce} (either AR, asymp, boot, 2sls, or gmm){p_end} 
-{synopt:{cmd:e(kappa)}}condition number for inverted matrix in 2SLS and GMM formulas. Warning message appears when it is > 10^12. (2SLS and GMM only)[p_end}
+{synopt:{cmd:e(kappa)}}condition number for inverted matrix in 2SLS and GMM formulas. Warning message appears when it is > 10^12. (2SLS and GMM only){p_end}
 {synoptline}
 
 {synopthdr:Macros}
@@ -119,6 +119,11 @@
 {synopt:{cmd:e(V)}}estimated covariance matrix of coefficients; in AR, diagonal matrix with values approximated from AR CI closest to zero{p_end}
 {synopt:{cmd:e(S)}}estimated covariance matrix of moments (2SLS and GMM only){p_end}
 {synopt:{cmd:e(weightingmatrix)}}weight matrix (2SLS and GMM only; last weight matrix used for twostep){p_end}
+{synoptline}
+
+{synopthdr:Functions}
+{synoptline}
+{synopt:{cmd:e(sample)}}retrieve estimation sample{p_end}
 {synoptline}
 
 {title:Examples}
