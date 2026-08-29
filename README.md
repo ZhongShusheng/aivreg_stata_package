@@ -73,7 +73,7 @@ Go to https://github.com/ZhongShusheng/aivreg_stata_package and clone the reposi
 
 ### Functions
 
-- **e(sample)**       Retrieve estimation sample.
+- **e(sample)**       retrieve estimation sample
 
 ### Examples
 
