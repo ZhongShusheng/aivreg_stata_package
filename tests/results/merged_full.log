@@ -1,0 +1,680 @@
+-------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\Claire\Desktop\aivreg_stata_package\tests/results/merged_
+> full.log
+  log type:  text
+ opened on:  30 Aug 2026, 20:32:35
+
+. 
+. * ---------------------------------------------------------------- helpers
+. capture program drop record
+
+. program define record
+  1.     * record <testname> <rc> : append one CSV row from current e() results
+.     args tname rc
+  2.     local N = cond(e(N) < ., string(e(N), "%18.0g"), ".")
+  3.     local b = "."
+  4.     local se = "."
+  5.     capture local b = string(el(e(b),1,1), "%21.0g")
+  6.     if "`b'" == "." & e(beta) < . local b = string(e(beta), "%21.0g")
+  7.     capture local se = string(sqrt(el(e(V),1,1)), "%21.0g")
+  8.     if "`se'" == "." {
+  9.         foreach s in SE_asymp SE_AR SE_boot SE_gmm SE_2sls {
+ 10.             if "`se'" == "." & e(`s') < . local se = string(e(`s'), "%21.0
+> g")
+ 11.         }
+ 12.     }
+ 13.     local pF   = cond(e(Partial_F) < ., string(e(Partial_F), "%21.0g"), ".
+> ")
+ 14.     local Jval = cond(e(Jval)  < ., string(e(Jval),  "%21.0g"), ".")
+ 15.     local Jp   = cond(e(pval_J)< ., string(e(pval_J),"%21.0g"), ".")
+ 16.     local Jdf  = cond(e(J_df)  < ., string(e(J_df),  "%18.0g"), ".")
+ 17.     local esN  = "."
+ 18.     capture {
+ 19.         qui count if e(sample)
+ 20.         local esN = r(N)
+ 21.     }
+ 22.     file open __R using "tests/results/${TESTVER}_results.csv", write appe
+> nd
+ 23.     file write __R "`tname',`rc',`N',`b',`se',`pF',`Jval',`Jdf',`Jp',`esN'
+> " _n
+ 24.     file close __R
+ 25. end
+
+. 
+. global TESTVER "`ver'"
+
+. capture erase "tests/results/`ver'_results.csv"
+
+. file open __R using "tests/results/`ver'_results.csv", write replace
+(file tests/results/merged_results.csv not found)
+
+. file write __R "test,rc,N,b,se,Partial_F,Jval,J_df,pval_J,esample_N" _n
+
+. file close __R
+
+. 
+. * ================================================================
+. * SECTION A - normal usage (README/demo patterns)
+. * ================================================================
+. 
+. * --- A1 ratio path, default (Anderson-Rubin) SEs ---
+. use safety_aivreg_example.dta, clear
+
+. di _n "===== TEST A1_ratio_default ====="
+
+===== TEST A1_ratio_default =====
+
+. capture noisily aivreg wage safety, aiv(afqt_1_1981)
+ 
+Anti-IV Regression                             Number of obs = 3971
+Uses Anderson-Rubin CI                       Partial F-stat. = 274.474
+SE inferred from radius closest to zero
+
+wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-------+------------------------------------------------------------------
+safety |  -1.145084   .1010579  -11.33096  2.59e-29   -1.379237  -.9470102
+--------------------------------------------------------------------------
+
+. record A1_ratio_default `=_rc'
+
+. 
+. * --- A2 ratio path, asymptotic SEs ---
+. di _n "===== TEST A2_ratio_asymp ====="
+
+===== TEST A2_ratio_asymp =====
+
+. capture noisily aivreg wage safety, aiv(afqt_1_1981) vce(asymp)
+ 
+Anti-IV Regression                             Number of obs = 3971
+                                             Partial F-stat. = 274.474
+
+wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-------+------------------------------------------------------------------
+safety |  -1.145084   .1090643  -10.49916  1.87e-25    -1.35885  -.9313177
+--------------------------------------------------------------------------
+
+. record A2_ratio_asymp `=_rc'
+
+. 
+. * --- A3 ratio path, bootstrap SEs (seeded) ---
+. di _n "===== TEST A3_ratio_boot ====="
+
+===== TEST A3_ratio_boot =====
+
+. capture noisily aivreg wage safety, aiv(afqt_1_1981) vce(boot) reps(50) seed(
+> 42)
+ 
+Anti-IV Regression                             Number of obs = 3971
+Uses bootstrapped SE                          number of reps = 50
+                                             Partial F-stat. = 204.776
+                                                        seed = 42
+
+wage   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-------+------------------------------------------------------------------
+safety |  -1.145084   .1153763  -9.924773  6.00e-23   -1.371221  -.9189462
+--------------------------------------------------------------------------
+
+. record A3_ratio_boot `=_rc'
+
+. 
+. * --- A4 ratio + factor-variable controls + if ---
+. use housing_aivreg_example.dta, clear
+
+. di _n "===== TEST A4_ratio_controls_if ====="
+
+===== TEST A4_ratio_controls_if =====
+
+. capture noisily aivreg log_hpvi medianaqi if year==2019, aiv(rank) control(i.
+> rooms) vce(asymp)
+ 
+Anti-IV Regression                             Number of obs = 14095
+                                             Partial F-stat. = 1483.370
+
+log_hpvi  |      Coef.  Std. Err.         t     P>|t|  [95% Conf.  Interval]
+----------+-----------------------------------------------------------------
+medianaqi |  -.5250496   .0204123  -25.7222  1.3e-142   -.5650577  -.4850415
+----------------------------------------------------------------------------
+
+. record A4_ratio_controls_if `=_rc'
+
+. 
+. * --- A5 ratio + fixed effects ---
+. di _n "===== TEST A5_ratio_fe ====="
+
+===== TEST A5_ratio_fe =====
+
+. capture noisily aivreg log_hpvi medianaqi if year==2019, aiv(rank) fe(rooms) 
+> vce(asymp)
+ 
+Anti-IV Regression                             Number of obs = 14095
+                                             Partial F-stat. = 1483.370
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5250496   .0204174  -25.71581  1.5e-142   -.5650677  -.4850315
+-----------------------------------------------------------------------------
+
+. record A5_ratio_fe `=_rc'
+
+. 
+. * --- A6 multi-amenity (auto-switch to GMM) ---
+. di _n "===== TEST A6_multiamenity_gmm ====="
+
+===== TEST A6_multiamenity_gmm =====
+
+. capture noisily aivreg log_hpvi medianaqi crime_rate if year==2019, aiv(rank)
+>  fe(rooms)
+ 
+Anti-IV Regression                             Number of obs = 14067
+Uses Anderson-Rubin CI                       Partial F-stat. = 1267.617
+SE inferred from radius closest to zero
+
+log_hpvi   |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+-----------+------------------------------------------------------------------
+medianaqi  |   -.535451   .0212929  -25.14696  1.6e-136   -.5806173  -.4937169
+crime_rate |  -.6242351   .0266684  -23.40729  6.7e-119   -.6807541   -.571965
+------------------------------------------------------------------------------
+
+. record A6_multiamenity_gmm `=_rc'
+
+. 
+. * --- A7 two-step GMM, multiple anti-IVs ---
+. di _n "===== TEST A7_gmm_twostep ====="
+
+===== TEST A7_gmm_twostep =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms)
+
+Anti-IV GMM twostep                            Number of obs = 14067
+                                          Number of anti-IVs = 2
+J-stat (two-step efficient) =    0.3987   df = 2   p = 0.8193
+
+log_hpvi  |     Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+-----------------------------------------------------------------
+medianaqi |  -.536917   .0274712  -19.54474  5.93e-84   -.5907605  -.4830735
+----------------------------------------------------------------------------
+
+. record A7_gmm_twostep `=_rc'
+
+. 
+. * --- A8 one-step GMM ---
+. di _n "===== TEST A8_gmm_onestep ====="
+
+===== TEST A8_gmm_onestep =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) onestep
+
+Anti-IV GMM onestep                            Number of obs = 14067
+                                          Number of anti-IVs = 2
+J-stat: not reported on this path -- the over-identification test is reported o
+> nly on the efficient two-step path.
+
+log_hpvi  |     Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+-----------------------------------------------------------------
+medianaqi |  -.423732   .1855774  -2.283317  .0224266   -.7874638  -.0600003
+----------------------------------------------------------------------------
+
+. record A8_gmm_onestep `=_rc'
+
+. 
+. * --- A9 2SLS ---
+. di _n "===== TEST A9_2sls ====="
+
+===== TEST A9_2sls =====
+
+. capture noisily aivreg 2sls log_hpvi medianaqi if year==2019, aiv(rank crime_
+> rate) control(rooms)
+
+Anti-IV 2SLS onestep                           Number of obs = 14067
+                                          Number of anti-IVs = 2
+J-stat: not reported on this path -- the over-identification test is reported o
+> nly on the efficient two-step path.
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5384805   .0279211  -19.28577  8.04e-82   -.5932059  -.4837551
+-----------------------------------------------------------------------------
+
+. record A9_2sls `=_rc'
+
+. 
+. * --- A10 clustered GMM (cluster on fips) ---
+. di _n "===== TEST A10_gmm_cluster ====="
+
+===== TEST A10_gmm_cluster =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) cluster(fips)
+
+Anti-IV GMM twostep                            Number of obs = 14067
+SE clustered by fips                      Number of anti-IVs = 2
+J-stat (two-step efficient) =    8.7252   df = 2   p = 0.0127
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5221607    .058992  -8.851383  9.66e-19    -.637785  -.4065364
+-----------------------------------------------------------------------------
+
+. record A10_gmm_cluster `=_rc'
+
+. 
+. * --- A11 GMM with probability weight, bare documented form ---
+. qui {
+
+. di _n "===== TEST A11_gmm_pweight_bare ====="
+
+===== TEST A11_gmm_pweight_bare =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) weight(wvar)
+
+Anti-IV GMM twostep                            Number of obs = 14067
+                                          Number of anti-IVs = 2
+J-stat (two-step efficient) =    0.4773   df = 2   p = 0.7877
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5318737   .0277773  -19.14776  1.07e-80   -.5863173  -.4774301
+-----------------------------------------------------------------------------
+
+. record A11_gmm_pweight_bare `=_rc'
+
+. 
+. * --- A12 same but all weights multiplied by 17 (scale invariance) ---
+. qui gen double wvar17 = 17*wvar
+
+. di _n "===== TEST A12_gmm_pweight_x17 ====="
+
+===== TEST A12_gmm_pweight_x17 =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) weight(wvar17)
+
+Anti-IV GMM twostep                            Number of obs = 14067
+                                          Number of anti-IVs = 2
+J-stat (two-step efficient) =    0.4773   df = 2   p = 0.7877
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5318737   .0277773  -19.14776  1.07e-80   -.5863173  -.4774301
+-----------------------------------------------------------------------------
+
+. record A12_gmm_pweight_x17 `=_rc'
+
+. 
+. * --- A13 ratio path with bracketed aw weight (documented, must stay allowed)
+>  ---
+. di _n "===== TEST A13_ratio_aw_bracket ====="
+
+===== TEST A13_ratio_aw_bracket =====
+
+. capture noisily aivreg log_hpvi medianaqi if year==2019, aiv(rank) weight([aw
+> =wvar]) vce(asymp)
+ 
+Anti-IV Regression                             Number of obs = 14095
+                                             Partial F-stat. = 983.377
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.8090743   .0345104  -23.44438  2.9e-119   -.8767146  -.7414339
+-----------------------------------------------------------------------------
+
+. record A13_ratio_aw_bracket `=_rc'
+
+. 
+. * ================================================================
+. * SECTION B - corner cases
+. * ================================================================
+. 
+. * --- B1 [in] range on ratio path ---
+. di _n "===== TEST B1_ratio_in ====="
+
+===== TEST B1_ratio_in =====
+
+. capture noisily aivreg log_hpvi medianaqi in 1/15000, aiv(rank) vce(asymp)
+ 
+Anti-IV Regression                             Number of obs = 14276
+                                             Partial F-stat. = 527.801
+
+log_hpvi  |      Coef.  Std. Err.        t     P>|t|  [95% Conf.  Interval]
+----------+----------------------------------------------------------------
+medianaqi |  -2.968912   .1484976  -19.993  1.00e-87   -3.259968  -2.677857
+---------------------------------------------------------------------------
+
+. record B1_ratio_in `=_rc'
+
+. 
+. * --- B2 [in] range on GMM path ---
+. di _n "===== TEST B2_gmm_in ====="
+
+===== TEST B2_gmm_in =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi in 1/15000, aiv(rank crime_rate
+> ) control(rooms)
+
+Anti-IV GMM twostep                            Number of obs = 14246
+                                          Number of anti-IVs = 2
+J-stat (two-step efficient) =  339.3547   df = 2   p = 0.0000
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -1.682493   .1161153  -14.48986  3.04e-47   -1.910079  -1.454907
+-----------------------------------------------------------------------------
+
+. record B2_gmm_in `=_rc'
+
+. 
+. * --- B3 if + in combined on GMM path ---
+. di _n "===== TEST B3_gmm_if_in ====="
+
+===== TEST B3_gmm_if_in =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year>=2015 in 1/25000, aiv(r
+> ank crime_rate) control(rooms)
+
+Anti-IV GMM twostep                            Number of obs = 12533
+                                          Number of anti-IVs = 2
+J-stat (two-step efficient) =    9.8732   df = 2   p = 0.0072
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -1.628866   .1163134  -14.00411  3.17e-44   -1.856841  -1.400892
+-----------------------------------------------------------------------------
+
+. record B3_gmm_if_in `=_rc'
+
+. 
+. * --- B4 explicit [aw=] on GMM path (merged should reject loudly) ---
+. di _n "===== TEST B4_gmm_aw_bracket ====="
+
+===== TEST B4_gmm_aw_bracket =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) weight([aw=wvar])
+weight(): [aw=wvar] is not supported for gmm/2sls; these methods accept probabi
+> lity weights only. Use weight(wvar) or weight([pw=wvar]).
+
+. record B4_gmm_aw_bracket `=_rc'
+
+. 
+. * --- B5 explicit [fw=] on GMM path (merged should reject loudly) ---
+. qui gen int fwvar = 1 + mod(_n, 3)
+
+. di _n "===== TEST B5_gmm_fw_bracket ====="
+
+===== TEST B5_gmm_fw_bracket =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) weight([fw=fwvar])
+weight(): [fw=fwvar] is not supported for gmm/2sls; these methods accept probab
+> ility weights only. Use weight(fwvar) or weight([pw=fwvar]).
+
+. record B5_gmm_fw_bracket `=_rc'
+
+. 
+. * --- B6 zero/negative weights on GMM path (should refuse loudly) ---
+. qui {
+
+. di _n "===== TEST B6_gmm_negzero_weight ====="
+
+===== TEST B6_gmm_negzero_weight =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) weight(wbad)
+weight(): wbad has 25 zero or negative value(s) in the estimation sample; proba
+> bility weights must be strictly positive
+
+. record B6_gmm_negzero_weight `=_rc'
+
+. 
+. * --- B7 missing weights (obs should drop from analytic sample) ---
+. qui {
+
+. di _n "===== TEST B7_gmm_missing_weight ====="
+
+===== TEST B7_gmm_missing_weight =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) weight(wmiss)
+
+Anti-IV GMM twostep                            Number of obs = 12663
+                                          Number of anti-IVs = 2
+J-stat (two-step efficient) =    0.0270   df = 2   p = 0.9866
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5526803   .0306215  -18.04875  6.42e-72   -.6126985  -.4926621
+-----------------------------------------------------------------------------
+
+. record B7_gmm_missing_weight `=_rc'
+
+. 
+. * --- B8 too few clusters ---
+. qui gen byte twoclust = 1 + (_n > _N/2)
+
+. di _n "===== TEST B8_gmm_two_clusters ====="
+
+===== TEST B8_gmm_two_clusters =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) cluster(twoclust)
+
+Anti-IV GMM twostep                            Number of obs = 14067
+SE clustered by twoclust                  Number of anti-IVs = 2
+Warning: J-stat not reported -- the moment covariance or parameter system is ra
+> nk deficient, so the conventional Hansen J has no valid chi-squared reference
+> . Check for redundant or collinear anti-IVs.
+
+log_hpvi  |  Coef.  Std. Err.  t  P>|t|  [95% Conf.  Interval]
+----------+---------------------------------------------------
+medianaqi |      0          0  .      .           0          0
+--------------------------------------------------------------
+Error: anti-IV system is numerically singular. First stage is not identified.
+Point estimates and standard errors are untrustworthy. If you wish to proceed
+anyway, use the ignoresingularity option.
+
+. record B8_gmm_two_clusters `=_rc'
+
+. 
+. * --- B9 long variable names, ratio path (32-char legal names) ---
+. di _n "===== TEST B9_ratio_longnames ====="
+
+===== TEST B9_ratio_longnames =====
+
+. qui {
+
+. capture noisily aivreg outcome_variable_with_a_very_lon amenity_variable_with
+> _a_very_lon if year==2019, ///
+>     aiv(antiiv_variable_with_a_very_long) control(control_variable_with_a_ver
+> y_lon) vce(asymp)
+ 
+Anti-IV Regression                             Number of obs = 14067
+                                             Partial F-stat. = 789.555
+
+outcome_variable_with_a_very_lon |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+---------------------------------+------------------------------------------------------------------
+amenity_variable_with_a_very_lon |  -.8396187   .0391991  -21.41935  3.5e-100   -.9164489  -.7627885
+----------------------------------------------------------------------------------------------------
+
+. record B9_ratio_longnames `=_rc'
+
+. 
+. * --- B10 long variable names, GMM path (two distinct long-named anti-IVs) --
+> -
+. di _n "===== TEST B10_gmm_longnames ====="
+
+===== TEST B10_gmm_longnames =====
+
+. qui gen double antiiv2_variable_with_a_very_lo = crime_rate
+
+. capture noisily aivreg gmm outcome_variable_with_a_very_lon amenity_variable_
+> with_a_very_lon if year==2019, ///
+>     aiv(antiiv_variable_with_a_very_long antiiv2_variable_with_a_very_lo)
+
+Anti-IV GMM twostep                            Number of obs = 14067
+                                          Number of anti-IVs = 2
+J-stat (two-step efficient) =    0.0002   df = 1   p = 0.9884
+
+outcome_variable_with_a_very_lon |    Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+---------------------------------+----------------------------------------------------------------
+amenity_variable_with_a_very_lon |  -.83936   .0460423  -18.23021  2.08e-73   -.9296029  -.7491172
+--------------------------------------------------------------------------------------------------
+
+. record B10_gmm_longnames `=_rc'
+
+. 
+. * --- B11 e(sample) integrity after error: failed call must not leave stale J
+>  ---
+. di _n "===== TEST B11_state_after_error ====="
+
+===== TEST B11_state_after_error =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms)
+
+Anti-IV GMM twostep                            Number of obs = 14067
+                                          Number of anti-IVs = 2
+J-stat (two-step efficient) =    0.3987   df = 2   p = 0.8193
+
+log_hpvi  |     Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+-----------------------------------------------------------------
+medianaqi |  -.536917   .0274712  -19.54474  5.93e-84   -.5907605  -.4830735
+----------------------------------------------------------------------------
+
+. local J_before = cond(e(Jval)<., string(e(Jval),"%21.0g"), ".")
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) control(rooms) weight(wbad)
+weight(): wbad has 25 zero or negative value(s) in the estimation sample; proba
+> bility weights must be strictly positive
+
+. * whatever the rc, e() should not still claim the *previous* successful J as 
+> its own
+. record B11_state_after_error `=_rc'
+
+. di "J from prior successful call was `J_before'"
+J from prior successful call was .3986878094637559267
+
+. 
+. * --- B12 GMM with fe() + cluster + weights together ---
+. di _n "===== TEST B12_gmm_fe_clus_w ====="
+
+===== TEST B12_gmm_fe_clus_w =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_r
+> ate) fe(rooms) cluster(fips) weight(wvar)
+
+Anti-IV GMM twostep                            Number of obs = 14067
+SE clustered by fips                      Number of anti-IVs = 2
+J-stat (two-step efficient) =    0.0000   df = 1   p = 0.9987
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5279427   .0585559  -9.016049  2.20e-19   -.6427122  -.4131731
+-----------------------------------------------------------------------------
+
+. record B12_gmm_fe_clus_w `=_rc'
+
+. 
+. * --- B13 single-AIV via gmm keyword (just-identified; J should be 0/df 0 or 
+> suppressed) ---
+. di _n "===== TEST B13_gmm_justidentified ====="
+
+===== TEST B13_gmm_justidentified =====
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank) contro
+> l(rooms)
+
+Anti-IV GMM twostep                            Number of obs = 14095
+                                          Number of anti-IVs = 1
+
+log_hpvi  |      Coef.  Std. Err.    t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------
+medianaqi |  -.5293006   .0278579  -19  1.68e-79   -.5839021  -.4746991
+-----------------------------------------------------------------------
+
+. record B13_gmm_justidentified `=_rc'
+
+. 
+. * --- B14 collinear anti-IV added (rank + copy of rank): moment system must n
+> ot silently collapse ---
+. di _n "===== TEST B14_gmm_collinear_aiv ====="
+
+===== TEST B14_gmm_collinear_aiv =====
+
+. qui gen double rank_copy = rank
+
+. capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank rank_co
+> py) control(rooms)
+
+Anti-IV GMM twostep                            Number of obs = 14095
+                                          Number of anti-IVs = 2
+Warning: J-stat not reported -- the moment covariance or parameter system is ra
+> nk deficient, so the conventional Hansen J has no valid chi-squared reference
+> . Check for redundant or collinear anti-IVs.
+
+log_hpvi  |     Coef.  Std. Err.         t     P>|t|  [95% Conf.  Interval]
+----------+----------------------------------------------------------------
+medianaqi |  .0355666   .0053486  6.649738  3.04e-11    .0250834   .0460498
+---------------------------------------------------------------------------
+Error: anti-IV system is numerically singular. First stage is not identified.
+Point estimates and standard errors are untrustworthy. If you wish to proceed
+anyway, use the ignoresingularity option.
+
+. record B14_gmm_collinear_aiv `=_rc'
+
+. 
+. * --- B15 estimator typo must error, not run ---
+. di _n "===== TEST B15_bad_estimator ====="
+
+===== TEST B15_bad_estimator =====
+
+. capture noisily aivreg gmmm log_hpvi medianaqi if year==2019, aiv(rank crime_
+> rate)
+Warning: Multiple anti-IVs inputted, switching to GMM
+
+Anti-IV GMM onestep                            Number of obs = 14067
+                                          Number of anti-IVs = 2
+J-stat: not reported on this path -- the over-identification test is reported o
+> nly on the efficient two-step path.
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.8386179   .0687107  -12.20506  4.34e-34   -.9732908  -.7039449
+-----------------------------------------------------------------------------
+
+. record B15_bad_estimator `=_rc'
+
+. 
+. * --- B16 non-consecutive integer fe values (Josh: integers not starting at 1
+> ) ---
+. qui gen int rooms_shift = rooms*10 + 7
+
+. di _n "===== TEST B16_fe_nonconsecutive ====="
+
+===== TEST B16_fe_nonconsecutive =====
+
+. capture noisily aivreg log_hpvi medianaqi if year==2019, aiv(rank) fe(rooms_s
+> hift) vce(asymp)
+ 
+Anti-IV Regression                             Number of obs = 14095
+                                             Partial F-stat. = 1483.370
+
+log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
+----------+------------------------------------------------------------------
+medianaqi |  -.5250496   .0204174  -25.71581  1.5e-142   -.5650677  -.4850315
+-----------------------------------------------------------------------------
+
+. record B16_fe_nonconsecutive `=_rc'
+
+. 
+. log close
+      name:  <unnamed>
+       log:  C:\Users\Claire\Desktop\aivreg_stata_package\tests/results/merged_
+> full.log
+  log type:  text
+ closed on:  30 Aug 2026, 21:07:07
+-------------------------------------------------------------------------------

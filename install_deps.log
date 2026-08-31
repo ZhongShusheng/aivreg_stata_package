@@ -1,0 +1,88 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      18.0
+___/   /   /___/   /   /___/       MP—Parallel Edition
+
+ Statistics and Data Science       Copyright 1985-2023 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-STATA-PC        https://www.stata.com
+                                   979-696-4600        stata@stata.com
+
+Stata license: 114514-student 64-core lab perpetual
+Serial number: 9223372036854775807
+  Licensed to: Claire Meng
+               New York University
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. More than 2 billion observations are allowed; see help obs_advice.
+      4. Maximum number of variables is set to 5,000 but can be increased;
+          see help set_maxvar.
+
+. do tests/install_deps.do 
+
+. * tests/install_deps.do
+. * One-time setup: install/update every package the aivreg test suite needs.
+. * aivreg's own dependency check catches a MISSING ivreg2/ranktest/ivreghdfe/
+. * distinct/reghdfe, but NOT an outdated reghdfe (>= 6.12.5 is needed by
+. * ivreghdfe) or reghdfe's own dependencies (ftools, require) -- those produce
+> d
+. * confusing failures on a fresh machine, so this script handles all of them.
+. 
+. foreach pkg in ivreg2 ranktest ivreghdfe distinct ftools require {
+  2.     capture which `pkg'
+  3.     if _rc {
+  4.         di "installing `pkg'..."
+  5.         ssc install `pkg', replace
+  6.     }
+  7.     else di "`pkg' already installed"
+  8. }
+ivreg2 already installed
+ranktest already installed
+ivreghdfe already installed
+distinct already installed
+ftools already installed
+require already installed
+
+. 
+. * reghdfe must be >= 6.12.5; -require- installs/updates it when missing or to
+> o old
+. require reghdfe>=6.12.5, install
+
+. 
+. * final sanity check: every dependency resolvable
+. foreach pkg in ivreg2 ranktest ivreghdfe distinct ftools require reghdfe {
+  2.     which `pkg'
+  3. }
+C:\Users\Claire\ado\plus\i\ivreg2.ado
+*! ivreg2 4.1.12  14aug2024
+*! authors cfb & mes
+*! see end of file for version comments
+C:\Users\Claire\ado\plus\r\ranktest.ado
+*! ranktest 2.0.04  21sept2020
+*! authors mes & fw; KP stat based on code by fk
+*! see end of file for version comments
+C:\Users\Claire\ado\plus\i\ivreghdfe.ado
+*! ivreghdfe 1.1.4  29nov2025 (bugfix for github issue #61)
+*! ivreghdfe 1.1.3  04Jan2023 (bugfix for github issue #48)
+*! ivreghdfe 1.1.2  29Sep2022 (bugfix for github issue #44)
+*! ivreghdfe 1.1.1  14Dec2021 (experimental -margins- support)
+*! ivreghdfe 1.1.0  25Feb2021
+*! ivreg2 4.1.11  22Nov2019
+*! authors cfb & mes
+*! see end of file for version comments
+C:\Users\Claire\ado\plus\d\distinct.ado
+*! 1.2.1 NJC 1 March 2012         
+*! 1.2.0 NJC 15 September 2008
+C:\Users\Claire\ado\plus\f\ftools.ado
+*! version 2.50.0 09jan2026
+C:\Users\Claire\ado\plus\r\require.ado
+*! version 1.3.1 19sep2023
+C:\Users\Claire\ado\plus\r\reghdfe.ado
+*! version 6.13.1 10Jan2026
+
+. 
+end of do-file
