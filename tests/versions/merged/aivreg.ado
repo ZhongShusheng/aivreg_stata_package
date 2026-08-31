@@ -51,7 +51,15 @@ program define aivreg, eclass
     }
 
 	local estimator = subinstr(strtrim("`estimator'"), " ", "", .)
-	
+
+	* FIX 30aug2026: validate the estimator token up front. Without this, a
+	* typo like "gmmm" with multiple anti-IVs fell into the GMM branch and,
+	* failing the =="gmm" check below, silently ran ONE-step GMM.
+	if !inlist("`estimator'", "ratio", "lin", "ols", "gmm", "2sls") {
+		di as error "Invalid estimator `estimator'.  Use ratio (default), gmm, or 2sls."
+		exit 198
+	}
+
     /* 2.  Now parse the standard pieces (including the varlist!) -------- */
     syntax varlist(fv) [if] [in], aiv(varlist) ///
         [control(string) fe(varlist) weight(string) eststo(string) ///

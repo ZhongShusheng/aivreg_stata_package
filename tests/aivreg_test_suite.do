@@ -52,8 +52,9 @@ file close __R
 * SECTION A - normal usage (README/demo patterns)
 * ================================================================
 
-* --- A1 ratio path, default (Anderson-Rubin) SEs ---
 use safety_aivreg_example.dta, clear
+
+* --- A1 ratio path, default (Anderson-Rubin) SEs ---
 di _n "===== TEST A1_ratio_default ====="
 capture noisily aivreg wage safety, aiv(afqt_1_1981)
 record A1_ratio_default `=_rc'
@@ -68,8 +69,10 @@ di _n "===== TEST A3_ratio_boot ====="
 capture noisily aivreg wage safety, aiv(afqt_1_1981) vce(boot) reps(50) seed(42)
 record A3_ratio_boot `=_rc'
 
-* --- A4 ratio + factor-variable controls + if ---
+
 use housing_aivreg_example.dta, clear
+
+* --- A4 ratio + factor-variable controls + if ---
 di _n "===== TEST A4_ratio_controls_if ====="
 capture noisily aivreg log_hpvi medianaqi if year==2019, aiv(rank) control(i.rooms) vce(asymp)
 record A4_ratio_controls_if `=_rc'
@@ -104,7 +107,7 @@ di _n "===== TEST A10_gmm_cluster ====="
 capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(rooms) cluster(fips)
 record A10_gmm_cluster `=_rc'
 
-* --- A11 GMM with probability weight, bare documented form ---
+* --- A11 GMM with probability weight ---
 qui {
     set seed 20260830
     gen double wvar = 0.5 + runiform()
@@ -119,7 +122,7 @@ di _n "===== TEST A12_gmm_pweight_x17 ====="
 capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(rooms) weight(wvar17)
 record A12_gmm_pweight_x17 `=_rc'
 
-* --- A13 ratio path with bracketed aw weight (documented, must stay allowed) ---
+* --- A13 ratio path with bracketed aw weight ---
 di _n "===== TEST A13_ratio_aw_bracket ====="
 capture noisily aivreg log_hpvi medianaqi if year==2019, aiv(rank) weight([aw=wvar]) vce(asymp)
 record A13_ratio_aw_bracket `=_rc'
@@ -143,18 +146,18 @@ di _n "===== TEST B3_gmm_if_in ====="
 capture noisily aivreg gmm log_hpvi medianaqi if year>=2015 in 1/25000, aiv(rank crime_rate) control(rooms)
 record B3_gmm_if_in `=_rc'
 
-* --- B4 explicit [aw=] on GMM path (merged should reject loudly) ---
+* --- B4 explicit [aw=] on GMM path (should reject loudly) ---
 di _n "===== TEST B4_gmm_aw_bracket ====="
 capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(rooms) weight([aw=wvar])
 record B4_gmm_aw_bracket `=_rc'
 
-* --- B5 explicit [fw=] on GMM path (merged should reject loudly) ---
+* --- B5 explicit [fw=] on GMM path (should reject loudly) ---
 qui gen int fwvar = 1 + mod(_n, 3)
 di _n "===== TEST B5_gmm_fw_bracket ====="
 capture noisily aivreg gmm log_hpvi medianaqi if year==2019, aiv(rank crime_rate) control(rooms) weight([fw=fwvar])
 record B5_gmm_fw_bracket `=_rc'
 
-* --- B6 zero/negative weights on GMM path (should refuse loudly) ---
+* --- B6 zero/negative weights on GMM path (should refuse loudly)
 qui {
     gen double wbad = wvar
     replace wbad = 0  in 1/50
