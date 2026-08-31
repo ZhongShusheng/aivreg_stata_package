@@ -22,15 +22,8 @@ Notes:
       4. Maximum number of variables is set to 5,000 but can be increased;
           see help set_maxvar.
 
-. do tests/aivreg_test_suite.do merged 
+. do tests\aivreg_test_suite.do merged 
 
-. * aivreg_test_suite.do
-. * Runs the same battery of normal + corner-case tests against one staged
-. * version of aivreg. Usage (batch, from repo root):
-. *   StataMP-64 /e do tests/aivreg_test_suite.do baseline
-. *   StataMP-64 /e do tests/aivreg_test_suite.do merged
-. * Results land in tests/results/<version>_results.csv plus a full .log.
-. 
 . clear all
 
 . set more off
@@ -66,7 +59,7 @@ tests/versions/merged\aivreg.ado
        log:  C:\Users\Claire\Desktop\aivreg_stata_package\tests/results/merged_
 > full.log
   log type:  text
- opened on:  30 Aug 2026, 20:32:35
+ opened on:  31 Aug 2026, 10:50:17
 
 . 
 . * ---------------------------------------------------------------- helpers
@@ -121,9 +114,10 @@ tests/versions/merged\aivreg.ado
 . * SECTION A - normal usage (README/demo patterns)
 . * ================================================================
 . 
-. * --- A1 ratio path, default (Anderson-Rubin) SEs ---
 . use safety_aivreg_example.dta, clear
 
+. 
+. * --- A1 ratio path, default (Anderson-Rubin) SEs ---
 . di _n "===== TEST A1_ratio_default ====="
 
 ===== TEST A1_ratio_default =====
@@ -181,9 +175,11 @@ safety |  -1.145084   .1153763  -9.924773  6.00e-23   -1.371221  -.9189462
 . record A3_ratio_boot `=_rc'
 
 . 
-. * --- A4 ratio + factor-variable controls + if ---
+. 
 . use housing_aivreg_example.dta, clear
 
+. 
+. * --- A4 ratio + factor-variable controls + if ---
 . di _n "===== TEST A4_ratio_controls_if ====="
 
 ===== TEST A4_ratio_controls_if =====
@@ -324,7 +320,7 @@ medianaqi |  -.5221607    .058992  -8.851383  9.66e-19    -.637785  -.4065364
 . record A10_gmm_cluster `=_rc'
 
 . 
-. * --- A11 GMM with probability weight, bare documented form ---
+. * --- A11 GMM with probability weight ---
 . qui {
 
 . di _n "===== TEST A11_gmm_pweight_bare ====="
@@ -368,8 +364,7 @@ medianaqi |  -.5318737   .0277773  -19.14776  1.07e-80   -.5863173  -.4774301
 . record A12_gmm_pweight_x17 `=_rc'
 
 . 
-. * --- A13 ratio path with bracketed aw weight (documented, must stay allowed)
->  ---
+. * --- A13 ratio path with bracketed aw weight ---
 . di _n "===== TEST A13_ratio_aw_bracket ====="
 
 ===== TEST A13_ratio_aw_bracket =====
@@ -450,7 +445,7 @@ medianaqi |  -1.628866   .1163134  -14.00411  3.17e-44   -1.856841  -1.400892
 . record B3_gmm_if_in `=_rc'
 
 . 
-. * --- B4 explicit [aw=] on GMM path (merged should reject loudly) ---
+. * --- B4 explicit [aw=] on GMM path (should reject loudly) ---
 . di _n "===== TEST B4_gmm_aw_bracket ====="
 
 ===== TEST B4_gmm_aw_bracket =====
@@ -463,7 +458,7 @@ weight(): [aw=wvar] is not supported for gmm/2sls; these methods accept probabi
 . record B4_gmm_aw_bracket `=_rc'
 
 . 
-. * --- B5 explicit [fw=] on GMM path (merged should reject loudly) ---
+. * --- B5 explicit [fw=] on GMM path (should reject loudly) ---
 . qui gen int fwvar = 1 + mod(_n, 3)
 
 . di _n "===== TEST B5_gmm_fw_bracket ====="
@@ -478,7 +473,7 @@ weight(): [fw=fwvar] is not supported for gmm/2sls; these methods accept probab
 . record B5_gmm_fw_bracket `=_rc'
 
 . 
-. * --- B6 zero/negative weights on GMM path (should refuse loudly) ---
+. * --- B6 zero/negative weights on GMM path (should refuse loudly)
 . qui {
 
 . di _n "===== TEST B6_gmm_negzero_weight ====="
@@ -697,17 +692,7 @@ anyway, use the ignoresingularity option.
 
 . capture noisily aivreg gmmm log_hpvi medianaqi if year==2019, aiv(rank crime_
 > rate)
-Warning: Multiple anti-IVs inputted, switching to GMM
-
-Anti-IV GMM onestep                            Number of obs = 14067
-                                          Number of anti-IVs = 2
-J-stat: not reported on this path -- the over-identification test is reported o
-> nly on the efficient two-step path.
-
-log_hpvi  |      Coef.  Std. Err.          t     P>|t|  [95% Conf.  Interval]
-----------+------------------------------------------------------------------
-medianaqi |  -.8386179   .0687107  -12.20506  4.34e-34   -.9732908  -.7039449
------------------------------------------------------------------------------
+Invalid estimator gmmm.  Use ratio (default), gmm, or 2sls.
 
 . record B15_bad_estimator `=_rc'
 
@@ -739,7 +724,7 @@ medianaqi |  -.5250496   .0204174  -25.71581  1.5e-142   -.5650677  -.4850315
        log:  C:\Users\Claire\Desktop\aivreg_stata_package\tests/results/merged_
 > full.log
   log type:  text
- closed on:  30 Aug 2026, 21:07:07
+ closed on:  31 Aug 2026, 11:24:31
 -------------------------------------------------------------------------------
 
 . di "SUITE DONE for `ver'"
