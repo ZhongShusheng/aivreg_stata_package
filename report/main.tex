@@ -1,0 +1,188 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=black, urlcolor=blue}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\title{\texttt{aivreg} 1.1.2: Package Update Report}
+\date{31 August 2026}
+
+\begin{document}
+\maketitle
+
+\section{What was merged}
+
+I merged Alex's working candidate, \code{aivreg\_working\_candidate\_1\_1\_1\_20260825.ado},
+with Josh's most recent updates on branch \code{gmm\_fix}, and called the result
+\code{aivreg\_merged\_draft\_1\_1\_2\_20260830.ado} (version 1.1.2).
+Table~\ref{tab:files} lists the versions used throughout this note.
+
+\begin{table}[h]
+\centering
+\caption{Versions compared}
+\label{tab:files}
+\begin{tabular}{lll}
+\toprule
+Label & File & Role \\
+\midrule
+Baseline  & \code{aivreg.ado} (1.0.0)                        & Repository state before the merge \\
+Candidate & \code{aivreg\_working\_candidate\_1\_1\_1\_20260825.ado} & Alex's reviewed candidate \\
+Merged    & \code{aivreg\_merged\_draft\_1\_1\_2\_20260830.ado}     & 1.1.1 $+$ Josh's updates \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Weighted and clustered GMM}
+\label{sec:weights}
+
+Let $w_i$ be the probability weight, $W=\sum_i w_i$, $N$ the number of observations,
+$\hat{w}_i = w_i N / W$ the weight normalised to mean one, and $\varepsilon_i$ the
+observation's moment contribution. Table~\ref{tab:weights} states what each version does.
+
+\begin{table}[h]
+\centering
+\caption{Weight and cluster handling in the GMM engine}
+\label{tab:weights}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{0.29\textwidth} p{0.29\textwidth} p{0.29\textwidth}}
+\toprule
+ & Baseline & Candidate / merged \\
+\midrule
+Weight in the point estimate & $w_i/W$ (linear) & $w_i/W$ (linear; unchanged) \\
+Weight in the covariance ``meat'' & $w_i/W$ --- linear & $\hat{w}_i^{\,2}$ --- squared \\
+Finite-sample factor, unclustered & $W/(W-K)$ & $N/(N-K)$ \\
+Finite-sample factor, clustered & $\dfrac{G}{G-1}\cdot\dfrac{W-1}{W-K}$ & $\dfrac{G}{G-1}\cdot\dfrac{N-1}{N-K}$ \\
+Cluster score sum & $\sum_{i \in g}\sqrt{w_i/W}\,\varepsilon_i$ & $\sum_{i \in g}\hat{w}_i\,\varepsilon_i$ \\
+Clustered $\bar{g}$ & cluster weight share $\times$ cluster sums (weights counted twice) & $N^{-1}\sum_g\sum_{i \in g}\hat{w}_i\varepsilon_i$, consistent with the unclustered $\bar{g}$ \\
+Rescaling all weights by a constant & changes the standard errors and $J$ & leaves $\hat{\beta}$, $V$ and $J$ unchanged \\
+Zero or negative weights & silently dropped & error 459 \\
+\code{[aw=]} or \code{[fw=]} on \code{gmm}/\code{2sls} & accepted, treated as \code{pw} & error 101 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent In words: the baseline folded $\sqrt{w_i/W}$ into each score and then formed the
+outer product, so the weight entered the covariance linearly rather than squared; and it
+used the sum of weights in place of the observation count in the finite-sample factors,
+so multiplying every weight by a constant changed the reported standard errors. On the
+clustered path the weight was applied once inside the cluster sum and again as a cluster
+weight share when forming $\bar{g}$. The candidate applies mean-one normalised weights
+linearly to the moment and in squared form to the covariance, bases the finite-sample
+factors on $N$ and $G$ only, and builds the clustered $\bar{g}$ directly from this call's
+own cluster sums.
+
+\noindent The effect is visible in tests \code{A11} and \code{A12} of
+Table~\ref{tab:results}, which are the same specification with every weight multiplied by
+$17$. The baseline standard errors differ in the fifth significant digit
+($0.0267815$ against $0.0267743$); the merged standard errors agree to roughly twelve
+digits.
+
+\section{Degrees of freedom for the Hansen $J$ test}
+
+With $k$ instruments (amenities and controls) and $L$ anti-IVs, the moment system has
+$m = L(k+2)$ conditions and $p = k + 2L$ parameters. \textbf{The adopted rule is the
+conventional one,}
+\[
+  \mathrm{df} \;=\; m - p \;=\; L(k+2) - (k+2L) \;=\; k(L-1),
+\]
+with $J = N\,\bar{g}'W_2\,\bar{g}$ evaluated at the second-step estimate and the
+efficient weighting matrix $W_2$, and $p$-value $= \Pr[\chi^2_{\mathrm{df}} > J]$.
+An earlier proposal set the degrees of freedom from numerical matrix ranks,
+$\operatorname{rank}(W_2) - \operatorname{rank}(X'W_2X)$. That rule is \emph{not} used.
+
+\noindent Ranks are retained only as a validity gate. Before reporting $J$, the command
+checks $\operatorname{rank}(W_2) = m$ and $\operatorname{rank}(X'W_2X) = p$. If either
+check fails, $J$ is suppressed entirely, a warning is printed, and \code{e(J\_status)}
+records the suppression; no generalised rank-based degrees of freedom are ever
+substituted. This is the conservative reading: a rank-deficient moment system has no
+valid $\chi^2$ reference, so the statistic is withheld rather than reported against an
+adjusted distribution.
+
+\noindent The $J$ statistic is reported only on the efficient two-step GMM path. One-step
+GMM, \code{2sls}, and just-identified problems print an explicit note in place of a
+statistic, rather than a criterion value that would be read as a Hansen test.
+
+\section{Regression test results}
+
+The suite in \code{tests/aivreg\_test\_suite.do} runs 29 tests against each staged version
+and records the return code, the first coefficient, its standard error, and the $J$
+statistic with its degrees of freedom. Section~A covers ordinary documented usage;
+Section~B covers edge cases and the defects under review. Table~\ref{tab:tests} says
+what question each test answers; Table~\ref{tab:results} reports both runs.
+
+\begin{table}[htbp]
+\centering
+\caption{What each test asks}
+\label{tab:tests}
+\footnotesize
+\begin{tabular}{ll}
+\toprule
+Test & Question it answers \\
+\midrule
+\multicolumn{2}{l}{\textit{Section A --- ordinary documented usage}} \\
+\code{A1}   & Does the single-anti-IV ratio path work with the default Anderson--Rubin SEs? \\
+\code{A2}   & Does the ratio path work with asymptotic SEs? \\
+\code{A3}   & Does the ratio path work with bootstrap SEs (seeded)? \\
+\code{A4}   & Do factor-variable controls with \code{if} work on the ratio path? \\
+\code{A5}   & Do fixed effects work on the ratio path? \\
+\code{A6}   & Does a multi-anti-IV call switch to GMM automatically? \\
+\code{A7}   & Does two-step GMM run with multiple anti-IVs? \\
+\code{A8}   & Does one-step GMM run? \\
+\code{A9}   & Does 2SLS run? \\
+\code{A10}  & Does clustering (on \code{fips}) work under GMM? \\
+\code{A11}  & Do probability weights work under GMM? \\
+\code{A12}  & Same call as \code{A11} with all weights $\times 17$: are results scale invariant? \\
+\code{A13}  & Does the ratio path still accept its documented \code{[aw=]} syntax? \\
+\midrule
+\multicolumn{2}{l}{\textit{Section B --- edge cases and known defects}} \\
+\code{B1}   & Is an \code{[in]} range honoured on the ratio path? \\
+\code{B2}   & Is an \code{[in]} range honoured on the GMM path? \\
+\code{B3}   & Are \code{if} and \code{[in]} combined honoured on the GMM path? \\
+\code{B4}   & Is an explicit \code{[aw=]} rejected loudly on the GMM path? \\
+\code{B5}   & Is an explicit \code{[fw=]} rejected loudly on the GMM path? \\
+\code{B6}   & Are zero or negative weights refused loudly? \\
+\code{B7}   & Are observations with missing weights dropped from the sample? \\
+\code{B8}   & Does fewer than two clusters produce a clean error? \\
+\code{B9}   & Do 32-character variable names work on the ratio path? \\
+\code{B10}  & Do 32-character variable names work on the GMM path? \\
+\code{B11}  & Does a failed call avoid leaving the previous call's results in \code{e()}? \\
+\code{B12}  & Do fixed effects, clustering and weights work together? \\
+\code{B13}  & Is $J$ suppressed on a just-identified problem (single anti-IV via \code{gmm})? \\
+\code{B14}  & Does a collinear anti-IV fail rather than silently collapse the moment system? \\
+\code{B15}  & Does a mistyped estimator (\code{gmmm}) error rather than run? \\
+\code{B16}  & Do non-consecutive integer fixed-effect levels work? \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Notes typeset inside the generated results float (see make_table.py).
+\newcommand{\resultsnotes}{\textit{Notes.} ``--'' means the quantity was not returned.
+Baseline rows with a non-zero return code still report a coefficient because the
+baseline left the previous call's results in \code{e()}; the merged draft clears them.
+Return code 101 is the refusal of \code{[aw=]} or \code{[fw=]} on the GMM path, 459 the
+refusal of non-positive weights, 430 the singular anti-IV system, and 111 and 198 the
+long-name failures the merge repairs.}
+
+\input{results_table.tex}
+
+\subsection*{Reading the table}
+
+\begin{itemize}
+  \item \textbf{Hansen $J$.} The $J$ calculation is now correct. The baseline returned a
+        degenerate near-zero $J$ with no degrees of freedom on every over-identified
+        call; the merged draft reports a proper statistic with its degrees of freedom
+        (\code{A7}, \code{A10}) and suppresses $J$ where the test is not defined.
+  \item \textbf{Loud failures.} \code{B4}, \code{B5}, \code{B6} and \code{B11} now exit
+        with an error and leave no results, where the baseline either ran or reported
+        stale values.
+  \item \textbf{Long names.} \code{B9} and \code{B10} fail under the baseline
+        (return codes 111 and 198) and succeed under the merge.
+\end{itemize}
+
+\end{document}
