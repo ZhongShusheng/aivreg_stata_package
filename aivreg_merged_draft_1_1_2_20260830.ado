@@ -621,7 +621,23 @@ foreach v of local varlist {
 	local tsw = `betaw' / `sew'
 	local partial_F = (`tsw')^2
 
-	
+	* partial R2 from the two first-stage regressions: (RSS_R - RSS_U)/RSS_R
+	if "`fe'" != "" {
+		qui reghdfe `h' `w' `zlist' `control' `weight' if `aivreg_sample', absorb(`fe')
+		local RSS_U = e(rss)
+		qui reghdfe `h' `zlist' `control' `weight' if `aivreg_sample', absorb(`fe')
+		local RSS_R = e(rss)
+	}
+	else {
+		qui reg `h' `w' `zlist' `control' `weight' if `aivreg_sample'
+		local RSS_U = e(rss)
+		qui reg `h' `zlist' `control' `weight' if `aivreg_sample'
+		local RSS_R = e(rss)
+	}
+	local partial_R2 = (`RSS_R' - `RSS_U') / `RSS_R'
+	qui estimates restore _ivreg2_`h_est'
+
+
 	* Create the table to display
 	* First Stage output option
 	if "`savefirst'" == "savefirst" {
@@ -696,12 +712,16 @@ foreach v of local varlist {
 	local Fstr = trim("`Fstr'")
 	if "`cluster'" != ""{
 		local padding = `align_col' - length("SE clustered by ") - length("`cluster'") - length("Partial F-stat.")
-		display "SE clustered by " "`cluster'" _dup(`padding') " " "Partial F-stat." " = `Fstr'" 
+		display "SE clustered by " "`cluster'" _dup(`padding') " " "Partial F-stat." " = `Fstr'"
 	}
 	else {
 		local padding = `align_col'  - length("Partial F-stat.")
-		display _dup(`padding') " " "Partial F-stat." " = `Fstr'"		
+		display _dup(`padding') " " "Partial F-stat." " = `Fstr'"
 	}
+	local R2str : display %9.3f `partial_R2'
+	local R2str = trim("`R2str'")
+	local padding = `align_col' - length("Partial R-sq.")
+	display _dup(`padding') " " "Partial R-sq." " = `R2str'"
 	
 	* This makes the column names for the stats
 	collect clear 
@@ -847,6 +867,22 @@ foreach v of local varlist {
 		local tsw = `betaw' / `sew'
 		local partial_F = (`tsw')^2
 
+		* partial R2 from the two first-stage regressions: (RSS_R - RSS_U)/RSS_R
+		if "`fe'" != "" {
+			qui reghdfe `h' `w' `zlist' `control' `weight' if `aivreg_sample', absorb(`fe')
+			local RSS_U = e(rss)
+			qui reghdfe `h' `zlist' `control' `weight' if `aivreg_sample', absorb(`fe')
+			local RSS_R = e(rss)
+		}
+		else {
+			qui reg `h' `w' `zlist' `control' `weight' if `aivreg_sample'
+			local RSS_U = e(rss)
+			qui reg `h' `zlist' `control' `weight' if `aivreg_sample'
+			local RSS_R = e(rss)
+		}
+		local partial_R2 = (`RSS_R' - `RSS_U') / `RSS_R'
+		qui estimates restore _ivreg2_`h_est'
+
 		* First Stage output option
 		if "`savefirst'" == "savefirst" {
 			
@@ -920,6 +956,10 @@ foreach v of local varlist {
 		local Fstr = trim("`Fstr'")
 		local padding = `align_col' - length("Partial F-stat.")
 		display _dup(`padding') " " "Partial F-stat." " = `Fstr'"
+		local R2str : display %9.3f `partial_R2'
+		local R2str = trim("`R2str'")
+		local padding = `align_col' - length("Partial R-sq.")
+		display _dup(`padding') " " "Partial R-sq." " = `R2str'"
 		if length("`seed'") > 0 & "`cluster'" == "" {
 				local padding = `align_col' - length("seed")	
 				display  _dup(`padding') " " "seed" " = " "`seed'"
@@ -1071,6 +1111,22 @@ foreach v of local varlist {
 	* eststo first stage
 	eststo _ivreg2_`h_est'
 
+	* partial R2 from the two first-stage regressions: (RSS_R - RSS_U)/RSS_R
+	if "`fe'" != "" {
+		qui reghdfe `h' `w' `zlist' `control' `weight' if `aivreg_sample', absorb(`fe')
+		local RSS_U = e(rss)
+		qui reghdfe `h' `zlist' `control' `weight' if `aivreg_sample', absorb(`fe')
+		local RSS_R = e(rss)
+	}
+	else {
+		qui reg `h' `w' `zlist' `control' `weight' if `aivreg_sample'
+		local RSS_U = e(rss)
+		qui reg `h' `zlist' `control' `weight' if `aivreg_sample'
+		local RSS_R = e(rss)
+	}
+	local partial_R2 = (`RSS_R' - `RSS_U') / `RSS_R'
+	qui estimates restore _ivreg2_`h_est'
+
 		* First Stage output option
 	if "`savefirst'" == "savefirst" {
 		
@@ -1141,6 +1197,10 @@ foreach v of local varlist {
 	local Fstr = trim("`Fstr'")
 	local padding = `align_col' - length("Partial F-stat.") - length("Uses Anderson-Rubin CI")
 	display "Uses Anderson-Rubin CI" _dup(`padding') " " "Partial F-stat." " = `Fstr'"
+	local R2str : display %9.3f `partial_R2'
+	local R2str = trim("`R2str'")
+	local padding = `align_col' - length("Partial R-sq.")
+	display _dup(`padding') " " "Partial R-sq." " = `R2str'"
 	display "SE inferred from radius closest to zero"
 	if "`cluster'" != "" {
 		display "SE clustered by `cluster'"
@@ -1492,6 +1552,7 @@ estimates restore `eststo'
 		display as text "(result" as result "{stata `eststo': `eststo' }" as text "is active now)"	
 	}
 	ereturn scalar Partial_F = `partial_F'
+	ereturn scalar Partial_R2 = `partial_R2'
 	
 	
 
