@@ -1,0 +1,6 @@
+report/*
+tests/results/
+tests/.cache/
+.DS_Store
+# Stata batch-mode wrapper logs written to the launch directory
+/*.log

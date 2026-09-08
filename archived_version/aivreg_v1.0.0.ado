@@ -1,14 +1,9 @@
-*! aivreg 1.1.1 25aug2026 (SSC release candidate; lean sprint AIVREG-RC-004; from 03452fa4)
+*! aivreg 1.0.0 19sep2025
 
 cap program drop aivreg
 program define aivreg, eclass
     version 17
-
-	* TEST_ACCEPTANCE_MAP_v0 R-06 / DESIGN_SPEC_v1 §B (Gate-1 frozen): a failed
-	* aivreg call may not leave plausible results from a prior aivreg call.
-	* Clear only prior aivreg results so unrelated estimators are untouched.
-	if "`e(cmd)'" == "aivreg" ereturn clear
-
+	
 	* Check required packages locally and report all missing ones at once
 
 	local missing ""
@@ -59,58 +54,6 @@ program define aivreg, eclass
          savefirst firststo(string) displayaiv onestep twostep /// 
 		 initialweightmatrix(string) weightingmatrix(string) ignoresingularity]
 
-    /* AIVREG-2 FIX (2026-08-04, SW-DesignAgent): normalize weight() so each
-       engine gets the form it needs. aivreglinear (ratio) appends the BRACKETED
-       expression into regress; aivgmm confirms a BARE varname. Loud error on
-       malformed input. wvar = bare varname; wexp = [type=var]. */
-    local wvar ""
-    local wexp ""
-    local __wbrack ""
-    if `"`weight'"' != "" {
-        local __win = subinstr(`"`weight'"', " ", "", .)
-        if substr(`"`__win'"',1,1) == "[" {
-            local __wbrack "1"
-            local __in2 = subinstr(subinstr(`"`__win'"',"[","",.),"]","",.)
-            if strpos("`__in2'","=") == 0 {
-                di as error "weight(): malformed weight expression: `weight'"
-                exit 198
-            }
-            local __wt  = substr("`__in2'",1,strpos("`__in2'","=")-1)
-            local wvar  = substr("`__in2'",strpos("`__in2'","=")+1,.)
-            if "`__wt'"=="aweight" local __wt "aw"
-            if "`__wt'"=="pweight" local __wt "pw"
-            if "`__wt'"=="fweight" local __wt "fw"
-            if !inlist("`__wt'","aw","pw","fw") {
-                di as error "weight(): unrecognized weight type '`__wt''; use aw, pw, or fw"
-                exit 198
-            }
-        }
-        else {
-            local __wt "aw"
-            local wvar "`__win'"
-        }
-        capture confirm numeric variable `wvar'
-        if _rc {
-            di as error "weight(): '`wvar'' is not a numeric variable"
-            exit 198
-        }
-        local wexp "[`__wt'=`wvar']"
-
-        /* LEAN_RECOVERY_SPRINT_20260825 item 1 (Gate-3 v2 rows gmm_aw/twosls_fw):
-           gmm/2sls are probability-weight-only (DESIGN_SPEC_v1 par. B). An
-           EXPLICITLY declared non-pw bracket type must refuse loudly here
-           instead of having its declared type silently discarded downstream.
-           Bare weight(w) remains canonicalized per contract, and the ratio
-           path keeps its documented permissive bracket syntax. */
-        local __nAIV = wordcount("`aiv'")
-        if ("`estimator'" == "gmm" | "`estimator'" == "2sls" | `__nAIV' > 1) ///
-            & "`__wbrack'" == "1" & "`__wt'" != "pw" {
-            di as error "weight(): [`__wt'=`wvar'] is not supported for gmm/2sls; these methods accept probability weights only. Use weight(`wvar') or weight([pw=`wvar'])."
-            exit 101
-        }
-    }
-
-
     /* 3.  How many anti-IVs?  Decide which engine to call --------------- */
 
 	if "`initialweightmatrix'" != "" {
@@ -156,7 +99,7 @@ program define aivreg, eclass
 
 			quietly {
 			aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-				cluster(`cluster') weight(`wvar') fe(`fe') /// 
+				cluster(`cluster') weight(`weight') fe(`fe') /// 
 				weightmatrix(`weightmatrix') `2sls' estimatordisp(`estimatordisp') ///
 				ignoresingularity
 				
@@ -169,14 +112,14 @@ program define aivreg, eclass
 		
 
 		aivgmm `varlist' `if' `in', aiv(`aiv') control(`control') /// 
-			eststo(`eststo') cluster(`cluster') weight(`wvar') fe(`fe') /// 
+			eststo(`eststo') cluster(`cluster') weight(`weight') fe(`fe') /// 
 			weightmatrix(`weightmatrix') `2sls' `savefirst' /// 
 			firststo(`firststo') estimatordisp(`estimatordisp') `ignoresingularity'
 			
     }
     else if inlist("`estimator'", "ratio", "lin", "ols") {
         aivreglinear `varlist' `if' `in', aiv(`aiv') ///
-            control(`control') fe(`fe') weight(`wexp') eststo(`eststo') ///
+            control(`control') fe(`fe') weight(`weight') eststo(`eststo') ///
             vce(`vce') reps(`reps') seed(`seed') cluster(`cluster')       ///
             `savefirst' firststo(`firststo') `displayaiv'
     }
@@ -186,41 +129,8 @@ program define aivreg, eclass
     }
 end
 
-cap program drop _aivreg_escalar
-program define _aivreg_escalar, eclass
-    version 17
-    gettoken statprefix rest : 0
-    gettoken vname scalarval : rest
-
-    local nm "`statprefix'`vname'"
-    if strlen("`nm'") > 32 {
-        local clean = strtoname("`vname'")
-        local pstub = substr("`statprefix'", 1, 8)
-        local room = 32 - strlen("`pstub'") - 3
-        if `room' < 1 local room 1
-        local stem = substr("`clean'", 1, `room')
-        local nm "`pstub'`stem'"
-
-        local scalars : e(scalars)
-        local i = 1
-        while strpos(" `scalars' ", " `nm' ") {
-            local suffix "_`i'"
-            local room = 32 - strlen("`suffix'")
-            local nm = substr("`pstub'`stem'", 1, `room') + "`suffix'"
-            local ++i
-        }
-    }
-    local nm = strtoname("`nm'")
-    local nm = substr("`nm'", 1, 32)
-
-    ereturn scalar `nm' = `scalarval'
-end
-
-
 cap prog drop aivreglinear
 prog def aivreglinear, eclass
-	* R-06 stale-state hygiene (see aivreg entry)
-	if "`e(cmd)'" == "aivreg" ereturn clear
 	version 17
 	
 	syntax varlist(fv) [if] [in], aiv(varlist) [control(string)] [fe(varlist)] [weight(string)] [eststo(string)] [vce(string)] [reps(string)] [seed(string)] [cluster(varlist)] [savefirst] [firststo(string)] [displayaiv]
@@ -369,30 +279,7 @@ foreach v of local varlist {
 	
 	* aiv is the new h
 	local h "`aiv'"
-
-	* LEAN_RECOVERY_SPRINT_20260825 item 2 (Gate-3 row long_name_ratio_rc0):
-	* "_ivreg2_" + AIV name must fit Stata's 32-character name limit, and
-	* ivreg2's savefirst derives its store name from the endogenous variable.
-	* For near-limit AIV names (which previously crashed rc 198), run the
-	* naming-critical estimation on a bounded clone; short names keep the
-	* exact previous behavior because h_est == h.
-	* Bound: estimates-store names carry a hidden _est_ marker variable, so the
-	* effective store-name limit is 27 chars; "_ivreg2_" leaves 19 for the alias.
-	local h_est "`h'"
-	if wordcount("`h'") == 1 & strlen("_ivreg2_`h'") > 27 {
-		local __alias = substr("`h'", 1, 19)
-		local __ai = 0
-		capture confirm new variable `__alias'
-		while _rc {
-			local ++__ai
-			local __alias = substr("`h'", 1, 19 - strlen("`__ai'"))
-			local __alias "`__alias'`__ai'"
-			capture confirm new variable `__alias'
-		}
-		quietly clonevar `__alias' = `h'
-		local h_est "`__alias'"
-	}
-
+	
 	* eststo option
 	if "`eststo'" != "" {
 		local est_opt = 1
@@ -404,7 +291,7 @@ foreach v of local varlist {
 	
 	* to make sure ivreg2 works
 	capture ereturn drop `eststo'
-	capture ereturn drop _ivreg2_`h_est' 
+	capture ereturn drop _ivreg2_`h' 
 	capture ereturn drop `firststo'
 	
 	* allow savefirst, not just savefirst(savefirst)
@@ -550,25 +437,25 @@ foreach v of local varlist {
 	if "`vce'" == "asymp"{ // asymptotic case
 	quietly {
 	if  "`fe'" != "" {
-			qui ivreghdfe `varlist' (`h_est' = `varlist') `control' `if' `in' `weight', absorb(`fe') cluster(`cluster') savefirst
+			qui ivreghdfe `varlist' (`h' = `varlist') `control' `if' `in' `weight', absorb(`fe') cluster(`cluster') savefirst
 			eststo `eststo'
 	}
 	else {
-			qui ivreg2 `varlist' `control' (`h_est' = `varlist') `if' `in' `weight', cluster(`cluster') savefirst
+			qui ivreg2 `varlist' `control' (`h' = `varlist') `if' `in' `weight', cluster(`cluster') savefirst
 			eststo `eststo'
 	}
 	}
 	
 	
 	* get first stage estimates
-	qui estimates restore _ivreg2_`h_est'
+	qui estimates restore _ivreg2_`h'
 	local n = `=e(N)'
 	local k = `=e(df_m)'
 	local betaw = e(b)[1, "`w'"]
 	local sew = e(V)["`w'","`w'"]
 	local sew = sqrt(`sew')
 	local tsw = `betaw' / `sew'
-	local partial_F = (`tsw')^2
+	local partial_F = `tsw'^2
 
 	
 	* Create the table to display
@@ -609,12 +496,12 @@ foreach v of local varlist {
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			_aivreg_escalar beta `z' `beta'
-			_aivreg_escalar SE_asymp `z' `SE'
-			_aivreg_escalar t_val `z' `val_t'
-			_aivreg_escalar p_more_t `z' `test_stat'
-			_aivreg_escalar lb_asymp `z' `lb'
-			_aivreg_escalar ub_asymp `z' `ub'
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
 		
 		}
 		
@@ -696,12 +583,12 @@ foreach v of local varlist {
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			_aivreg_escalar beta `z' `beta'
-			_aivreg_escalar SE_asymp `z' `SE'
-			_aivreg_escalar t_val `z' `val_t'
-			_aivreg_escalar p_more_t `z' `test_stat'
-			_aivreg_escalar lb_asymp `z' `lb'
-			_aivreg_escalar ub_asymp `z' `ub'
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
 	}
 	}
 	else {
@@ -723,26 +610,20 @@ foreach v of local varlist {
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			_aivreg_escalar beta `z' `beta'
-			_aivreg_escalar SE_asymp `z' `SE'
-			_aivreg_escalar t_val `z' `val_t'
-			_aivreg_escalar p_more_t `z' `test_stat'
-			_aivreg_escalar lb_asymp `z' `lb'
-			_aivreg_escalar ub_asymp `z' `ub'
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
 		
 	}
 	}
 	* Save existing scalars
 	tempname savedscalars
 	local scalarnames : e(scalars)
-	* LEAN_RECOVERY_SPRINT_20260825 item 2 (Gate-3 v2 row long_name_ratio_rc0):
-	* index the saved copies -- tempname + full e-scalar name can exceed Stata's
-	* 32-char scalar-name limit for near-limit variable names (rc 198 after
-	* output). Restore below iterates the same list in the same order.
-	local __sv_k = 0
 	foreach s of local scalarnames {
-		local ++__sv_k
-		scalar `savedscalars'_`__sv_k' = e(`s')
+		scalar `savedscalars'_`s' = e(`s')
 	}
 
 
@@ -778,23 +659,23 @@ foreach v of local varlist {
 
 		if "`fe'" != "" {
 				qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reghdfe `h' `varlist' `control' `if' `in' `weight', absorb(`fe') cluster(`cluster') // this only works with verbose
-				eststo _ivreg2_`h_est'
+				eststo _ivreg2_`h'
 		}
 		else {
 				qui bootstrap, reps(`reps') seed(`seed') cluster(`cluster') verbose : reg `h' `varlist' `control' `if' `in' `weight', cluster(`cluster') // this only works with verbose
 				
-				eststo _ivreg2_`h_est'
+				eststo _ivreg2_`h'
 		}
 		
 		* get first stage estimates
-		qui estimates restore _ivreg2_`h_est'
+		qui estimates restore _ivreg2_`h'
 		local n = `=e(N)'
 		local k = `=e(df_m)'
 		local betaw = e(b)[1, "`w'"]
 		local sew = e(V)["`w'","`w'"]
 		local sew = sqrt(`sew')
 		local tsw = `betaw' / `sew'
-		local partial_F = (`tsw')^2
+		local partial_F = `tsw'^2
 
 		* First Stage output option
 		if "`savefirst'" == "savefirst" {
@@ -831,12 +712,12 @@ foreach v of local varlist {
 				collect get `z'=`lb', tags(Col[ARCI_lb])
 				collect get `z'=`ub', tags(Col[ARCI_ub])
 				
-				_aivreg_escalar beta `z' `beta'
-				_aivreg_escalar SE_boot `z' `SE'
-				_aivreg_escalar t_val `z' `val_t'
-				_aivreg_escalar p_more_t `z' `test_stat'
-				_aivreg_escalar lb_boot `z' `lb'
-				_aivreg_escalar ub_boot `z' `ub'
+				ereturn scalar beta`z' = `beta'
+				ereturn scalar SE_boot`z' = `SE'
+				ereturn scalar t_val`z' = `val_t'
+				ereturn scalar p_more_t`z' = `test_stat' 
+				ereturn scalar lb_boot`z' = `lb'
+				ereturn scalar ub_boot`z' = `ub'
 			
 		}
 			
@@ -925,12 +806,12 @@ foreach v of local varlist {
 				collect get `z'=`lb', tags(Col[ARCI_lb])
 				collect get `z'=`ub', tags(Col[ARCI_ub])
 				
-				_aivreg_escalar beta `z' `beta'
-				_aivreg_escalar SE_boot `z' `SE'
-				_aivreg_escalar t_val `z' `val_t'
-				_aivreg_escalar p_more_t `z' `test_stat'
-				_aivreg_escalar lb_boot `z' `lb'
-				_aivreg_escalar ub_boot `z' `ub'
+				ereturn scalar beta`z' = `beta'
+				ereturn scalar SE_boot`z' = `SE'
+				ereturn scalar t_val`z' = `val_t'
+				ereturn scalar p_more_t`z' = `test_stat' 
+				ereturn scalar lb_boot`z' = `lb'
+				ereturn scalar ub_boot`z' = `ub'
 			
 		}		
 		}
@@ -953,12 +834,12 @@ foreach v of local varlist {
 				collect get `z'=`lb', tags(Col[ARCI_lb])
 				collect get `z'=`ub', tags(Col[ARCI_ub])
 				
-				_aivreg_escalar beta `z' `beta'
-				_aivreg_escalar SE_boot `z' `SE'
-				_aivreg_escalar t_val `z' `val_t'
-				_aivreg_escalar p_more_t `z' `test_stat'
-				_aivreg_escalar lb_boot `z' `lb'
-				_aivreg_escalar ub_boot `z' `ub'
+				ereturn scalar beta`z' = `beta'
+				ereturn scalar SE_boot`z' = `SE'
+				ereturn scalar t_val`z' = `val_t'
+				ereturn scalar p_more_t`z' = `test_stat' 
+				ereturn scalar lb_boot`z' = `lb'
+				ereturn scalar ub_boot`z' = `ub'
 			
 		}
 		}
@@ -966,11 +847,8 @@ foreach v of local varlist {
 		* Save existing scalars
 		tempname savedscalars
 		local scalarnames : e(scalars)
-		* LEAN_RECOVERY_SPRINT_20260825 item 2: indexed save (see first save site)
-		local __sv_k = 0
 		foreach s of local scalarnames {
-			local ++__sv_k
-			scalar `savedscalars'_`__sv_k' = e(`s')
+			scalar `savedscalars'_`s' = e(`s')
 		}
 
 		
@@ -1003,7 +881,7 @@ foreach v of local varlist {
 		local sew = e(V)["`w'","`w'"]
 		local sew = sqrt(`sew')
 		local tsw = `betaw' / `sew'
-		local partial_F = (`tsw')^2
+		local partial_F = `tsw'^2
 	}
 	else {
 		tempname RSS_full n k partial_F
@@ -1014,11 +892,11 @@ foreach v of local varlist {
 		local sew = e(V)["`w'","`w'"]
 		local sew = sqrt(`sew')
 		local tsw = `betaw' / `sew'
-		local partial_F = (`tsw')^2
+		local partial_F = `tsw'^2
 	}
 			
 	* eststo first stage
-	eststo _ivreg2_`h_est'
+	eststo _ivreg2_`h'
 
 		* First Stage output option
 	if "`savefirst'" == "savefirst" {
@@ -1059,12 +937,12 @@ foreach v of local varlist {
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			_aivreg_escalar beta `z' `beta'
-			_aivreg_escalar SE_asymp `z' `SE'
-			_aivreg_escalar t_val `z' `val_t'
-			_aivreg_escalar p_more_t `z' `test_stat'
-			_aivreg_escalar lb_asymp `z' `lb'
-			_aivreg_escalar ub_asymp `z' `ub'
+			ereturn scalar beta`z' = `beta'
+			ereturn scalar SE_asymp`z' = `SE'
+			ereturn scalar t_val`z' = `val_t'
+			ereturn scalar p_more_t`z' = `test_stat' 
+			ereturn scalar lb_asymp`z' = `lb'
+			ereturn scalar ub_asymp`z' = `ub'
 		
 	}
 		
@@ -1169,17 +1047,12 @@ foreach v of local varlist {
 			collect get `z'=`lb', tags(Col[ARCI_lb])
 			collect get `z'=`ub', tags(Col[ARCI_ub])
 			
-			* LEAN_RECOVERY_SPRINT_20260825 item 2 (Gate-3 row long_name_ratio_rc0):
-			* key the stash by loop index -- varname-keyed local names exceed
-			* Stata's 31-char local-macro limit for near-limit variable names
-			* (rc 198 after output). Consumer loop below walks zlist in the
-			* same order with its own counter.
-			local beta_z`i' = `beta'
-			local SE_AR_z`i' = `SE'
-			local t_val_z`i' = `val_t'
-			local p_more_t_z`i' = `test_stat'
-			local lb_AR_z`i' = `lb'
-			local ub_AR_z`i' = `ub'
+			local beta`z' = `beta'
+			local SE_AR`z' = `SE'
+			local t_val`z' = `val_t'
+			local p_more_t`z' = `test_stat' 
+			local lb_AR`z' = `lb'
+			local ub_AR`z' = `ub'
 			
 			
 			
@@ -1189,34 +1062,26 @@ foreach v of local varlist {
 		local i=`i'+1
 	}
 
-	local __zi = 0
 	foreach z of varlist `zlist' {
-			local ++__zi
-			_aivreg_escalar beta `z' `beta_z`__zi''
-			_aivreg_escalar SE_AR `z' `SE_AR_z`__zi''
-			_aivreg_escalar t_val `z' `t_val_z`__zi''
-			_aivreg_escalar p_more_t `z' `p_more_t_z`__zi''
+			ereturn scalar beta`z' = `beta`z''
+			ereturn scalar SE_AR`z' = `SE_AR`z''
+			ereturn scalar t_val`z' = `t_val`z''
+			ereturn scalar p_more_t`z' = `p_more_t`z''
 			if "`undef'" != "undef" {
-				_aivreg_escalar lb_AR `z' `lb_AR_z`__zi''
-				_aivreg_escalar ub_AR `z' `ub_AR_z`__zi''
+				ereturn scalar lb_AR`z' = `lb_AR`z''
+				ereturn scalar ub_AR`z' = `ub_AR`z''				
 			}
 			else {
-			_aivreg_escalar lb_AR `z' .
-			_aivreg_escalar ub_AR `z' .
+			ereturn scalar lb_AR`z' = .
+			ereturn scalar ub_AR`z' = .
 			}
 	}
 	
 	* Save existing scalars
 	tempname savedscalars
 	local scalarnames : e(scalars)
-	* LEAN_RECOVERY_SPRINT_20260825 item 2 (Gate-3 v2 row long_name_ratio_rc0):
-	* index the saved copies -- tempname + full e-scalar name can exceed Stata's
-	* 32-char scalar-name limit for near-limit variable names (rc 198 after
-	* output). Restore below iterates the same list in the same order.
-	local __sv_k = 0
 	foreach s of local scalarnames {
-		local ++__sv_k
-		scalar `savedscalars'_`__sv_k' = e(`s')
+		scalar `savedscalars'_`s' = e(`s')
 	}
 
 	
@@ -1255,14 +1120,14 @@ foreach v of local varlist {
 	
 	* rename first stage
 		if "`firststo'" != "" {
-			qui est restore _ivreg2_`h_est'
+			qui est restore _ivreg2_`h'
 			qui est store `firststo'
 			qui est restore `eststo'
-			qui est drop _ivreg2_`h_est'
+			qui est drop _ivreg2_`h'
 			
 		}
 		if "`firststo'" == "" {
-			local firststo = "_ivreg2_`h_est'"
+			local firststo = "_ivreg2_`h'"
 		}
 	
 	* fix outputs for results
@@ -1420,7 +1285,7 @@ estimates restore `eststo'
 	}
 	else {
 		foreach model_for_loop3 in `new_models' {
-			if !strpos("`saved_models' _ivreg2_`h_est' `eststo'", "`model_for_loop3'") { 
+			if !strpos("`saved_models' _ivreg2_`h' `eststo'", "`model_for_loop3'") { 
 				est drop `model_for_loop3'
 			}
 		}
@@ -1444,11 +1309,9 @@ estimates restore `eststo'
 	
 	
 
-	* Restore scalars (indexed; mirrors the indexed save order exactly)
-	local __sv_k = 0
+	* Restore scalars
 	foreach s of local scalarnames {
-		local ++__sv_k
-		ereturn scalar `s' = `savedscalars'_`__sv_k'
+		ereturn scalar `s' = `savedscalars'_`s'
 	}
 
 	
@@ -1459,11 +1322,6 @@ end
 cap program drop aivgmm
 program define aivgmm, eclass
     version 17
-
-	* R-06 stale-state hygiene (see aivreg entry): also required here so that a
-	* failure in the efficient second pass cannot leave the hidden first-pass
-	* results posted as if they were the requested estimate.
-	if "`e(cmd)'" == "aivreg" ereturn clear
 
     // Accept full varlist and separate out the depvar
     syntax varlist(fv) [if], ///
@@ -1483,8 +1341,6 @@ program define aivgmm, eclass
 		[estimatordisp(string)] ///
 		[ignoresingularity]
 
-	tempvar _srcobs
-	quietly gen double `_srcobs' = _n
 	preserve	
 
 		
@@ -1691,15 +1547,7 @@ foreach v of local varlist {
 	if "`weight'" != "" {
 		confirm variable `weight'
 		gen double `w' = `weight'
-		drop if missing(`w')
-		* DESIGN_SPEC_v1 (Gate-1 frozen) probability-weight contract / W-04:
-		* missing weights are survivor-set exclusions (already in keeplist);
-		* zero/negative weights are invalid input and must fail loudly.
-		count if `w' <= 0
-		if r(N) > 0 {
-			noisily di as error "weight(): `weight' has " r(N) " zero or negative value(s) in the estimation sample; probability weights must be strictly positive"
-			exit 459
-		}
+		drop if missing(`w') | `w' < 0
 	}
 	else {
 		gen double `w' = 1
@@ -2082,7 +1930,7 @@ foreach v of local varlist {
 	local G : word count `cluster_ids'
 	
 	if (`G' < 2) {
-		dis as error "Error: Number of clusters in `clustvar' < 2"
+		dis as warning "Error: Number of clusters in `clustvar' < 2"
 		exit 498
 	}
 
@@ -2151,7 +1999,7 @@ foreach v of local varlist {
 				
 				// weights
 				scalar wi = `w'[`i']
-				scalar wroot = wi * `=_N' / W
+				scalar wroot = sqrt(wi / W)
 				
 				matrix gsum = gsum + wroot * epsilon
 			}
@@ -2173,14 +2021,10 @@ foreach v of local varlist {
 	if "`cluster'" == "" {
 		
 		scalar K = `nX' + `fe_df'
-		scalar c = (_N/(_N-K))
+		scalar c = (W/(W-K))
 		
 		matrix Moments_all = Moments
-		matrix avecmat = J(`=_N',1,.)
-		forvalues i = 1/`=_N' {
-			matrix avecmat[`i',1] = `w'[`i'] * `=_N' / W
-		}
-		matrix S = c*(Moments_all * diag(avecmat) * Moments_all')
+		matrix S        = c*(Moments_all * Moments_all')
 		
 		// build a vector of sqrt weights
 		tempname v ones
@@ -2197,9 +2041,9 @@ foreach v of local varlist {
 		
 		scalar G = `G'
 		scalar K = `nX' + `fe_df'
-		scalar c = (G/(G-1))*((_N-1)/(_N-K))
+		scalar c = (G/(G-1))*((W-1)/(W-K))
 		
-		matrix S = c*(1/`=_N')*(Moments_by_cluster * Moments_by_cluster')
+		matrix S = c*(Moments_by_cluster * Moments_by_cluster')
 		
 		tempname wcl
 		matrix `wcl' = J(`G',1,.)
@@ -2212,15 +2056,7 @@ foreach v of local varlist {
 			local ++g
 		}
 
-		* Current clustered moment mean. Moments_by_cluster was built above from
-		* this call's current sample and current theta, with each observation
-		* contributing a_i*g_i where a_i = w_i*N/W. Summing its columns and
-		* dividing by N therefore gives mean(a_i*g_i). Do not reference the
-		* global Moments matrix: it exists only on the unclustered branch and
-		* may contain state from an earlier call in the same Stata session.
-		tempname onesG
-		matrix `onesG' = J(`G',1,1)
-		matrix gbar = (1/`=_N') * Moments_by_cluster * `onesG'
+		matrix gbar = Moments_by_cluster * `wcl'
 
 	}
 
@@ -2261,7 +2097,6 @@ foreach v of local varlist {
 		// Compute J-statistic
 		local Jdof = `L' * (`namen' + 2) - `namen' - 2*`L'
 
-		local twostep_efficient = 0
 		matrix Jstat = gbar' * invsym(S) * gbar
 		scalar Jval = Jstat[1,1]
 		local Jval = string(Jval, "%9.4f")
@@ -2270,29 +2105,6 @@ foreach v of local varlist {
 		scalar pval_J = chi2tail(`Jdof', Jval)
 		local pval_J = string(pval_J, "%9.4f")
 		local pval_J : subinstr local pval_J " " "", all
-		* AIVREG-1 efficient two-step Hansen J (PACKET_D corrected spec):
-		* J = N * gbar' * W2 * gbar ; W2 = inv(S_first) = supplied efficient weightmatrix.
-		* Valid ONLY on the efficient two-step GMM path; one-step/2sls stay suppressed.
-		if "`weightmatrix'" != "" & "`2sls'" != "2sls" {
-			local twostep_efficient = 1
-			* DESIGN_SPEC_v1 (Gate-1 frozen) §B: J df is RANK-based over-identification,
-			* rank(S_first) - rank(params), not the moment-dimension count.
-			* rank(W2) = rank(invsym(S_first)) = rank(S_first); params rank from XtX.
-			mata: st_numscalar("__aivreg_rk_W2",  rank(st_matrix("weightmatrix")))
-			mata: st_numscalar("__aivreg_rk_par", rank(st_matrix("XtX")))
-			local Jdof = __aivreg_rk_W2 - __aivreg_rk_par
-			capture scalar drop __aivreg_rk_W2 __aivreg_rk_par
-			matrix Jstat2 = `Ndisp' * (gbar' * weightmatrix * gbar)
-			scalar J_twostep   = Jstat2[1,1]
-			if `Jdof' >= 1 {
-				scalar Jdf_twostep = `Jdof'
-				scalar Jp_twostep  = chi2tail(`Jdof', J_twostep)
-			}
-			else {
-				* rank-deficient over-identification: no valid chi2 reference
-				local twostep_efficient = 2
-			}
-		}
 	}
 
 
@@ -2379,15 +2191,8 @@ foreach v of local varlist {
 	if `L' > 1 {
 		local pad3 = `align_col' - length("J-stat") 
 		local pad4 = `align_col' - length("J-stat p value")
-		if `twostep_efficient' == 1 {
-			display as text "J-stat (two-step efficient) = " %9.4f J_twostep "   df = `Jdof'   p = " %6.4f Jp_twostep
-		}
-		else if `twostep_efficient' == 2 {
-			display as text "J-stat: not reported -- rank-based over-identification df < 1 on the efficient two-step path (rank-deficient moment covariance)."
-		}
-		else {
-			display as text "J-stat: not reported on this path -- the over-identification test is reported only on the efficient two-step path."
-		}
+		display _dup(`pad3') " " "J-stat = "  "`Jval'"
+		display _dup(`pad4') " " "J-stat p value = "  "`pval_J'"
 	}
 
 	// Collect and display clean table
@@ -2410,32 +2215,8 @@ foreach v of local varlist {
 	ereturn post b V, dof(`dof') obs(`Ndisp') depname("`depvar'")
 	ereturn local cmd "aivreg"
 	if `L' > 1 {
-		* AIVREG-1 J-SUPPRESSION (2026-08-04 SW-DesignAgent; Director ruling -131000 pt3):
-		* R4 one-step overid J invalid (omits N_eff; not chi2-referable). Return MISSING;
-		* never emit invalid p until efficient two-step J passes QA.
-		if `twostep_efficient' == 1 {
-			* AIVREG-1 efficient two-step Hansen J (PACKET_D; validated vs frozen QA oracle)
-			ereturn scalar J    = J_twostep
-			ereturn scalar J_df = Jdf_twostep
-			ereturn scalar J_p  = Jp_twostep
-			ereturn scalar Jval   = J_twostep
-			ereturn scalar pval_J = Jp_twostep
-			ereturn local J_status "TWOSTEP_EFFICIENT_AIVREG1"
-		}
-		else if `twostep_efficient' == 2 {
-			* Rank-deficient over-identification on the efficient two-step path:
-			* rank-based df < 1 gives no valid chi2 reference (DESIGN_SPEC_v1 §B).
-			ereturn scalar Jval = .
-			ereturn scalar pval_J = .
-			ereturn local J_status "SUPPRESSED_twostep_rank_deficient_overid_AIVREG_RC004"
-		}
-		else {
-			* DESIGN_SPEC_v1 Q2 (Gate-1 frozen): one-step J FULLY suppressed --
-			* method/status indicator only; no J-like quantity is returned.
-			ereturn scalar Jval = .
-			ereturn scalar pval_J = .
-			ereturn local J_status "SUPPRESSED_onestep_no_valid_overid_AIVREG1"
-		}
+		ereturn scalar Jval = Jval
+		ereturn scalar pval_J = pval_J
 	}
 	matrix weightingmatrix = weightmatrix
 	ereturn matrix weightingmatrix = weightingmatrix
@@ -2460,20 +2241,20 @@ foreach v of local varlist {
 		collect get `var' = `ub', tags(Col[CI_U])
 		
 		if "`2sls'" == "2sls" {
-			_aivreg_escalar beta `var' `coef'
-			_aivreg_escalar SE_2sls `var' `se'
-			_aivreg_escalar t_val `var' `tstat'
-			_aivreg_escalar p_more_t `var' `pval'
-			_aivreg_escalar lb_2sls `var' `lb'
-			_aivreg_escalar ub_2sls `var' `ub'
+			ereturn scalar beta`var' = `coef'
+			ereturn scalar SE_2sls`var' = `se'
+			ereturn scalar t_val`var' = `tstat'
+			ereturn scalar p_more_t`var' = `pval' 
+			ereturn scalar lb_2sls`var' = `lb'
+			ereturn scalar ub_2sls`var' = `ub'
 		}
 		else {
-			_aivreg_escalar beta `var' `coef'
-			_aivreg_escalar SE_gmm `var' `se'
-			_aivreg_escalar t_val `var' `tstat'
-			_aivreg_escalar p_more_t `var' `pval'
-			_aivreg_escalar lb_gmm `var' `lb'
-			_aivreg_escalar ub_gmm `var' `ub'
+			ereturn scalar beta`var' = `coef'
+			ereturn scalar SE_gmm`var' = `se'
+			ereturn scalar t_val`var' = `tstat'
+			ereturn scalar p_more_t`var' = `pval' 
+			ereturn scalar lb_gmm`var' = `lb'
+			ereturn scalar ub_gmm`var' = `ub'			
 		}
 	}
 
@@ -2535,20 +2316,6 @@ foreach v of local varlist {
 		quietly estimates restore `eststo'
 	}
 	
-	* AIVREG-8 e(sample) survivor remap: snapshot analytic survivors, restore full data, mark sample
-	tempfile _survf
-	quietly keep `_srcobs'
-	quietly duplicates drop `_srcobs', force
-	quietly save `_survf', replace
 	restore
-	capture noisily merge 1:1 `_srcobs' using `_survf', keep(master match) gen(_esm)
-	if _rc == 0 {
-		tempvar _es
-		quietly gen byte `_es' = (_esm == 3)
-		quietly drop _esm
-		capture ereturn repost, esample(`_es')
-		if _rc == 0  ereturn local esample_status "REMAPPED_AIVREG8"
-		else         ereturn local esample_status "REPOST_FAILED"
-	}
-	else ereturn local esample_status "MERGE_FAILED"
 end
+

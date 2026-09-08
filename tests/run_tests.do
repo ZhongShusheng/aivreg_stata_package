@@ -1,16 +1,28 @@
+* run_tests.do -- aivreg regression suite
+*
+* Usage (run from the repository root):
+*   do tests/run_tests.do
+*       tests ./aivreg.ado, label "current"
+*   do tests/run_tests.do <label> <adodir>
+*       tests <adodir>/aivreg.ado under <label>, e.g. a version extracted
+*       from git with:  python tests/get_version.py v1.0.0
+*
+* Output: tests/results/<label>_results.csv and tests/results/<label>_full.log
+* Compare against a frozen release with:  python tests/compare_results.py
+
 clear all
 set more off
 
-local ver "`1'"
-if !inlist("`ver'", "baseline", "merged") {
-    di as error "pass version arg: baseline | merged"
-    exit 198
-}
+local label "`1'"
+local adodir "`2'"
+if "`label'" == "" local label "current"
+if "`adodir'" == "" local adodir "."
 
-adopath ++ "tests/versions/`ver'"
+adopath ++ "`adodir'"
 which aivreg
 
-log using "tests/results/`ver'_full.log", replace text
+capture mkdir "tests/results"
+log using "tests/results/`label'_full.log", replace text
 
 * ---------------------------------------------------------------- helpers
 capture program drop record
@@ -29,6 +41,7 @@ program define record
         }
     }
     local pF   = cond(e(Partial_F) < ., string(e(Partial_F), "%21.0g"), ".")
+    local pR2  = cond(e(Partial_R2) < ., string(e(Partial_R2), "%21.0g"), ".")
     local Jval = cond(e(Jval)  < ., string(e(Jval),  "%21.0g"), ".")
     local Jp   = cond(e(pval_J)< ., string(e(pval_J),"%21.0g"), ".")
     local Jdf  = cond(e(J_df)  < ., string(e(J_df),  "%18.0g"), ".")
@@ -38,14 +51,14 @@ program define record
         local esN = r(N)
     }
     file open __R using "tests/results/${TESTVER}_results.csv", write append
-    file write __R "`tname',`rc',`N',`b',`se',`pF',`Jval',`Jdf',`Jp',`esN'" _n
+    file write __R "`tname',`rc',`N',`b',`se',`pF',`pR2',`Jval',`Jdf',`Jp',`esN'" _n
     file close __R
 end
 
-global TESTVER "`ver'"
-capture erase "tests/results/`ver'_results.csv"
-file open __R using "tests/results/`ver'_results.csv", write replace
-file write __R "test,rc,N,b,se,Partial_F,Jval,J_df,pval_J,esample_N" _n
+global TESTVER "`label'"
+capture erase "tests/results/`label'_results.csv"
+file open __R using "tests/results/`label'_results.csv", write replace
+file write __R "test,rc,N,b,se,Partial_F,Partial_R2,Jval,J_df,pval_J,esample_N" _n
 file close __R
 
 * ================================================================
@@ -238,4 +251,4 @@ capture noisily aivreg log_hpvi medianaqi if year==2019, aiv(rank) fe(rooms_shif
 record B16_fe_nonconsecutive `=_rc'
 
 log close
-di "SUITE DONE for `ver'"
+di "SUITE DONE for `label'"
