@@ -1,3 +1,6 @@
+capture mkdir "logs"
+log using "logs/install_deps.log", replace text
+
 foreach pkg in ivreg2 ranktest ivreghdfe distinct ftools require {
     capture which `pkg'
     if _rc {
@@ -14,3 +17,5 @@ require reghdfe>=6.12.5, install
 foreach pkg in ivreg2 ranktest ivreghdfe distinct ftools require reghdfe {
     which `pkg'
 }
+
+log close

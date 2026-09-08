@@ -661,104 +661,13 @@ t statistics in parentheses
 * p<0.05, ** p<0.01, *** p<0.001
 ```
 
-### Dependencies
+## Dependencies
 
 aivreg requires stata version 17 or higher. It also requires packages ivreg2, reghdfe, and ivreghdfe.
 
-### Contact
+## Contact
 
 Questions or concerns: aivregstata@gmail.com
-
-## Testing
-
-The regression suite in `tests/` always tests the `aivreg.ado` at the repository root. Results are compared against a frozen CSV from the last release, so old versions never need to be copied anywhere.
-
-| File | Purpose |
-|---|---|
-| `tests/install_deps.do` | Installs or updates ivreg2, ranktest, ivreghdfe, ftools, distinct, require, and reghdfe (>= 6.12.5). |
-| `tests/run_tests.do` | Runs all test cases against the root `aivreg.ado`. Writes `tests/results/current_results.csv` and the Stata log `logs/tests_current.log`. |
-| `tests/compare_results.py` | Compares the current CSV with the latest file in `tests/expected/` and exits 1 if any test differs. |
-| `tests/get_version.py` | Extracts `aivreg.ado` from any git tag or commit into `tests/.cache/` so the suite can rerun an old version. |
-| `tests/expected/<tag>.csv` | Frozen results for each tagged release. Committed once per release. |
-| `tests/results/` | Result CSVs of the last run. Not tracked by git. |
-| `logs/` | Stata logs from test runs, dependency installs, and demos. |
-
-### How to run
-
-From the repository root:
-
-```stata
-do tests/install_deps.do
-do tests/run_tests.do
-```
-
-```bash
-python tests/compare_results.py
-```
-
-To rerun an older version, for example when adding new test cases and needing a fresh baseline:
-
-```bash
-python tests/get_version.py v1.0.0
-```
-
-```stata
-do tests/run_tests.do v1.0.0 tests/.cache/v1.0.0
-```
-
-```bash
-python tests/compare_results.py tests/results/v1.0.0_results.csv tests/results/current_results.csv
-```
-
-### Freezing a release
-
-1. Run the suite on the release candidate and review the comparison.
-2. Copy `tests/results/current_results.csv` to `tests/expected/<tag>.csv` and commit it with the tag.
-
-Datasets used: `safety_aivreg_example.dta` (A1 to A3) and `housing_aivreg_example.dta` (all others).
-
-### Test cases
-
-The rc column is the return code recorded when the suite was last run on the v1.1.0-rc1 draft.
-
-**Section A: normal usage**
-
-| ID | Path | What it checks | rc |
-|---|---|---|---|
-| A1 | ratio | Default Anderson-Rubin inference | 0 |
-| A2 | ratio | `vce(asymp)` | 0 |
-| A3 | ratio | `vce(boot)` with seed | 0 |
-| A4 | ratio | Factor-variable controls with `if` | 0 |
-| A5 | ratio | `fe()` | 0 |
-| A6 | gmm | Two amenities, auto-switch to GMM | 0 |
-| A7 | gmm | Two-step GMM, two anti-IVs, J reported | 0 |
-| A8 | gmm | One-step GMM, J suppressed | 0 |
-| A9 | 2sls | Two anti-IVs | 0 |
-| A10 | gmm | `cluster()` | 0 |
-| A11 | gmm | Bare probability weight `weight(w)` | 0 |
-| A12 | gmm | Weights scaled by 17 give the same estimate | 0 |
-| A13 | ratio | Bracketed `weight([aw=w])` | 0 |
-
-**Section B: corner cases**
-
-| ID | Path | What it checks | rc |
-|---|---|---|---|
-| B1 | ratio | `in` range | 0 |
-| B2 | gmm | `in` range | 0 |
-| B3 | gmm | `if` and `in` together | 0 |
-| B4 | gmm | `weight([aw=w])` is refused | 101 |
-| B5 | gmm | `weight([fw=w])` is refused | 101 |
-| B6 | gmm | Zero or negative weights are refused | 459 |
-| B7 | gmm | Missing weights drop from the sample | 0 |
-| B8 | gmm | Fewer than two clusters | 430 |
-| B9 | ratio | 32-character variable names | 0 |
-| B10 | gmm | 32-character anti-IV names | 0 |
-| B11 | gmm | Failed call does not leave stale results | 459 |
-| B12 | gmm | `fe()`, `cluster()`, and weights together | 0 |
-| B13 | gmm | Single anti-IV, just identified, J suppressed | 0 |
-| B14 | gmm | Collinear anti-IVs | 430 |
-| B15 | any | Estimator typo `gmmm` is rejected | 198 |
-| B16 | ratio | Non-consecutive integer `fe()` values | 0 |
 
 ## References
 

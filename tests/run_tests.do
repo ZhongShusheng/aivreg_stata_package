@@ -7,7 +7,7 @@
 *       tests <adodir>/aivreg.ado under <label>, e.g. a version extracted
 *       from git with:  python tests/get_version.py v1.0.0
 *
-* Output: tests/results/<label>_results.csv and tests/results/<label>_full.log
+* Output: tests/results/<label>_results.csv and logs/tests_<label>.log
 * Compare against a frozen release with:  python tests/compare_results.py
 
 clear all
@@ -22,7 +22,8 @@ adopath ++ "`adodir'"
 which aivreg
 
 capture mkdir "tests/results"
-log using "tests/results/`label'_full.log", replace text
+capture mkdir "logs"
+log using "logs/tests_`label'.log", replace text
 
 * ---------------------------------------------------------------- helpers
 capture program drop record

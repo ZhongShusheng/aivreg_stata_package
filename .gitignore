@@ -1,4 +1,4 @@
-report/*
+report/
 tests/results/
 tests/.cache/
 .DS_Store
